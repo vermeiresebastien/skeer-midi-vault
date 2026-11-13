@@ -35,6 +35,10 @@ screenshots-tmp/
 # install (28 MB) that build_installer.ps1 downloads or reuses.
 build/tools/
 
+# Regenerated from build_installer.ps1's CLI flags on every run (--specpath
+# build). The authored spec is the tracked one at the repo root.
+build/SKEER MIDI VAULT.spec
+
 # Unified deliverables folder: standalone bundle, Setup exe, portable ZIP and
 # SHA256SUMS.txt. Regenerate with packaging/build_installer.ps1. Nothing inside
 # launch/ is tracked, in this or any other SKEER project.
@@ -45,9 +49,7 @@ launch/
 dist/
 dist-installer/
 
-# Note on web/dist/: it stays ignored, which is this project's existing
-# convention and the opposite of what dj-library and sample-vault do. The
-# consequence is that packaging from a clean checkout requires a frontend build
-# first - "SKEER MIDI VAULT.spec" bundles web/dist via its datas list but
-# nothing in the packaging path runs npm. Run `cd web; npm ci; npm run build`
-# before `packaging/build_installer.ps1`.
+# web/dist/ stays ignored, which is this project's convention and the opposite
+# of what dj-library and sample-vault do. packaging/build_installer.ps1 runs
+# `npm run build` but never `npm ci`, so a checkout with no web/node_modules
+# needs that once first. start.ps1 handles both automatically.
