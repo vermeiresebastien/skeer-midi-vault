@@ -1,0 +1,237 @@
+.piano-roll {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.piano-roll-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.track-legend {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  overflow: hidden;
+  flex-wrap: nowrap;
+}
+
+.legend-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 90px;
+  min-width: 0;
+  height: 19px;
+  padding: 0 5px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--muted);
+  font-size: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.legend-chip span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.legend-chip:hover {
+  color: var(--ink);
+  background: var(--canvas);
+}
+
+.legend-chip.is-active {
+  color: var(--accent);
+  border-color: var(--accent-line);
+  background: var(--accent-faint);
+}
+
+.legend-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.legend-chip.is-active .legend-dot {
+  width: 6px;
+  height: 6px;
+}
+
+.piano-roll-controls {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  flex: 0 0 auto;
+}
+
+.mini-toggle {
+  height: 19px;
+  padding: 0 4px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  color: var(--muted-light);
+  font-family: var(--font-mono);
+  font-size: 7px;
+  letter-spacing: 0.02em;
+}
+
+.mini-toggle:hover {
+  color: var(--ink);
+  background: var(--canvas);
+}
+
+.mini-toggle.is-active {
+  color: var(--accent);
+  border-color: var(--accent-line);
+  background: var(--accent-faint);
+}
+
+.zoom-value {
+  min-width: 25px;
+  color: var(--muted);
+  font-size: 7.5px;
+  text-align: center;
+}
+
+.piano-roll-controls .icon-btn {
+  width: 18px;
+  height: 19px;
+  border-radius: 2px;
+}
+
+.piano-roll-scroll {
+  position: relative;
+  width: 100%;
+  height: 232px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--paper);
+  cursor: crosshair;
+}
+
+.piano-roll-canvas-error {
+  position: sticky;
+  left: 12px;
+  top: 12px;
+  width: calc(100% - 24px);
+  padding: 10px 12px;
+  border-left: 2px solid var(--amber);
+  background: color-mix(in srgb, var(--paper) 94%, var(--amber));
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.45;
+  pointer-events: none;
+}
+
+.piano-roll-scroll.is-dragging {
+  cursor: ew-resize;
+}
+
+.piano-roll-canvas {
+  display: block;
+  touch-action: none;
+  user-select: none;
+}
+
+.piano-roll-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1.5px;
+  background: var(--green);
+  pointer-events: none;
+  will-change: left;
+}
+
+.piano-roll-playhead::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -3.25px;
+  width: 8px;
+  height: 6px;
+  background: var(--green);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+.piano-roll-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-light);
+  font-size: 8px;
+  line-height: 1;
+}
+
+.piano-roll-footer .mono {
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.roll-meta {
+  border-left: 1px solid var(--line);
+  padding-left: 8px;
+}
+
+.roll-note-count {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+  color: var(--muted-light);
+}
+
+.piano-roll-hint {
+  color: var(--muted-light);
+  font-size: 7.5px;
+  line-height: 1.4;
+  padding-top: 1px;
+}
+
+.piano-roll-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 232px;
+  border: 1px dashed var(--line);
+  border-radius: 3px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.piano-roll-empty-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  overflow: hidden;
+  opacity: 0.55;
+  margin-bottom: 10px;
+}
+
+.piano-roll-empty-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Larger preview for more comfortable auditioning on very wide screens */
+@media (min-width: 1700px) {
+  .piano-roll-scroll {
+    height: 274px;
+  }
+}

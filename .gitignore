@@ -1,0 +1,51 @@
+data/
+web/node_modules/
+web/dist/
+build/work/
+build-debug/
+dist-debug/
+__pycache__/
+*.pyc
+.pytest_cache/
+tests/e2e-tmp/
+tests/bench-tmp/
+tests/*-data/
+tests/portable-*/
+docs/screenshots/*.tmp.png
+screenshots-tmp/
+*.log
+.env
+.venv/
+.DS_Store
+
+# ---------------------------------------------------------------------------
+# Added during the 2026-11-13 cleanup, before this repository's first commit.
+# A dry run of `git add -A` against the rules above would have committed 145 MB
+# of packaging output. Every pattern below sits on its own line: in .gitignore a
+# "#" only starts a comment at the beginning of a line, so a trailing inline
+# comment becomes part of the pattern and the rule then matches nothing at all.
+# ---------------------------------------------------------------------------
+
+# build/ is NOT ignored wholesale, and that distinction is load-bearing.
+# build/app.ico and build/version_info.txt are authored inputs: "SKEER MIDI
+# VAULT.spec" passes them as icon= and version=, and
+# packaging/build_installer.ps1 reads both from build\. Ignoring build/ would
+# silently drop them and break packaging from a clean checkout.
+# build/work/ was already covered above; build/tools/ is the vendored Inno Setup
+# install (28 MB) that build_installer.ps1 downloads or reuses.
+build/tools/
+
+# PyInstaller one-dir output (66 MB). Regenerate with the .spec.
+dist/
+
+# Installer output (51 MB): the Setup exe, the portable zip and SHA256SUMS.txt.
+# Regenerate with packaging/build_installer.ps1. Neither dist-debug/ nor
+# build-debug/ above covered the release names.
+dist-installer/
+
+# Note on web/dist/: it stays ignored, which is this project's existing
+# convention and the opposite of what dj-library and sample-vault do. The
+# consequence is that packaging from a clean checkout requires a frontend build
+# first - "SKEER MIDI VAULT.spec" bundles web/dist via its datas list but
+# nothing in the packaging path runs npm. Run `cd web; npm ci; npm run build`
+# before `packaging/build_installer.ps1`.

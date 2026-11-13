@@ -1,0 +1,48 @@
+SKEER MIDI VAULT
+END USER LICENSE AGREEMENT
+
+Copyright (C) 2026 SKEER AUDIO. All rights reserved.
+
+IMPORTANT: This is a template license agreement supplied with the product build.
+Review it with legal counsel before selling or distributing the application.
+
+1. LICENSE GRANT
+   SKEER AUDIO grants you a non-exclusive, non-transferable licence to install
+   and use this copy of SKEER MIDI VAULT for your own personal or internal
+   business use, on computers that you own or control.
+
+2. RESTRICTIONS
+   You may not resell, sublicense, rent, lease, redistribute or make the
+   application available as a service to third parties without the prior
+   written permission of SKEER AUDIO. You may not reverse engineer, decompile,
+   disassemble or attempt to extract the source code of the application, except
+   where applicable law expressly permits it. You may not remove proprietary
+   notices.
+
+3. YOUR CONTENT
+   SKEER MIDI VAULT is a local MIDI file indexer. Your MIDI files, paths,
+   library database, tags, notes and manual corrections remain yours. The
+   application does not upload them and does not claim ownership of them. You
+   are responsible for having the rights necessary to use the MIDI files you
+   index.
+
+4. NO WARRANTY
+   THE APPLICATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. THE APPLICATION DOES
+   NOT GUARANTEE THAT EVERY MIDI FILE WILL PARSE, CLASSIFY OR PLAY CORRECTLY.
+
+5. LIMITATION OF LIABILITY
+   TO THE MAXIMUM EXTENT PERMITTED BY LAW, SKEER AUDIO SHALL NOT BE LIABLE FOR
+   ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL OR PUNITIVE DAMAGES, OR ANY
+   LOSS OF DATA, PROFITS OR BUSINESS, ARISING OUT OF OR RELATED TO THE USE OF
+   THE APPLICATION. SKEER AUDIO'S TOTAL LIABILITY SHALL NOT EXCEED THE AMOUNT
+   YOU PAID FOR THE LICENCE.
+
+6. SUPPORT AND UPDATES
+   Support, updates and upgrade terms are provided separately by the seller.
+   This version is 1.0.0.
+
+7. ACCEPTANCE
+   By installing or using the application you agree to the terms above. If you
+   do not agree, do not install the application.

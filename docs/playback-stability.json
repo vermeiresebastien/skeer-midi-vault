@@ -1,0 +1,35 @@
+{
+  "timestamp": "2026-11-02T06:02:56.995Z",
+  "host": {
+    "platform": "win32",
+    "release": "10.0.19045",
+    "cpu": "AMD Ryzen 9 3900X 12-Core Processor            ",
+    "logical_cores": 24,
+    "memory_gb": 63.9,
+    "node": "v24.19.0"
+  },
+  "test": {
+    "file": "Analog Lead 118.mid",
+    "file_duration_seconds": 16.2712,
+    "wall_seconds": 7.607,
+    "source_advance_seconds": 7.521,
+    "drift_ratio": 0.9888,
+    "scan_was_active_during_playback": true,
+    "scan_indexed_at_sample": 1185,
+    "search_response_ms": 41,
+    "scheduled_notes": 60,
+    "late_notes": 0,
+    "skipped_notes": 0,
+    "was_playing_after_interactions": true,
+    "loop_after_wrap_seconds": 0.731,
+    "loop_still_playing": true,
+    "stopped_time_seconds": 0,
+    "stopped_playing": false,
+    "active_voices_after_stop": 0
+  },
+  "notes": [
+    "The headless browser is muted; scheduling and transport telemetry are still exercised.",
+    "Search/filter interactions ran while the scan and playback were active.",
+    "Source-time drift is measured against wall time at the browser AudioContext tempo."
+  ]
+}

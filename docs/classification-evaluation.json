@@ -1,0 +1,1106 @@
+{
+  "sample_size": 31,
+  "instrument_correct": 31,
+  "role_correct": 31,
+  "instrument_accuracy": 1.0,
+  "role_accuracy": 1.0,
+  "uncertain_count": 5,
+  "mean_instrument_confidence": 0.7470322580645161,
+  "mean_role_confidence": 0.6781612903225807,
+  "track_sample_size": 13,
+  "track_instrument_correct": 13,
+  "track_role_correct": 11,
+  "track_instrument_accuracy": 1.0,
+  "track_role_accuracy": 0.8461538461538461,
+  "labels": {
+    "Drums/percussion": 5,
+    "Bass": 4,
+    "Piano/keys": 5,
+    "Guitar/plucked": 2,
+    "Strings": 1,
+    "Brass/woodwinds": 4,
+    "Synth": 5,
+    "Mixed arrangement": 3,
+    "Unknown": 2
+  },
+  "role_labels": {
+    "Drum groove": 3,
+    "Drum fill": 2,
+    "Bassline": 4,
+    "Chord progression": 5,
+    "Arpeggio": 3,
+    "Pad/sustained harmony": 2,
+    "Complete song or multi-part arrangement": 4,
+    "Lead/melody": 6,
+    "Exercise or technical pattern": 1,
+    "Unknown": 1
+  },
+  "correct": [
+    {
+      "path": "Drums/Deep House Groove 124.mid",
+      "instrument": "Drums/percussion",
+      "role": "Drum groove",
+      "confidence": 0.7
+    },
+    {
+      "path": "Drums/Dusty Breakbeat 90.mid",
+      "instrument": "Drums/percussion",
+      "role": "Drum groove",
+      "confidence": 0.714
+    },
+    {
+      "path": "Drums/Tom Fill 110.mid",
+      "instrument": "Drums/percussion",
+      "role": "Drum fill",
+      "confidence": 0.711
+    },
+    {
+      "path": "Drums/Snare Roll Fill 100.mid",
+      "instrument": "Drums/percussion",
+      "role": "Drum fill",
+      "confidence": 0.727
+    },
+    {
+      "path": "Drums/Trap Hat Pattern 140.mid",
+      "instrument": "Drums/percussion",
+      "role": "Drum groove",
+      "confidence": 0.714
+    },
+    {
+      "path": "Bass/Funk Bassline F.mid",
+      "instrument": "Bass",
+      "role": "Bassline",
+      "confidence": 0.63
+    },
+    {
+      "path": "Bass/Sub Pulse 808.mid",
+      "instrument": "Bass",
+      "role": "Bassline",
+      "confidence": 0.637
+    },
+    {
+      "path": "Bass/Walking Upright C.mid",
+      "instrument": "Bass",
+      "role": "Bassline",
+      "confidence": 0.637
+    },
+    {
+      "path": "Bass/Missing Program Bass.mid",
+      "instrument": "Bass",
+      "role": "Bassline",
+      "confidence": 0.63
+    },
+    {
+      "path": "Keys/Rhodes Chords Cmaj7.mid",
+      "instrument": "Piano/keys",
+      "role": "Chord progression",
+      "confidence": 0.745
+    },
+    {
+      "path": "Keys/Piano Arpeggio Am.mid",
+      "instrument": "Piano/keys",
+      "role": "Arpeggio",
+      "confidence": 0.716
+    },
+    {
+      "path": "Keys/Warm Piano Chords.mid",
+      "instrument": "Piano/keys",
+      "role": "Chord progression",
+      "confidence": 0.698
+    },
+    {
+      "path": "Keys/Sustain Piano.mid",
+      "instrument": "Piano/keys",
+      "role": "Pad/sustained harmony",
+      "confidence": 0.65
+    },
+    {
+      "path": "Guitar/Nylon Arpeggio 3-4.mid",
+      "instrument": "Guitar/plucked",
+      "role": "Arpeggio",
+      "confidence": 0.648
+    },
+    {
+      "path": "Guitar/Clean Guitar Chords.mid",
+      "instrument": "Guitar/plucked",
+      "role": "Chord progression",
+      "confidence": 0.735
+    },
+    {
+      "path": "Orchestral/String Quartet Sketch.mid",
+      "instrument": "Strings",
+      "role": "Complete song or multi-part arrangement",
+      "confidence": 0.716
+    },
+    {
+      "path": "Orchestral/Trumpet Melody.mid",
+      "instrument": "Brass/woodwinds",
+      "role": "Lead/melody",
+      "confidence": 0.716
+    },
+    {
+      "path": "Orchestral/Flute Exercise 4.mid",
+      "instrument": "Brass/woodwinds",
+      "role": "Exercise or technical pattern",
+      "confidence": 0.694
+    },
+    {
+      "path": "Synths/Analog Lead 118.mid",
+      "instrument": "Synth",
+      "role": "Lead/melody",
+      "confidence": 0.7
+    },
+    {
+      "path": "Synths/Supersaw Pad C.mid",
+      "instrument": "Synth",
+      "role": "Pad/sustained harmony",
+      "confidence": 0.685
+    },
+    {
+      "path": "Synths/Pluck Arp 124.mid",
+      "instrument": "Synth",
+      "role": "Arpeggio",
+      "confidence": 0.55
+    },
+    {
+      "path": "Synths/Synth Chords.mid",
+      "instrument": "Synth",
+      "role": "Chord progression",
+      "confidence": 0.726
+    },
+    {
+      "path": "Full Arrangements/Midnight Drive 118.mid",
+      "instrument": "Mixed arrangement",
+      "role": "Complete song or multi-part arrangement",
+      "confidence": 0.783
+    },
+    {
+      "path": "Full Arrangements/Lo-Fi Study 84.mid",
+      "instrument": "Mixed arrangement",
+      "role": "Complete song or multi-part arrangement",
+      "confidence": 0.786
+    },
+    {
+      "path": "Full Arrangements/Odd Meter 7-8.mid",
+      "instrument": "Mixed arrangement",
+      "role": "Complete song or multi-part arrangement",
+      "confidence": 0.7
+    },
+    {
+      "path": "Misc/Tempo Map Journey.mid",
+      "instrument": "Synth",
+      "role": "Lead/melody",
+      "confidence": 0.626
+    },
+    {
+      "path": "Misc/SMPTE Melody.mid",
+      "instrument": "Brass/woodwinds",
+      "role": "Lead/melody",
+      "confidence": 0.711
+    },
+    {
+      "path": "Misc/Overlapping Notes.mid",
+      "instrument": "Brass/woodwinds",
+      "role": "Lead/melody",
+      "confidence": 0.651
+    },
+    {
+      "path": "Misc/Meta Only.mid",
+      "instrument": "Unknown",
+      "role": "Unknown",
+      "confidence": 0.25
+    },
+    {
+      "path": "Misc/Mystery Sketch.mid",
+      "instrument": "Unknown",
+      "role": "Lead/melody",
+      "confidence": 0.24
+    },
+    {
+      "path": "Misc/Misleading Bass Name.mid",
+      "instrument": "Piano/keys",
+      "role": "Chord progression",
+      "confidence": 0.55
+    }
+  ],
+  "mistakes": [],
+  "track_mistakes": [
+    {
+      "path": "Orchestral/String Quartet Sketch.mid",
+      "name": "Cello",
+      "expected": "Strings / Pad/sustained harmony",
+      "predicted": "Strings / Bassline",
+      "instrument_correct": true,
+      "role_correct": false
+    },
+    {
+      "path": "Orchestral/String Quartet Sketch.mid",
+      "name": "Viola",
+      "expected": "Strings / Chord progression",
+      "predicted": "Strings / Arpeggio",
+      "instrument_correct": true,
+      "role_correct": false
+    }
+  ],
+  "uncertain": [
+    {
+      "path": "Orchestral/String Quartet Sketch.mid",
+      "instrument": "Strings",
+      "role": "Complete song or multi-part arrangement",
+      "confidence": 0.716,
+      "flags": [
+        "Embedded signature says Bb major; pitch-class profile suggests C major (78%)."
+      ]
+    },
+    {
+      "path": "Synths/Pluck Arp 124.mid",
+      "instrument": "Synth",
+      "role": "Arpeggio",
+      "confidence": 0.55,
+      "flags": [
+        "Filename suggests guitar/plucked, while track evidence points to Synth"
+      ]
+    },
+    {
+      "path": "Misc/Meta Only.mid",
+      "instrument": "Unknown",
+      "role": "Unknown",
+      "confidence": 0.25,
+      "flags": [
+        "key uncertain"
+      ]
+    },
+    {
+      "path": "Misc/Mystery Sketch.mid",
+      "instrument": "Unknown",
+      "role": "Lead/melody",
+      "confidence": 0.24,
+      "flags": []
+    },
+    {
+      "path": "Misc/Misleading Bass Name.mid",
+      "instrument": "Piano/keys",
+      "role": "Chord progression",
+      "confidence": 0.55,
+      "flags": [
+        "Filename suggests bass, while track evidence points to Piano/keys"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "path": "Drums/Deep House Groove 124.mid",
+      "expected_instrument": "Drums/percussion",
+      "expected_role": "Drum groove",
+      "predicted_instrument": "Drums/percussion",
+      "predicted_role": "Drum groove",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.7,
+      "uncertain": false,
+      "conflicts": [],
+      "instrument_evidence": [
+        "Track “Drums” → Drums/percussion (82%)",
+        "Filename/folder context is consistent with drums/percussion",
+        "Drums: Track name/text mentions drums/percussion material",
+        "Drums: MIDI channel 10 percussion convention (not proof)"
+      ],
+      "role_evidence": [
+        "“Drums” → Drum groove (64%)",
+        "Drums: Regular percussion pattern with 4.37 notes per beat"
+      ],
+      "note": "Four-on-the-floor house kit"
+    },
+    {
+      "path": "Drums/Dusty Breakbeat 90.mid",
+      "expected_instrument": "Drums/percussion",
+      "expected_role": "Drum groove",
+      "predicted_instrument": "Drums/percussion",
+      "predicted_role": "Drum groove",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.714,
+      "uncertain": false,
+      "conflicts": [],
+      "instrument_evidence": [
+        "Track “Breakbeat Kit” → Drums/percussion (82%)",
+        "Filename/folder context is consistent with drums/percussion",
+        "Breakbeat Kit: Track name/text mentions drums/percussion material",
+        "Breakbeat Kit: MIDI channel 10 percussion convention (not proof)"
+      ],
+      "role_evidence": [
+        "“Breakbeat Kit” → Drum groove (68%)",
+        "Breakbeat Kit: Regular percussion pattern with 3.31 notes per beat"
+      ],
+      "note": "Syncopated breakbeat kit"
+    },
+    {
+      "path": "Drums/Tom Fill 110.mid",
+      "expected_instrument": "Drums/percussion",
+      "expected_role": "Drum fill",
+      "predicted_instrument": "Drums/percussion",
+      "predicted_role": "Drum fill",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.711,
+      "uncertain": false,
+      "conflicts": [],
+      "instrument_evidence": [
+        "Track “Tom Fill” → Drums/percussion (80%)",
+        "Filename/folder context is consistent with drums/percussion",
+        "Tom Fill: Track name/text mentions drums/percussion material",
+        "Tom Fill: MIDI channel 10 percussion convention (not proof)"
+      ],
+      "role_evidence": [
+        "“Tom Fill” → Drum fill (67%)",
+        "Tom Fill: Short, varied, low-repetition percussion pattern (5 pitches)"
+      ],
+      "note": "Two-bar rapid tom fill"
+    },
+    {
+      "path": "Drums/Snare Roll Fill 100.mid",
+      "expected_instrument": "Drums/percussion",
+      "expected_role": "Drum fill",
+      "predicted_instrument": "Drums/percussion",
+      "predicted_role": "Drum fill",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.727,
+      "uncertain": false,
+      "conflicts": [],
+      "instrument_evidence": [
+        "Track “Snare Roll Fill” → Drums/percussion (80%)",
+        "Filename/folder context is consistent with drums/percussion",
+        "Snare Roll Fill: Track name/text mentions drums/percussion material",
+        "Snare Roll Fill: MIDI channel 10 percussion convention (not proof)"
+      ],
+      "role_evidence": [
+        "“Snare Roll Fill” → Drum fill (71%)",
+        "Snare Roll Fill: Short, varied, low-repetition percussion pattern (2 pitches)"
+      ],
+      "note": "One-bar accelerating snare roll"
+    },
+    {
+      "path": "Drums/Trap Hat Pattern 140.mid",
+      "expected_instrument": "Drums/percussion",
+      "expected_role": "Drum groove",
+      "predicted_instrument": "Drums/percussion",
+      "predicted_role": "Drum groove",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.714,
+      "uncertain": false,
+      "conflicts": [],
+      "instrument_evidence": [
+        "Track “Trap Hats” → Drums/percussion (82%)",
+        "Filename/folder context is consistent with drums/percussion",
+        "Trap Hats: Track name/text mentions drums/percussion material",
+        "Trap Hats: MIDI channel 10 percussion convention (not proof)"
+      ],
+      "role_evidence": [
+        "“Trap Hats” → Drum groove (68%)",
+        "Trap Hats: Regular percussion pattern with 4.12 notes per beat"
+      ],
+      "note": "Hi-hat subdivisions"
+    },
+    {
+      "path": "Bass/Funk Bassline F.mid",
+      "expected_instrument": "Bass",
+      "expected_role": "Bassline",
+      "predicted_instrument": "Bass",
+      "predicted_role": "Bassline",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.63,
+      "uncertain": false,
+      "conflicts": [],
+      "instrument_evidence": [
+        "Track “Funk Bass” → Bass (84%)",
+        "Filename/folder context is consistent with bass",
+        "Funk Bass: Program 35 · Electric Bass (pick)",
+        "Funk Bass: Track name/text mentions bass material"
+      ],
+      "role_evidence": [
+        "“Funk Bass” → Bassline (48%)",
+        "Funk Bass: Low-register single-note line"
+      ],
+      "note": "Syncopated funk bass in F"
+    },
+    {
+      "path": "Bass/Sub Pulse 808.mid",
+      "expected_instrument": "Bass",
+      "expected_role": "Bassline",
+      "predicted_instrument": "Bass",
+      "predicted_role": "Bassline",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.637,
+      "uncertain": false,
+      "conflicts": [],
+      "instrument_evidence": [
+        "Track “808 Sub” → Bass (88%)",
+        "Filename/folder context is consistent with bass",
+        "808 Sub: Program 39 · Synth Bass 1",
+        "808 Sub: Track name/text mentions bass material"
+      ],
+      "role_evidence": [
+        "“808 Sub” → Bassline (49%)",
+        "808 Sub: Low-register single-note line"
+      ],
+      "note": "Sparse low sub pulse"
+    },
+    {
+      "path": "Bass/Walking Upright C.mid",
+      "expected_instrument": "Bass",
+      "expected_role": "Bassline",
+      "predicted_instrument": "Bass",
+      "predicted_role": "Bassline",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.637,
+      "uncertain": false,
+      "conflicts": [],
+      "instrument_evidence": [
+        "Track “Walking Upright” → Bass (76%)",
+        "Filename/folder context is consistent with bass",
+        "Walking Upright: Program 33 · Acoustic Bass",
+        "Walking Upright: Low register (median C2) and monophonic rhythm"
+      ],
+      "role_evidence": [
+        "“Walking Upright” → Bassline (49%)",
+        "Walking Upright: Low-register single-note line"
+      ],
+      "note": "Jazz walking bass"
+    },
+    {
+      "path": "Bass/Missing Program Bass.mid",
+      "expected_instrument": "Bass",
+      "expected_role": "Bassline",
+      "predicted_instrument": "Bass",
+      "predicted_role": "Bassline",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.63,
+      "uncertain": false,
+      "conflicts": [],
+      "instrument_evidence": [
+        "Track “Bass” → Bass (72%)",
+        "Filename/folder context is consistent with bass",
+        "Bass: Track name/text mentions bass material",
+        "Bass: Low register (median C2) and monophonic rhythm"
+      ],
+      "role_evidence": [
+        "“Bass” → Bassline (48%)",
+        "Bass: Low-register single-note line"
+      ],
+      "note": "No program changes; name and register only"
+    },
+    {
+      "path": "Keys/Rhodes Chords Cmaj7.mid",
+      "expected_instrument": "Piano/keys",
+      "expected_role": "Chord progression",
+      "predicted_instrument": "Piano/keys",
+      "predicted_role": "Chord progression",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.745,
+      "uncertain": false,
+      "conflicts": [],
+      "instrument_evidence": [
+        "Track “Rhodes Chords” → Piano/keys (83%)",
+        "Filename/folder context is consistent with piano/keys",
+        "Rhodes Chords: Program 5 · Electric Piano 1",
+        "Rhodes Chords: Track name/text mentions piano/keys material"
+      ],
+      "role_evidence": [
+        "“Rhodes Chords” → Chord progression (75%)",
+        "Rhodes Chords: Repeated simultaneous note groups"
+      ],
+      "note": "Repeated Rhodes voicings"
+    },
+    {
+      "path": "Keys/Piano Arpeggio Am.mid",
+      "expected_instrument": "Piano/keys",
+      "expected_role": "Arpeggio",
+      "predicted_instrument": "Piano/keys",
+      "predicted_role": "Arpeggio",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.716,
+      "uncertain": false,
+      "conflicts": [],
+      "instrument_evidence": [
+        "Track “Piano Arpeggio” → Piano/keys (81%)",
+        "Filename/folder context is consistent with piano/keys",
+        "Piano Arpeggio: Program 1 · Acoustic Grand Piano",
+        "Piano Arpeggio: Track name/text mentions piano/keys material"
+      ],
+      "role_evidence": [
+        "“Piano Arpeggio” → Arpeggio (68%)",
+        "Piano Arpeggio: Chord-tone coverage 100% with regular onsets"
+      ],
+      "note": "Eighth-note broken chords"
+    },
+    {
+      "path": "Keys/Warm Piano Chords.mid",
+      "expected_instrument": "Piano/keys",
+      "expected_role": "Chord progression",
+      "predicted_instrument": "Piano/keys",
+      "predicted_role": "Chord progression",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.698,
+      "uncertain": false,
+      "conflicts": [],
+      "instrument_evidence": [
+        "Track “Warm Piano” → Piano/keys (83%)",
+        "Filename/folder context is consistent with piano/keys",
+        "Warm Piano: Program 1 · Acoustic Grand Piano",
+        "Warm Piano: Track name/text mentions piano/keys material"
+      ],
+      "role_evidence": [
+        "“Warm Piano” → Chord progression (64%)",
+        "Warm Piano: Repeated simultaneous note groups"
+      ],
+      "note": "Slow pop piano voicings"
+    },
+    {
+      "path": "Keys/Sustain Piano.mid",
+      "expected_instrument": "Piano/keys",
+      "expected_role": "Pad/sustained harmony",
+      "predicted_instrument": "Piano/keys",
+      "predicted_role": "Pad/sustained harmony",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.65,
+      "uncertain": false,
+      "conflicts": [],
+      "instrument_evidence": [
+        "Track “Sustain Piano” → Piano/keys (83%)",
+        "Filename/folder context is consistent with piano/keys",
+        "Sustain Piano: Program 1 · Acoustic Grand Piano",
+        "Sustain Piano: Track name/text mentions piano/keys material"
+      ],
+      "role_evidence": [
+        "“Sustain Piano” → Pad/sustained harmony (52%)",
+        "Sustain Piano: Track name/text mentions “pad/sustained harmony”"
+      ],
+      "note": "Sustain pedal holds chord notes"
+    },
+    {
+      "path": "Guitar/Nylon Arpeggio 3-4.mid",
+      "expected_instrument": "Guitar/plucked",
+      "expected_role": "Arpeggio",
+      "predicted_instrument": "Guitar/plucked",
+      "predicted_role": "Arpeggio",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.648,
+      "uncertain": false,
+      "conflicts": [],
+      "instrument_evidence": [
+        "Track “Nylon Guitar” → Guitar/plucked (87%)",
+        "Filename/folder context is consistent with guitar/plucked",
+        "Nylon Guitar: Program 25 · Acoustic Guitar (nylon)",
+        "Nylon Guitar: Track name/text mentions guitar/plucked material"
+      ],
+      "role_evidence": [
+        "“Nylon Guitar” → Arpeggio (52%)",
+        "Nylon Guitar: Chord-tone coverage 100% with regular onsets"
+      ],
+      "note": "Fingerstyle 3/4 pattern"
+    },
+    {
+      "path": "Guitar/Clean Guitar Chords.mid",
+      "expected_instrument": "Guitar/plucked",
+      "expected_role": "Chord progression",
+      "predicted_instrument": "Guitar/plucked",
+      "predicted_role": "Chord progression",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.735,
+      "uncertain": false,
+      "conflicts": [],
+      "instrument_evidence": [
+        "Track “Clean Guitar Chords” → Guitar/plucked (78%)",
+        "Filename/folder context is consistent with guitar/plucked",
+        "Clean Guitar Chords: Program 28 · Electric Guitar (clean)",
+        "Clean Guitar Chords: Track name/text mentions guitar/plucked material"
+      ],
+      "role_evidence": [
+        "“Clean Guitar Chords” → Chord progression (73%)",
+        "Clean Guitar Chords: Repeated simultaneous note groups"
+      ],
+      "note": "Open-position guitar chords"
+    },
+    {
+      "path": "Orchestral/String Quartet Sketch.mid",
+      "expected_instrument": "Strings",
+      "expected_role": "Complete song or multi-part arrangement",
+      "predicted_instrument": "Strings",
+      "predicted_role": "Complete song or multi-part arrangement",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.716,
+      "uncertain": true,
+      "conflicts": [
+        "Embedded signature says Bb major; pitch-class profile suggests C major (78%)."
+      ],
+      "instrument_evidence": [
+        "Track “Cello” → Strings (54%)",
+        "Track “Viola” → Strings (84%)",
+        "Track “Violin Melody” → Strings (81%)",
+        "Filename/folder context is consistent with strings"
+      ],
+      "role_evidence": [
+        "Independent parts: Bassline (Cello), Arpeggio (Viola), Lead/melody (Violin Melody)",
+        "“Cello” → Bassline (47%)",
+        "Cello: Low-register single-note line",
+        "“Viola” → Arpeggio (47%)"
+      ],
+      "note": "Cello, viola and violin parts, 3/4",
+      "tracks": [
+        {
+          "name": "Cello",
+          "expected": "Strings / Pad/sustained harmony",
+          "predicted": "Strings / Bassline",
+          "instrument_correct": true,
+          "role_correct": false
+        },
+        {
+          "name": "Viola",
+          "expected": "Strings / Chord progression",
+          "predicted": "Strings / Arpeggio",
+          "instrument_correct": true,
+          "role_correct": false
+        },
+        {
+          "name": "Violin Melody",
+          "expected": "Strings / Lead/melody",
+          "predicted": "Strings / Lead/melody",
+          "instrument_correct": true,
+          "role_correct": true
+        }
+      ]
+    },
+    {
+      "path": "Orchestral/Trumpet Melody.mid",
+      "expected_instrument": "Brass/woodwinds",
+      "expected_role": "Lead/melody",
+      "predicted_instrument": "Brass/woodwinds",
+      "predicted_role": "Lead/melody",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.716,
+      "uncertain": false,
+      "conflicts": [],
+      "instrument_evidence": [
+        "Track “Trumpet Melody” → Brass/woodwinds (81%)",
+        "Filename/folder context is consistent with brass/woodwinds",
+        "Trumpet Melody: Program 57 · Trumpet",
+        "Trumpet Melody: Track name/text mentions brass/woodwinds material"
+      ],
+      "role_evidence": [
+        "“Trumpet Melody” → Lead/melody (68%)",
+        "Trumpet Melody: Track name/text mentions “lead/melody”"
+      ],
+      "note": "Brass melody"
+    },
+    {
+      "path": "Orchestral/Flute Exercise 4.mid",
+      "expected_instrument": "Brass/woodwinds",
+      "expected_role": "Exercise or technical pattern",
+      "predicted_instrument": "Brass/woodwinds",
+      "predicted_role": "Exercise or technical pattern",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.694,
+      "uncertain": false,
+      "conflicts": [],
+      "instrument_evidence": [
+        "Track “Flute Scale Exercise” → Brass/woodwinds (84%)",
+        "Filename/folder context is consistent with brass/woodwinds",
+        "Flute Scale Exercise: Program 74 · Flute",
+        "Flute Scale Exercise: Track name/text mentions brass/woodwinds material"
+      ],
+      "role_evidence": [
+        "“Flute Scale Exercise” → Exercise or technical pattern (63%)",
+        "Flute Scale Exercise: Track name/text mentions “exercise or technical pattern”"
+      ],
+      "note": "Scale exercise"
+    },
+    {
+      "path": "Synths/Analog Lead 118.mid",
+      "expected_instrument": "Synth",
+      "expected_role": "Lead/melody",
+      "predicted_instrument": "Synth",
+      "predicted_role": "Lead/melody",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.7,
+      "uncertain": false,
+      "conflicts": [],
+      "instrument_evidence": [
+        "Track “Analog Lead” → Synth (82%)",
+        "Filename/folder context is consistent with synth",
+        "Analog Lead: Program 82 · Lead 2 (sawtooth)",
+        "Analog Lead: Track name/text mentions synth material"
+      ],
+      "role_evidence": [
+        "“Analog Lead” → Lead/melody (64%)",
+        "Analog Lead: Track name/text mentions “lead/melody”"
+      ],
+      "note": "Saw lead melody"
+    },
+    {
+      "path": "Synths/Supersaw Pad C.mid",
+      "expected_instrument": "Synth",
+      "expected_role": "Pad/sustained harmony",
+      "predicted_instrument": "Synth",
+      "predicted_role": "Pad/sustained harmony",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.685,
+      "uncertain": false,
+      "conflicts": [],
+      "instrument_evidence": [
+        "Track “Supersaw Pad” → Synth (84%)",
+        "Filename/folder context is consistent with synth",
+        "Supersaw Pad: Program 90 · Pad 2 (warm)",
+        "Supersaw Pad: Track name/text mentions synth material"
+      ],
+      "role_evidence": [
+        "“Supersaw Pad” → Pad/sustained harmony (61%)",
+        "Supersaw Pad: Track name/text mentions “pad/sustained harmony”"
+      ],
+      "note": "Sustained wide chords"
+    },
+    {
+      "path": "Synths/Pluck Arp 124.mid",
+      "expected_instrument": "Synth",
+      "expected_role": "Arpeggio",
+      "predicted_instrument": "Synth",
+      "predicted_role": "Arpeggio",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.55,
+      "uncertain": true,
+      "conflicts": [
+        "Filename suggests guitar/plucked, while track evidence points to Synth"
+      ],
+      "instrument_evidence": [
+        "Track “Pluck Arp” → Synth (43%)",
+        "Filename/folder context is consistent with synth",
+        "Pluck Arp: Program 85 · Lead 5 (charang)"
+      ],
+      "role_evidence": [
+        "“Pluck Arp” → Arpeggio (68%)",
+        "Pluck Arp: Chord-tone coverage 100% with regular onsets"
+      ],
+      "note": "Sixteenth-note synth arpeggio"
+    },
+    {
+      "path": "Synths/Synth Chords.mid",
+      "expected_instrument": "Synth",
+      "expected_role": "Chord progression",
+      "predicted_instrument": "Synth",
+      "predicted_role": "Chord progression",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.726,
+      "uncertain": false,
+      "conflicts": [],
+      "instrument_evidence": [
+        "Track “Synth Chords” → Synth (80%)",
+        "Filename/folder context is consistent with synth",
+        "Synth Chords: Program 82 · Lead 2 (sawtooth)",
+        "Synth Chords: Track name/text mentions synth material"
+      ],
+      "role_evidence": [
+        "“Synth Chords” → Chord progression (70%)",
+        "Synth Chords: Repeated simultaneous note groups"
+      ],
+      "note": "Sustained synth voicings"
+    },
+    {
+      "path": "Full Arrangements/Midnight Drive 118.mid",
+      "expected_instrument": "Mixed arrangement",
+      "expected_role": "Complete song or multi-part arrangement",
+      "predicted_instrument": "Mixed arrangement",
+      "predicted_role": "Complete song or multi-part arrangement",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.783,
+      "uncertain": false,
+      "conflicts": [],
+      "instrument_evidence": [
+        "Multiple significant tracks resolve to different sound families: Drums/percussion, Synth, Bass, Piano/keys",
+        "Track “Drum Kit” → Drums/percussion (82%)",
+        "Track “Bass” → Bass (84%)",
+        "Track “Rhodes Chords” → Piano/keys (83%)"
+      ],
+      "role_evidence": [
+        "Independent parts: Drum groove (Drum Kit), Bassline (Bass), Chord progression (Rhodes Chords), Lead/melody (Lead Line)",
+        "“Drum Kit” → Drum groove (64%)",
+        "Drum Kit: Regular percussion pattern with 4.43 notes per beat",
+        "“Bass” → Bassline (48%)"
+      ],
+      "note": "Drums, bass, Rhodes and lead",
+      "tracks": [
+        {
+          "name": "Drum Kit",
+          "expected": "Drums/percussion / Drum groove",
+          "predicted": "Drums/percussion / Drum groove",
+          "instrument_correct": true,
+          "role_correct": true
+        },
+        {
+          "name": "Bass",
+          "expected": "Bass / Bassline",
+          "predicted": "Bass / Bassline",
+          "instrument_correct": true,
+          "role_correct": true
+        },
+        {
+          "name": "Rhodes Chords",
+          "expected": "Piano/keys / Chord progression",
+          "predicted": "Piano/keys / Chord progression",
+          "instrument_correct": true,
+          "role_correct": true
+        },
+        {
+          "name": "Lead Line",
+          "expected": "Synth / Lead/melody",
+          "predicted": "Synth / Lead/melody",
+          "instrument_correct": true,
+          "role_correct": true
+        }
+      ]
+    },
+    {
+      "path": "Full Arrangements/Lo-Fi Study 84.mid",
+      "expected_instrument": "Mixed arrangement",
+      "expected_role": "Complete song or multi-part arrangement",
+      "predicted_instrument": "Mixed arrangement",
+      "predicted_role": "Complete song or multi-part arrangement",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.786,
+      "uncertain": false,
+      "conflicts": [],
+      "instrument_evidence": [
+        "Multiple significant tracks resolve to different sound families: Brass/woodwinds, Drums/percussion, Bass, Piano/keys",
+        "Track “Dusty Drums” → Drums/percussion (82%)",
+        "Track “Upright Bass” → Bass (88%)",
+        "Track “Warm Keys” → Piano/keys (86%)"
+      ],
+      "role_evidence": [
+        "Independent parts: Drum groove (Dusty Drums), Bassline (Upright Bass), Chord progression (Warm Keys), Lead/melody (Flute Melody)",
+        "“Dusty Drums” → Drum groove (75%)",
+        "Dusty Drums: Regular percussion pattern with 3.06 notes per beat",
+        "“Upright Bass” → Bassline (49%)"
+      ],
+      "note": "Swing-feel lo-fi drums, bass, keys and flute",
+      "tracks": [
+        {
+          "name": "Dusty Drums",
+          "expected": "Drums/percussion / Drum groove",
+          "predicted": "Drums/percussion / Drum groove",
+          "instrument_correct": true,
+          "role_correct": true
+        },
+        {
+          "name": "Upright Bass",
+          "expected": "Bass / Bassline",
+          "predicted": "Bass / Bassline",
+          "instrument_correct": true,
+          "role_correct": true
+        },
+        {
+          "name": "Warm Keys",
+          "expected": "Piano/keys / Chord progression",
+          "predicted": "Piano/keys / Chord progression",
+          "instrument_correct": true,
+          "role_correct": true
+        },
+        {
+          "name": "Flute Melody",
+          "expected": "Brass/woodwinds / Lead/melody",
+          "predicted": "Brass/woodwinds / Lead/melody",
+          "instrument_correct": true,
+          "role_correct": true
+        }
+      ]
+    },
+    {
+      "path": "Full Arrangements/Odd Meter 7-8.mid",
+      "expected_instrument": "Mixed arrangement",
+      "expected_role": "Complete song or multi-part arrangement",
+      "predicted_instrument": "Mixed arrangement",
+      "predicted_role": "Complete song or multi-part arrangement",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.7,
+      "uncertain": false,
+      "conflicts": [],
+      "instrument_evidence": [
+        "Multiple significant tracks resolve to different sound families: Drums/percussion, Bass",
+        "Track “Odd Meter Drums” → Drums/percussion (76%)",
+        "Track “Odd Meter Bass” → Bass (85%)",
+        "Filename/folder context is consistent with bass"
+      ],
+      "role_evidence": [
+        "Independent parts: Drum groove (Odd Meter Drums), Bassline (Odd Meter Bass)",
+        "“Odd Meter Drums” → Drum groove (74%)",
+        "Odd Meter Drums: Regular percussion pattern with 2.32 notes per beat",
+        "“Odd Meter Bass” → Bassline (49%)"
+      ],
+      "note": "7/8 drums and bass",
+      "tracks": [
+        {
+          "name": "Odd Meter Drums",
+          "expected": "Drums/percussion / Drum groove",
+          "predicted": "Drums/percussion / Drum groove",
+          "instrument_correct": true,
+          "role_correct": true
+        },
+        {
+          "name": "Odd Meter Bass",
+          "expected": "Bass / Bassline",
+          "predicted": "Bass / Bassline",
+          "instrument_correct": true,
+          "role_correct": true
+        }
+      ]
+    },
+    {
+      "path": "Misc/Tempo Map Journey.mid",
+      "expected_instrument": "Synth",
+      "expected_role": "Lead/melody",
+      "predicted_instrument": "Synth",
+      "predicted_role": "Lead/melody",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.626,
+      "uncertain": false,
+      "conflicts": [],
+      "instrument_evidence": [
+        "Track “Tempo Map Journey” → Synth (73%)",
+        "Tempo Map Journey: Program 82 · Lead 2 (sawtooth)",
+        "Tempo Map Journey: Regular electronic-style single-note pattern"
+      ],
+      "role_evidence": [
+        "“Tempo Map Journey” → Lead/melody (47%)",
+        "Tempo Map Journey: Mostly monophonic line (100% single-note onsets)"
+      ],
+      "note": "Tempo changes 90 → 120 → 150"
+    },
+    {
+      "path": "Misc/SMPTE Melody.mid",
+      "expected_instrument": "Brass/woodwinds",
+      "expected_role": "Lead/melody",
+      "predicted_instrument": "Brass/woodwinds",
+      "predicted_role": "Lead/melody",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.711,
+      "uncertain": false,
+      "conflicts": [],
+      "instrument_evidence": [
+        "Track “SMPTE Test Melody” → Brass/woodwinds (71%)",
+        "SMPTE Test Melody: Program 74 · Flute",
+        "SMPTE Test Melody: Monophonic short-note pattern"
+      ],
+      "role_evidence": [
+        "“SMPTE Test Melody” → Lead/melody (67%)",
+        "SMPTE Test Melody: Track name/text mentions “lead/melody”"
+      ],
+      "note": "SMPTE 25 fps / 40 ticks per frame"
+    },
+    {
+      "path": "Misc/Overlapping Notes.mid",
+      "expected_instrument": "Brass/woodwinds",
+      "expected_role": "Lead/melody",
+      "predicted_instrument": "Brass/woodwinds",
+      "predicted_role": "Lead/melody",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.651,
+      "uncertain": false,
+      "conflicts": [],
+      "instrument_evidence": [
+        "Track “Overlapping Notes Test” → Brass/woodwinds (76%)",
+        "Overlapping Notes Test: Program 74 · Flute"
+      ],
+      "role_evidence": [
+        "“Overlapping Notes Test” → Lead/melody (53%)",
+        "Overlapping Notes Test: Mostly monophonic line (100% single-note onsets)"
+      ],
+      "note": "Overlapping same-pitch notes"
+    },
+    {
+      "path": "Misc/Meta Only.mid",
+      "expected_instrument": "Unknown",
+      "expected_role": "Unknown",
+      "predicted_instrument": "Unknown",
+      "predicted_role": "Unknown",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.25,
+      "uncertain": true,
+      "conflicts": [],
+      "instrument_evidence": [
+        "No MIDI note events"
+      ],
+      "role_evidence": [
+        "No usable track roles"
+      ],
+      "note": "No note events"
+    },
+    {
+      "path": "Misc/Mystery Sketch.mid",
+      "expected_instrument": "Unknown",
+      "expected_role": "Lead/melody",
+      "predicted_instrument": "Unknown",
+      "predicted_role": "Lead/melody",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.24,
+      "uncertain": true,
+      "conflicts": [],
+      "instrument_evidence": [
+        "No program, name or usable behavioural evidence"
+      ],
+      "role_evidence": [
+        "“Untitled Sketch” → Lead/melody (43%)",
+        "Untitled Sketch: Mostly monophonic line (100% single-note onsets)"
+      ],
+      "note": "No program or descriptive track name"
+    },
+    {
+      "path": "Misc/Misleading Bass Name.mid",
+      "expected_instrument": "Piano/keys",
+      "expected_role": "Chord progression",
+      "predicted_instrument": "Piano/keys",
+      "predicted_role": "Chord progression",
+      "instrument_correct": true,
+      "role_correct": true,
+      "confidence": 0.55,
+      "uncertain": true,
+      "conflicts": [
+        "Filename suggests bass, while track evidence points to Piano/keys"
+      ],
+      "instrument_evidence": [
+        "Track “Bass Groove” → Piano/keys (47%)",
+        "Bass Groove: Program 5 · Electric Piano 1"
+      ],
+      "role_evidence": [
+        "“Bass Groove” → Chord progression (55%)",
+        "Bass Groove: Repeated simultaneous note groups"
+      ],
+      "note": "Named bass but contains piano chords"
+    }
+  ],
+  "genre_evaluated": false,
+  "method": "SKEER transparent rules, classifier version 1"
+}

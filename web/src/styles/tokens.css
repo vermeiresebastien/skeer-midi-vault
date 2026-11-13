@@ -1,0 +1,68 @@
+/* SKEER MIDI VAULT — shared identity tokens.
+ * Palette and type follow the approved SKEER family references.
+ */
+:root {
+  --ivory: #f5f2eb;
+  --paper-base: #fcfaf6;
+  --stone-base: #e7e2d8;
+  --warm-gray: #cfc8bc;
+  --ink: #292821;
+  --muted: #716c63;
+  --muted-light: #9a9488;
+  --orange: #ff6500;
+  --green: #00a85a;
+  --green-bright: #00cc66;
+  --red: #d9382e;
+  --amber: #b8862b;
+
+  --accent: #ff6500;
+  --accent-strong: #d95600;
+  --accent-soft: rgba(255, 101, 0, 0.12);
+  --accent-faint: rgba(255, 101, 0, 0.055);
+  --accent-line: rgba(255, 101, 0, 0.34);
+  --meter: #ff6500;
+
+  --canvas: var(--ivory);
+  --board: var(--paper-base);
+  --paper: var(--paper-base);
+  --stone: var(--stone-base);
+  --line: rgba(41, 40, 33, 0.13);
+  --line-strong: rgba(41, 40, 33, 0.23);
+  --panel-contrast: 0.35;
+  --border-alpha: 0.35;
+  --texture-opacity: 0.22;
+  --ui-scale: 1;
+  --ui-inverse: 1;
+
+  --shadow-panel: 0 1px 0 rgba(255, 255, 255, 0.55) inset, 0 1px 2px rgba(41, 40, 33, 0.055);
+  --shadow-float: 0 18px 48px rgba(58, 48, 34, 0.16), 0 2px 4px rgba(58, 48, 34, 0.08);
+  --radius-panel: 6px;
+  --radius-control: 5px;
+
+  --font-sans: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'Cascadia Mono', ui-monospace, monospace;
+  --font-display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+
+  --topbar-height: 62px;
+  --transport-height: 66px;
+  --sidebar-width: 244px;
+  --details-width: 424px;
+  --gutter: 18px;
+
+  color-scheme: light;
+  font-synthesis: none;
+}
+
+[data-skin='tactile'] {
+  --line: rgba(41, 40, 33, 0.16);
+  --line-strong: rgba(41, 40, 33, 0.27);
+}
+
+[data-reduce-motion='true'] *,
+[data-reduce-motion='true'] *::before,
+[data-reduce-motion='true'] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}

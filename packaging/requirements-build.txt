@@ -1,0 +1,6 @@
+# Build-only dependencies (not needed by the installed application).
+pyinstaller>=6.0
+pystray>=0.19
+Pillow>=10.0
+# Optional, used by the packaged smoke test to assert no worker processes leak.
+psutil>=5.9

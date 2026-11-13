@@ -1,0 +1,97 @@
+{
+  "timestamp": "2026-11-02T04:31:06+0100",
+  "hardware": {
+    "os": "Windows-10-10.0.19045-SP0",
+    "python": "3.12.10",
+    "logical_cores": 24,
+    "processor": "AMD64 Family 23 Model 113 Stepping 0, AuthenticAMD",
+    "ram_gb": 63.9,
+    "cpu_name": "AMD Ryzen 9 3900X 12-Core Processor",
+    "node": "v24.19.0"
+  },
+  "library": {
+    "root": "C:\\Users\\SEBAST~1\\AppData\\Local\\Temp\\skeer-bench-1000-o5w173wp\\library",
+    "files": 1000,
+    "total_bytes": 913000,
+    "average_bytes": 913.0,
+    "folders": 20,
+    "generation_seconds": 0.983
+  },
+  "scanner": {
+    "workers": 2,
+    "executor": "process",
+    "mode": "full",
+    "elapsed_seconds": 12.003,
+    "files_per_second": 83.31,
+    "discovered": 1000,
+    "indexed": 1000,
+    "skipped": 0,
+    "failed": 0,
+    "issues": 0,
+    "db_size_bytes": 20914176,
+    "db_size_mb": 19.95
+  },
+  "incremental": {
+    "elapsed_seconds": 3.919,
+    "files_per_second": 255.15,
+    "skipped": 1000,
+    "indexed": 0,
+    "failed": 0
+  },
+  "memory": {
+    "measurement": "process tree RSS via psutil",
+    "baseline_mb": 28.9,
+    "peak_mb": 88.2,
+    "after_mb": 34.5,
+    "samples": 56
+  },
+  "search": {
+    "platform": "nt",
+    "results": [
+      {
+        "query": "free text: bass",
+        "iterations": 120,
+        "p50_ms": 13.737,
+        "p95_ms": 18.14,
+        "max_ms": 19.945,
+        "average_result_count": 1000.0
+      },
+      {
+        "query": "sound family filter",
+        "iterations": 120,
+        "p50_ms": 13.526,
+        "p95_ms": 15.43,
+        "max_ms": 20.093,
+        "average_result_count": 1000.0
+      },
+      {
+        "query": "combined: role + tempo + confidence",
+        "iterations": 120,
+        "p50_ms": 13.527,
+        "p95_ms": 16.557,
+        "max_ms": 18.683,
+        "average_result_count": 1000.0
+      },
+      {
+        "query": "folder + density",
+        "iterations": 120,
+        "p50_ms": 13.154,
+        "p95_ms": 17.297,
+        "max_ms": 18.625,
+        "average_result_count": 1000.0
+      }
+    ]
+  },
+  "database": {
+    "files_indexed": 1000,
+    "notes_indexed": 100000,
+    "size_mb": 19.95,
+    "fts_enabled": true
+  },
+  "limitations": [
+    "Synthetic files with similar structure; real libraries may have larger files and slower scans.",
+    "Memory is sampled at 200 ms intervals, so the true peak may be slightly higher.",
+    "Process executor startup overhead is included in the wall-clock scan time.",
+    "Search timings are direct SQLite calls from Python, excluding HTTP and browser rendering."
+  ]
+}

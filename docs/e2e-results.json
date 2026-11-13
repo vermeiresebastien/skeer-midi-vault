@@ -1,0 +1,70 @@
+{
+  "run_id": "2026-11-02T06-01-40-870Z",
+  "results": [
+    {
+      "name": "initial empty state is usable",
+      "status": "PASS"
+    },
+    {
+      "name": "scan dialog lists drives and starts an explicit scan",
+      "status": "PASS"
+    },
+    {
+      "name": "scan completes and the demo library is indexed",
+      "status": "PASS"
+    },
+    {
+      "name": "library and details render after scanning",
+      "status": "PASS"
+    },
+    {
+      "name": "appearance panel switches to Studio Tactile",
+      "status": "PASS"
+    },
+    {
+      "name": "classification can be corrected and reverted",
+      "status": "PASS"
+    },
+    {
+      "name": "text search covers names, paths and track names",
+      "status": "PASS"
+    },
+    {
+      "name": "advanced filters combine and clear",
+      "status": "PASS"
+    },
+    {
+      "name": "favorite, tag and note persist locally",
+      "status": "PASS"
+    },
+    {
+      "name": "playback advances and stops on file switch",
+      "status": "PASS"
+    },
+    {
+      "name": "piano-roll drag and scrub stay stable",
+      "status": "PASS"
+    },
+    {
+      "name": "track mute and solo update the audition routing",
+      "status": "PASS"
+    },
+    {
+      "name": "format 2 independent sequences are shown separately",
+      "status": "PASS"
+    },
+    {
+      "name": "export copies original files to a chosen folder",
+      "status": "PASS"
+    },
+    {
+      "name": "scan dialog reports source controls and recent issues",
+      "status": "PASS"
+    },
+    {
+      "name": "no browser console or page errors",
+      "status": "PASS"
+    }
+  ],
+  "console_issues": []
+}

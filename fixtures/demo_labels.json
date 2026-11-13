@@ -1,0 +1,338 @@
+{
+  "generated_by": "scripts/generate_demo_library.py",
+  "description": "Original generated MIDI fixtures. Labels reflect author intent.",
+  "files": [
+    {
+      "path": "Drums/Deep House Groove 124.mid",
+      "instrument": "Drums/percussion",
+      "role": "Drum groove",
+      "note": "Four-on-the-floor house kit",
+      "category": "evaluation"
+    },
+    {
+      "path": "Drums/Dusty Breakbeat 90.mid",
+      "instrument": "Drums/percussion",
+      "role": "Drum groove",
+      "note": "Syncopated breakbeat kit",
+      "category": "evaluation"
+    },
+    {
+      "path": "Drums/Tom Fill 110.mid",
+      "instrument": "Drums/percussion",
+      "role": "Drum fill",
+      "note": "Two-bar rapid tom fill",
+      "category": "evaluation"
+    },
+    {
+      "path": "Drums/Snare Roll Fill 100.mid",
+      "instrument": "Drums/percussion",
+      "role": "Drum fill",
+      "note": "One-bar accelerating snare roll",
+      "category": "evaluation"
+    },
+    {
+      "path": "Drums/Trap Hat Pattern 140.mid",
+      "instrument": "Drums/percussion",
+      "role": "Drum groove",
+      "note": "Hi-hat subdivisions",
+      "category": "evaluation"
+    },
+    {
+      "path": "Bass/Funk Bassline F.mid",
+      "instrument": "Bass",
+      "role": "Bassline",
+      "note": "Syncopated funk bass in F",
+      "category": "evaluation"
+    },
+    {
+      "path": "Bass/Sub Pulse 808.mid",
+      "instrument": "Bass",
+      "role": "Bassline",
+      "note": "Sparse low sub pulse",
+      "category": "evaluation"
+    },
+    {
+      "path": "Bass/Walking Upright C.mid",
+      "instrument": "Bass",
+      "role": "Bassline",
+      "note": "Jazz walking bass",
+      "category": "evaluation"
+    },
+    {
+      "path": "Bass/Missing Program Bass.mid",
+      "instrument": "Bass",
+      "role": "Bassline",
+      "note": "No program changes; name and register only",
+      "category": "evaluation"
+    },
+    {
+      "path": "Keys/Rhodes Chords Cmaj7.mid",
+      "instrument": "Piano/keys",
+      "role": "Chord progression",
+      "note": "Repeated Rhodes voicings",
+      "category": "evaluation"
+    },
+    {
+      "path": "Keys/Piano Arpeggio Am.mid",
+      "instrument": "Piano/keys",
+      "role": "Arpeggio",
+      "note": "Eighth-note broken chords",
+      "category": "evaluation"
+    },
+    {
+      "path": "Keys/Warm Piano Chords.mid",
+      "instrument": "Piano/keys",
+      "role": "Chord progression",
+      "note": "Slow pop piano voicings",
+      "category": "evaluation"
+    },
+    {
+      "path": "Keys/Sustain Piano.mid",
+      "instrument": "Piano/keys",
+      "role": "Pad/sustained harmony",
+      "note": "Sustain pedal holds chord notes",
+      "category": "evaluation"
+    },
+    {
+      "path": "Guitar/Nylon Arpeggio 3-4.mid",
+      "instrument": "Guitar/plucked",
+      "role": "Arpeggio",
+      "note": "Fingerstyle 3/4 pattern",
+      "category": "evaluation"
+    },
+    {
+      "path": "Guitar/Clean Guitar Chords.mid",
+      "instrument": "Guitar/plucked",
+      "role": "Chord progression",
+      "note": "Open-position guitar chords",
+      "category": "evaluation"
+    },
+    {
+      "path": "Orchestral/String Quartet Sketch.mid",
+      "instrument": "Strings",
+      "role": "Complete song or multi-part arrangement",
+      "note": "Cello, viola and violin parts, 3/4",
+      "category": "evaluation",
+      "expected_tracks": [
+        {
+          "name": "Cello",
+          "instrument": "Strings",
+          "role": "Pad/sustained harmony"
+        },
+        {
+          "name": "Viola",
+          "instrument": "Strings",
+          "role": "Chord progression"
+        },
+        {
+          "name": "Violin Melody",
+          "instrument": "Strings",
+          "role": "Lead/melody"
+        }
+      ]
+    },
+    {
+      "path": "Orchestral/Trumpet Melody.mid",
+      "instrument": "Brass/woodwinds",
+      "role": "Lead/melody",
+      "note": "Brass melody",
+      "category": "evaluation"
+    },
+    {
+      "path": "Orchestral/Flute Exercise 4.mid",
+      "instrument": "Brass/woodwinds",
+      "role": "Exercise or technical pattern",
+      "note": "Scale exercise",
+      "category": "evaluation"
+    },
+    {
+      "path": "Synths/Analog Lead 118.mid",
+      "instrument": "Synth",
+      "role": "Lead/melody",
+      "note": "Saw lead melody",
+      "category": "evaluation"
+    },
+    {
+      "path": "Synths/Supersaw Pad C.mid",
+      "instrument": "Synth",
+      "role": "Pad/sustained harmony",
+      "note": "Sustained wide chords",
+      "category": "evaluation"
+    },
+    {
+      "path": "Synths/Pluck Arp 124.mid",
+      "instrument": "Synth",
+      "role": "Arpeggio",
+      "note": "Sixteenth-note synth arpeggio",
+      "category": "evaluation"
+    },
+    {
+      "path": "Synths/Synth Chords.mid",
+      "instrument": "Synth",
+      "role": "Chord progression",
+      "note": "Sustained synth voicings",
+      "category": "evaluation"
+    },
+    {
+      "path": "Full Arrangements/Midnight Drive 118.mid",
+      "instrument": "Mixed arrangement",
+      "role": "Complete song or multi-part arrangement",
+      "note": "Drums, bass, Rhodes and lead",
+      "category": "evaluation",
+      "expected_tracks": [
+        {
+          "name": "Drum Kit",
+          "instrument": "Drums/percussion",
+          "role": "Drum groove"
+        },
+        {
+          "name": "Bass",
+          "instrument": "Bass",
+          "role": "Bassline"
+        },
+        {
+          "name": "Rhodes Chords",
+          "instrument": "Piano/keys",
+          "role": "Chord progression"
+        },
+        {
+          "name": "Lead Line",
+          "instrument": "Synth",
+          "role": "Lead/melody"
+        }
+      ]
+    },
+    {
+      "path": "Full Arrangements/Lo-Fi Study 84.mid",
+      "instrument": "Mixed arrangement",
+      "role": "Complete song or multi-part arrangement",
+      "note": "Swing-feel lo-fi drums, bass, keys and flute",
+      "category": "evaluation",
+      "expected_tracks": [
+        {
+          "name": "Dusty Drums",
+          "instrument": "Drums/percussion",
+          "role": "Drum groove"
+        },
+        {
+          "name": "Upright Bass",
+          "instrument": "Bass",
+          "role": "Bassline"
+        },
+        {
+          "name": "Warm Keys",
+          "instrument": "Piano/keys",
+          "role": "Chord progression"
+        },
+        {
+          "name": "Flute Melody",
+          "instrument": "Brass/woodwinds",
+          "role": "Lead/melody"
+        }
+      ]
+    },
+    {
+      "path": "Full Arrangements/Odd Meter 7-8.mid",
+      "instrument": "Mixed arrangement",
+      "role": "Complete song or multi-part arrangement",
+      "note": "7/8 drums and bass",
+      "category": "evaluation",
+      "expected_tracks": [
+        {
+          "name": "Odd Meter Drums",
+          "instrument": "Drums/percussion",
+          "role": "Drum groove"
+        },
+        {
+          "name": "Odd Meter Bass",
+          "instrument": "Bass",
+          "role": "Bassline"
+        }
+      ]
+    },
+    {
+      "path": "Misc/Tempo Map Journey.mid",
+      "instrument": "Synth",
+      "role": "Lead/melody",
+      "note": "Tempo changes 90 \u2192 120 \u2192 150",
+      "category": "evaluation"
+    },
+    {
+      "path": "Misc/Format 2 Sequences.mid",
+      "instrument": "Unknown",
+      "role": "Unknown",
+      "note": "Format 2: independent piano/drum sequences",
+      "category": "edge"
+    },
+    {
+      "path": "Misc/SMPTE Melody.mid",
+      "instrument": "Brass/woodwinds",
+      "role": "Lead/melody",
+      "note": "SMPTE 25 fps / 40 ticks per frame",
+      "category": "evaluation"
+    },
+    {
+      "path": "Misc/Overlapping Notes.mid",
+      "instrument": "Brass/woodwinds",
+      "role": "Lead/melody",
+      "note": "Overlapping same-pitch notes",
+      "category": "evaluation"
+    },
+    {
+      "path": "Misc/Meta Only.mid",
+      "instrument": "Unknown",
+      "role": "Unknown",
+      "note": "No note events",
+      "category": "evaluation"
+    },
+    {
+      "path": "Misc/Mystery Sketch.mid",
+      "instrument": "Unknown",
+      "role": "Lead/melody",
+      "note": "No program or descriptive track name",
+      "category": "evaluation"
+    },
+    {
+      "path": "Misc/Misleading Bass Name.mid",
+      "instrument": "Piano/keys",
+      "role": "Chord progression",
+      "note": "Named bass but contains piano chords",
+      "category": "evaluation"
+    },
+    {
+      "path": "Misc/Truncated Exercise.mid",
+      "instrument": "Unknown",
+      "role": "Unknown",
+      "note": "Deliberately truncated file",
+      "category": "edge"
+    },
+    {
+      "path": "Misc/Not A Midi.mid",
+      "instrument": "Unknown",
+      "role": "Unknown",
+      "note": "Deliberately invalid header",
+      "category": "edge"
+    },
+    {
+      "path": "Misc/Corrupt Second Chunk.mid",
+      "instrument": "Unknown",
+      "role": "Unknown",
+      "note": "First chunk valid; second chunk truncated",
+      "category": "edge"
+    },
+    {
+      "path": "Duplicates/Deep House Groove 124 COPY.mid",
+      "instrument": "Drums/percussion",
+      "role": "Drum groove",
+      "note": "Byte-for-byte duplicate",
+      "category": "duplicate"
+    },
+    {
+      "path": "Bass/Funk Bassline F Variation.mid",
+      "instrument": "Bass",
+      "role": "Bassline",
+      "note": "Near-identical bassline (similarity fixture)",
+      "category": "similar"
+    }
+  ]
+}
