@@ -33,7 +33,7 @@ PrivilegesRequiredOverridesAllowed=commandline
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
-OutputDir={#SourceRoot}\dist-installer
+OutputDir={#SourceRoot}\launch
 OutputBaseFilename=SKEER-MIDI-VAULT-Setup-{#AppVersion}
 SetupIconFile={#SourceRoot}\build\app.ico
 UninstallDisplayIcon={app}\{#AppExeName}
@@ -56,7 +56,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: checkedonce
 
 [Files]
-Source: "{#SourceRoot}\dist\SKEER MIDI VAULT\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
+Source: "{#SourceRoot}\launch\SKEER MIDI VAULT\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
 [Icons]
 Name: "{autoprograms}\SKEER AUDIO\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Comment: "SKEER MIDI VAULT local MIDI library"

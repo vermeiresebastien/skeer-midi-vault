@@ -35,12 +35,14 @@ screenshots-tmp/
 # install (28 MB) that build_installer.ps1 downloads or reuses.
 build/tools/
 
-# PyInstaller one-dir output (66 MB). Regenerate with the .spec.
-dist/
+# Unified deliverables folder: standalone bundle, Setup exe, portable ZIP and
+# SHA256SUMS.txt. Regenerate with packaging/build_installer.ps1. Nothing inside
+# launch/ is tracked, in this or any other SKEER project.
+launch/
 
-# Installer output (51 MB): the Setup exe, the portable zip and SHA256SUMS.txt.
-# Regenerate with packaging/build_installer.ps1. Neither dist-debug/ nor
-# build-debug/ above covered the release names.
+# Superseded by launch/. Still ignored so pre-existing copies do not reappear
+# in git status.
+dist/
 dist-installer/
 
 # Note on web/dist/: it stays ignored, which is this project's existing

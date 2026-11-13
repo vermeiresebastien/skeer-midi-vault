@@ -122,7 +122,7 @@ packaging/               PyInstaller/Inno build script, installer script, EULA
 scripts/                 demo library generator, evaluation, benchmark, brand assets
 tests/                   Python unit + integration + fixture + browser tests
 docs/                    architecture, test report, limits, screenshots
-dist-installer/          built Setup.exe / portable ZIP / checksums
+launch/                  standalone bundle / Setup.exe / portable ZIP / checksums
 ```
 
 The engine has no import from `db`, `scanner`, `api` or `web`. It receives bytes

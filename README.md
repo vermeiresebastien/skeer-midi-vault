@@ -22,15 +22,21 @@ sequence without opening a DAW. Files stay where they are and are never modified
 
 ## Install (Windows 10/11, recommended)
 
-The standalone builds are in **`dist-installer/`**:
+The standalone builds all land in one folder, **`launch/`**:
 
-- **[SKEER-MIDI-VAULT-Setup-1.0.0.exe](dist-installer/SKEER-MIDI-VAULT-Setup-1.0.0.exe)** —
+- **[`SKEER MIDI VAULT/`](launch/SKEER%20MIDI%20VAULT/)** — the standalone
+  application. Double-click `SKEER MIDI VAULT.exe` inside it; keep `_internal/`
+  beside the exe, it holds the Python runtime and the interface bundle.
+- **[SKEER-MIDI-VAULT-Setup-1.0.0.exe](launch/SKEER-MIDI-VAULT-Setup-1.0.0.exe)** —
   per-user installer, the file to send to customers. No Python, Node.js, terminal
   or admin rights required.
-- **[SKEER-MIDI-VAULT-Portable-1.0.0.zip](dist-installer/SKEER-MIDI-VAULT-Portable-1.0.0.zip)** —
+- **[SKEER-MIDI-VAULT-Portable-1.0.0.zip](launch/SKEER-MIDI-VAULT-Portable-1.0.0.zip)** —
   extract and run.
-- **[SHA256SUMS.txt](dist-installer/SHA256SUMS.txt)** — SHA-256 checksums for
+- **[SHA256SUMS.txt](launch/SHA256SUMS.txt)** — SHA-256 checksums for
   release distribution.
+
+`launch/` is gitignored and refreshed by `packaging/build_installer.ps1`, which
+writes every one of these deliverables there.
 
 Run the Setup file, follow the short wizard, and launch from the Start Menu
 shortcut. The application starts a loopback-only service, opens the interface in
@@ -277,7 +283,7 @@ node tests/playback-stability.mjs
 # standalone frozen app (health → scan with process workers → quit/orphan check)
 python tests/test_packaged_smoke.py
 
-# rebuild standalone app + Windows installer + portable ZIP
+# rebuild standalone app + Windows installer + portable ZIP (exports to launch/)
 .\packaging\build_installer.ps1
 ```
 

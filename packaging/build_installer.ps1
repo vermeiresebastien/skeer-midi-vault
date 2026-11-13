@@ -8,12 +8,12 @@ param(
 $ErrorActionPreference = "Stop"
 $Root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 Set-Location $Root
-$DistApp = Join-Path $Root "dist\SKEER MIDI VAULT"
-$DistInstaller = Join-Path $Root "dist-installer"
+$Launch = Join-Path $Root "launch"
+$DistApp = Join-Path $Launch "SKEER MIDI VAULT"
 $Version = "1.0.0"
 
 Write-Host "SKEER MIDI VAULT packaging - $Version"
-New-Item -ItemType Directory -Force -Path $DistInstaller | Out-Null
+New-Item -ItemType Directory -Force -Path $Launch | Out-Null
 
 # Never rebuild over a running copy. The tree kill also removes leftover
 # multiprocessing workers from a previously interrupted test.
@@ -44,7 +44,7 @@ if (-not $SkipAppBuild) {
         --hidden-import pystray._win32 `
         --hidden-import PIL.Image `
         --collect-submodules midivault `
-        --distpath (Join-Path $Root "dist") `
+        --distpath $Launch `
         --workpath (Join-Path $Root "build\work") `
         --specpath (Join-Path $Root "build") `
         desktop.py
@@ -87,20 +87,20 @@ Write-Host "Compiling Windows installer with $iscc"
 & $iscc (Join-Path $Root "packaging\skeer-midi-vault.iss")
 if ($LASTEXITCODE -ne 0) { throw "Inno Setup compilation failed." }
 
-Write-Host "Creating portable ZIP..."
-$portable = Join-Path $DistInstaller "SKEER-MIDI-VAULT-Portable-$Version.zip"
+Write-Host "Creating portable ZIP in launch/..."
+$portable = Join-Path $Launch "SKEER-MIDI-VAULT-Portable-$Version.zip"
 if (Test-Path -LiteralPath $portable) { Remove-Item -LiteralPath $portable -Force }
 Compress-Archive -LiteralPath (Join-Path $DistApp "SKEER MIDI VAULT.exe"), (Join-Path $DistApp "_internal") -DestinationPath $portable -CompressionLevel Optimal
 
 Write-Host "Writing SHA-256 checksums..."
-$releaseFiles = Get-ChildItem -LiteralPath $DistInstaller -File |
+$releaseFiles = Get-ChildItem -LiteralPath $Launch -File |
     Where-Object { $_.Name -match "Setup-$Version\.exe$|Portable-$Version\.zip$" } |
     Sort-Object Name
 $lines = foreach ($file in $releaseFiles) {
     $hash = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
     "$hash  $($file.Name)"
 }
-$lines | Set-Content -LiteralPath (Join-Path $DistInstaller "SHA256SUMS.txt") -Encoding ascii
+$lines | Set-Content -LiteralPath (Join-Path $Launch "SHA256SUMS.txt") -Encoding ascii
 
 Write-Host ""
 Write-Host "Release files:"

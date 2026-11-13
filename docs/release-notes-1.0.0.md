@@ -2,9 +2,9 @@
 
 ## Standalone distribution
 
-- Windows per-user installer: `dist-installer/SKEER-MIDI-VAULT-Setup-1.0.0.exe`
-- Portable ZIP: `dist-installer/SKEER-MIDI-VAULT-Portable-1.0.0.zip`
-- SHA-256 release checksums: `dist-installer/SHA256SUMS.txt`
+- Windows per-user installer: `launch/SKEER-MIDI-VAULT-Setup-1.0.0.exe`
+- Portable ZIP: `launch/SKEER-MIDI-VAULT-Portable-1.0.0.zip`
+- SHA-256 release checksums: `launch/SHA256SUMS.txt`
 
 The installed application includes the Python runtime and interface. Customers do
 not need Python, Node.js, a terminal or admin rights. It opens the library in the

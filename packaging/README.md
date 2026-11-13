@@ -6,8 +6,10 @@ the service, the compiled interface and all visual assets.
 
 ## Outputs
 
-Built into `dist-installer/`:
+Built into `launch/`, the one folder everything ships from:
 
+- `SKEER MIDI VAULT/` — the standalone app bundle (`SKEER MIDI VAULT.exe` plus
+  its required `_internal/` folder)
 - `SKEER-MIDI-VAULT-Setup-1.0.0.exe` — per-user Windows installer (recommended
   file to send to customers)
 - `SKEER-MIDI-VAULT-Portable-1.0.0.zip` — extract-and-run portable build
@@ -37,7 +39,7 @@ Inno Setup 6 is required for the installer. Install it from
 <https://jrsoftware.org/isinfo.php> or set `INNO_SETUP_ISCC` to `ISCC.exe`.
 
 ```powershell
-# rebuild the interface, application and installer; regenerate checksums
+# rebuild the interface, application and installer; export all of it to launch/
 .\packaging\build_installer.ps1
 ```
 
@@ -46,6 +48,10 @@ The Inno script can also be compiled directly:
 ```powershell
 iscc packaging\skeer-midi-vault.iss
 ```
+
+`distpath` is a command-line option, not a spec setting: building the standalone
+app from the root spec by hand needs `--distpath launch` to keep it in the
+unified folder.
 
 Build dependencies live in `packaging/requirements-build.txt`. The runtime
 application itself still has zero third-party Python dependencies.
@@ -67,7 +73,7 @@ temporary data directory. The smoke test verifies:
 
 ### Installer verification note
 
-The packaged application (`dist/SKEER MIDI VAULT/`) and the portable ZIP are
+The packaged application (`launch/SKEER MIDI VAULT/`) and the portable ZIP are
 fully exercised by `tests/test_packaged_smoke.py`. The Inno setup EXE compiles
 successfully, but a complete interactive install → shortcut → uninstall cycle was
 not run inside this sandboxed build session: the setup process token is denied
@@ -87,8 +93,8 @@ installer with an Authenticode code-signing certificate. The exact certificate
 and timestamping vendor are the seller's choice; a typical command shape is:
 
 ```powershell
-signtool sign /fd SHA256 /tr <timestamp-url> /td SHA256 /a "dist\SKEER MIDI VAULT\SKEER MIDI VAULT.exe"
-signtool sign /fd SHA256 /tr <timestamp-url> /td SHA256 /a "dist-installer\SKEER-MIDI-VAULT-Setup-1.0.0.exe"
+signtool sign /fd SHA256 /tr <timestamp-url> /td SHA256 /a "launch\SKEER MIDI VAULT\SKEER MIDI VAULT.exe"
+signtool sign /fd SHA256 /tr <timestamp-url> /td SHA256 /a "launch\SKEER-MIDI-VAULT-Setup-1.0.0.exe"
 ```
 
 Re-run the installer build after signing the executable if you sign before
@@ -97,8 +103,9 @@ Signing is not performed by the included build script.
 
 ## What not to ship
 
-Do not ship the `build/`, `dist-debug/`, `tests/`, `.git/` or source tree to
-customers. Ship only the setup executable or portable ZIP from `dist-installer/`.
+Do not ship the `build/`, `dist/`, `dist-installer/`, `dist-debug/`, `tests/`,
+`.git/` or source tree to customers. Ship only the setup executable or portable
+ZIP from `launch/`.
 
 ## Versioning
 

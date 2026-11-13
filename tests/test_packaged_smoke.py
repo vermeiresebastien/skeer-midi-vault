@@ -19,7 +19,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 EXE = Path(os.environ.get(
     "SKEER_PACKAGED_EXE",
-    ROOT / "dist" / "SKEER MIDI VAULT" / "SKEER MIDI VAULT.exe",
+    ROOT / "launch" / "SKEER MIDI VAULT" / "SKEER MIDI VAULT.exe",
 ))
 
 
