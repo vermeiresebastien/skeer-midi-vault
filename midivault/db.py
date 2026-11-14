@@ -104,6 +104,7 @@ class Database:
                 "include_optional_sources": "0",
                 "parse_workers": "2",
                 "theme": "clean",
+                "preview_autoplay": "0",
             }
             for key, value in defaults.items():
                 con.execute(
@@ -139,7 +140,7 @@ class Database:
     def update_settings(self, values: dict[str, Any]) -> dict[str, str]:
         allowed = {
             "scan_intensity", "scan_mode", "include_optional_sources",
-            "parse_workers", "theme",
+            "parse_workers", "theme", "preview_autoplay",
         }
         with self.connection(write=True) as con:
             for key, value in values.items():

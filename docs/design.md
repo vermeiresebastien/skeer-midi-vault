@@ -48,10 +48,12 @@ The shell is a single-window library workspace:
   duplicate badges. Bulk actions appear only when rows are selected.
 - **Right:** musical preview with track legend and canvas piano roll; original
   metadata; transparent classification with evidence/revert; tags, notes,
-  collections; tracks with mute/solo.
-- **Bottom transport:** play/pause, stop, loop, seek, audition tempo knob, source
-  tempo, output selector, level meter and scan status. The transport stays put
-  while the library scrolls.
+  collections; tracks with mute/solo and a per-track preview-sound picker. The
+  voice each part plays is shown as a chip on the row, so the label you read and
+  the sound you hear can never disagree.
+- **Bottom transport:** play/pause, stop, loop, `Auto` (preview the file you
+  click), seek, audition tempo knob, source tempo, output selector, level meter
+  and scan status. The transport stays put while the library scrolls.
 - **Dialogs:** Scan computer, Settings, Filters and Export. Scanning configuration
   and appearance options live in settings/dialogs, not in the ordinary browsing
   flow.
@@ -108,6 +110,15 @@ overlay.
 - Toggles use a clear on/off treatment and maintain accessible labels.
 - Classification rows show confidence, evidence buttons and explicit
   "revert to auto" only when a manual label exists.
+- The preview voice is resolved in one place, in this order: an explicit Sound
+  pick for the part, a part category the user *corrected*, the machine's guess for
+  the part, a file category the user *corrected*, the machine's file guess, then a
+  neutral default. Channel 10 parts always take the kit. Accepting a prediction is
+  not a correction: it records review, it does not re-voice anything. The chip on
+  each track row is rendered from the same resolution the engine plays, so the
+  label and the sound cannot disagree.
+- Re-voicing rebuilds the sequence in place. The playhead, loop bounds, mute/solo
+  and audition tempo are preserved; only file and sequence switches restart time.
 - The piano roll shows track colors, velocity lane, bar grid and notes; clicking
   a note seeks preview; click-and-drag inside the roll seeks after snapping.
 - Long file names and folder paths truncate without hiding the full path from the

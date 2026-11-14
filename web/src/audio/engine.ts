@@ -7,6 +7,13 @@
  * on stop, pause, file/sequence switch and output-device change.
  */
 import type { PreviewNote, PreviewSequence } from '../types';
+import {
+  gmProgramFor,
+  resolveTrackSound,
+  soundRecipe,
+  type SoundId,
+  type SoundRecipe,
+} from './sounds';
 
 export interface EngineTrack {
   key: string;
@@ -17,6 +24,8 @@ export interface EngineTrack {
   instrument: string;
   role: string;
   program: number | null;
+  /** Resolved preview voice: explicit choice, category, role, then channel 9. */
+  sound: SoundId;
 }
 
 export interface EngineSequence {
@@ -244,6 +253,35 @@ export class PreviewEngine {
     this.cancelEndTimer();
     this.noteCursor = 0;
     this.passComplete = false;
+    this.emit(true);
+  }
+
+  /**
+   * Swap the voices under the sequence that is already loaded — a category
+   * correction or an explicit sound choice, not a new file.
+   *
+   * setSequence is the wrong tool here: it resets the playhead and forces
+   * speed back to 1, which would silently snap the Audition tempo knob to the
+   * file's original BPM. This keeps position, tempo, loop and the paused flag,
+   * and restarts the audio graph from the kept time only if it was playing.
+   * Notes already inside the lookahead window keep their old voice; everything
+   * scheduled after the swap uses the new one.
+   */
+  reloadSequence(sequence: EngineSequence | null): void {
+    const wasPlaying = this.playing;
+    const wasPaused = this.paused;
+    const speed = this.speed;
+    const duration = Number.isFinite(sequence?.duration) ? (sequence?.duration ?? 0) : 0;
+    const keepTime = clamp(this.currentSourceTime(), 0, duration);
+    this.setSequence(sequence, { keepTime: true });
+    if (!sequence) return;
+    this.speed = Number.isFinite(speed) && speed > 0.01 ? speed : 1;
+    this.paused = wasPaused;
+    if (wasPlaying && this.context) {
+      this.restartAt(keepTime);
+      return;
+    }
+    this.sourceTime = keepTime;
     this.emit(true);
   }
 
@@ -649,8 +687,7 @@ export class PreviewEngine {
       this.stats.skippedNotes += 1;
       return;
     }
-    const isDrum = track.channel === 9 || track.instrument === 'Drums/percussion' ||
-      track.role.startsWith('Drum');
+    const recipe = soundRecipe(track.sound);
     const context = this.context;
     const gain = context.createGain();
     const pan = context.createStereoPanner();
@@ -661,10 +698,19 @@ export class PreviewEngine {
     const nodes: AudioScheduledSourceNode[] = [];
     const velocity = clamp(note.v / 127, 0.12, 1);
     try {
-      if (isDrum) {
+      if (recipe.drum) {
         this.buildDrum(note.p, velocity, start, duration, gain, nodes);
       } else {
-        this.buildMelodic(track, note.p, velocity, start, duration, gain, nodes);
+        this.buildMelodic(
+          recipe,
+          track.role === 'Pad/sustained harmony',
+          note.p,
+          velocity,
+          start,
+          duration,
+          gain,
+          nodes,
+        );
       }
     } catch {
       gain.disconnect();
@@ -688,8 +734,14 @@ export class PreviewEngine {
     this.stats.scheduledNotes += 1;
   }
 
+  /**
+   * Voice build for one melodic note. The recipe carries timbre; the pad trim
+   * carries the level rule the engine has always applied to sustained
+   * harmony roles, so no new sound can be louder than the old preview.
+   */
   private buildMelodic(
-    track: EngineTrack,
+    recipe: SoundRecipe,
+    pad: boolean,
     pitch: number,
     velocity: number,
     start: number,
@@ -699,42 +751,32 @@ export class PreviewEngine {
   ): void {
     if (!this.context) return;
     const context = this.context;
-    const family = track.instrument;
     const frequency = noteFrequency(pitch);
-    const pluck = family === 'Guitar/plucked';
-    const pad = track.role === 'Pad/sustained harmony';
-    const strings = family === 'Strings';
-    const attack = pad || strings ? 0.12 : pluck ? 0.004 : 0.012;
-    const release = pad || strings ? 0.32 : pluck ? 0.08 : 0.12;
-    const peak = clamp(velocity, 0.1, 1) * (pad ? 0.035 : 0.07);
+    const attack = pad ? Math.max(recipe.attack, 0.12) : recipe.attack;
+    const release = pad ? Math.max(recipe.release, 0.32) : recipe.release;
+    const peak = clamp(velocity, 0.1, 1) * 0.07 * recipe.peakScale * (pad ? 0.5 : 1);
     const end = start + Math.max(0.02, duration);
     const sustainedEnd = Math.max(start + attack + 0.02, end - release);
     const filter = context.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.value = pluck ? 3200 : family === 'Bass' ? 900 : 4800;
-    filter.Q.value = 0.4;
+    filter.frequency.value = recipe.cutoff;
+    filter.Q.value = recipe.q;
     filter.connect(gain);
     gain.gain.setValueAtTime(0.0001, start);
     gain.gain.linearRampToValueAtTime(peak, start + attack);
-    if (pluck) {
-      gain.gain.exponentialRampToValueAtTime(peak * 0.25, start + Math.min(0.12, duration));
+    if (recipe.decay) {
+      const at = start + Math.min(recipe.decay.seconds, Math.max(0.02, duration));
+      if (at < sustainedEnd) {
+        gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, peak * recipe.decay.fraction), at);
+      }
     }
-    gain.gain.setValueAtTime(Math.max(0.0001, peak * 0.72), sustainedEnd);
+    gain.gain.setValueAtTime(Math.max(0.0001, peak * recipe.sustain), sustainedEnd);
     gain.gain.exponentialRampToValueAtTime(0.0001, end);
 
-    const waveform: OscillatorType = family === 'Bass'
-      ? 'sine'
-      : family === 'Brass/woodwinds'
-        ? 'square'
-        : family === 'Synth'
-          ? 'sawtooth'
-          : family === 'Strings'
-            ? 'sawtooth'
-            : 'triangle';
     const main = context.createOscillator();
-    main.type = waveform;
+    main.type = recipe.waveform ?? 'triangle';
     main.frequency.setValueAtTime(frequency, start);
-    if (family === 'Bass') {
+    if (recipe.subJump) {
       main.frequency.setValueAtTime(frequency * 0.5, start);
       main.frequency.exponentialRampToValueAtTime(frequency, start + 0.03);
     }
@@ -743,25 +785,25 @@ export class PreviewEngine {
     main.stop(end + 0.06);
     nodes.push(main);
 
-    if (family === 'Synth' || strings) {
+    if (recipe.detune) {
       const detune = context.createOscillator();
-      detune.type = family === 'Synth' ? 'square' : 'sawtooth';
+      detune.type = recipe.detune.waveform;
       detune.frequency.setValueAtTime(frequency, start);
-      detune.detune.setValueAtTime(strings ? -7 : 8, start);
+      detune.detune.setValueAtTime(recipe.detune.cents, start);
       const detuneGain = context.createGain();
-      detuneGain.gain.value = family === 'Synth' ? 0.28 : 0.4;
+      detuneGain.gain.value = recipe.detune.gain;
       detune.connect(detuneGain);
       detuneGain.connect(filter);
       detune.start(start);
       detune.stop(end + 0.04);
       nodes.push(detune);
     }
-    if (family === 'Piano/keys' || family === 'Brass/woodwinds') {
+    if (recipe.harmonic) {
       const harmonic = context.createOscillator();
       harmonic.type = 'sine';
-      harmonic.frequency.setValueAtTime(frequency * 2, start);
+      harmonic.frequency.setValueAtTime(frequency * recipe.harmonic.ratio, start);
       const harmonicGain = context.createGain();
-      harmonicGain.gain.value = family === 'Piano/keys' ? 0.35 : 0.18;
+      harmonicGain.gain.value = recipe.harmonic.gain;
       harmonic.connect(harmonicGain);
       harmonicGain.connect(filter);
       harmonic.start(start);
@@ -1157,12 +1199,13 @@ export class PreviewEngine {
     const sentChannels = new Set<number>();
     for (const track of this.sequence.tracks) {
       if (!this.isAudible(track.key)) continue;
-      if (track.program === null || track.program === undefined) continue;
+      const program = gmProgramFor(track.sound, track.program);
+      if (program === null || program === undefined) continue;
       const channel = clamp(track.channel, 0, 15);
       if (sentChannels.has(channel)) continue;
       sentChannels.add(channel);
       try {
-        output.send([0xc0 | channel, clamp(Math.round(track.program), 0, 127)]);
+        output.send([0xc0 | channel, clamp(Math.round(program), 0, 127)]);
       } catch {
         // A disconnected device is handled by the UI/output status.
       }
@@ -1224,39 +1267,77 @@ export class PreviewEngine {
   }
 }
 
-export function sequenceFromPreview(
+export interface SequenceSoundOptions {
+  /** The file's effective category, used when a track says nothing about its own. */
+  fileInstrument?: string | null;
+  /** 'user' when the file category was corrected by hand. */
+  fileInstrumentSource?: string | null;
+  /** Explicit per-track picks, keyed by track_index within this sequence. */
+  overrides?: Map<number, SoundId>;
+}
+
+/** The effective per-track labels the library holds, as the engine consumes them. */
+export interface SequenceLabelInput {
+  sequence_index: number;
+  track_index: number;
+  instrument: string;
+  role: string;
+  instrument_source?: string | null;
+}
+
+/**
+ * Resolve the per-track sound layer for a preview sequence. Extracted from
+ * sequenceFromPreview so the App can fingerprint the voice choice without
+ * flattening and sorting the note array on every details change.
+ */
+export function soundLayerFromPreview(
   sequence: PreviewSequence,
-  labels: Array<{
-    sequence_index: number;
-    track_index: number;
-    instrument: string;
-    role: string;
-  }>,
-): EngineSequence {
+  labels: SequenceLabelInput[],
+  options?: SequenceSoundOptions,
+): EngineTrack[] {
   const labelMap = new Map(
     (Array.isArray(labels) ? labels : [])
       .filter((row) => row.sequence_index === sequence.index)
       .map((row) => [row.track_index, row]),
   );
-  const duration = Number.isFinite(sequence.duration_seconds) && sequence.duration_seconds > 0
-    ? sequence.duration_seconds
-    : 0.05;
-  const tracks: EngineTrack[] = (Array.isArray(sequence.tracks) ? sequence.tracks : [])
+  return (Array.isArray(sequence.tracks) ? sequence.tracks : [])
     .filter((track) => Number.isFinite(track.track_index))
     .map((track) => {
       const label = labelMap.get(track.track_index);
       const channel = Number.isFinite(track.channel) ? clamp(Math.round(track.channel), 0, 15) : 0;
+      const instrument = label?.instrument || 'Unknown';
+      const role = label?.role || 'Unknown';
       return {
         key: `${sequence.index}:${track.track_index}`,
         trackIndex: track.track_index,
         sequenceIndex: sequence.index,
         name: track.name || `Channel ${channel + 1}`,
         channel,
-        instrument: label?.instrument || 'Unknown',
-        role: label?.role || 'Unknown',
+        instrument,
+        role,
         program: Number.isFinite(track.program) ? clamp(Math.round(track.program as number), 0, 127) : null,
+        sound: resolveTrackSound({
+          override: options?.overrides?.get(track.track_index),
+          instrument,
+          role,
+          channel,
+          instrumentSource: label?.instrument_source ?? null,
+          fileInstrument: options?.fileInstrument ?? null,
+          fileInstrumentSource: options?.fileInstrumentSource ?? null,
+        }),
       };
     });
+}
+
+export function sequenceFromPreview(
+  sequence: PreviewSequence,
+  labels: SequenceLabelInput[],
+  options?: SequenceSoundOptions,
+): EngineSequence {
+  const duration = Number.isFinite(sequence.duration_seconds) && sequence.duration_seconds > 0
+    ? sequence.duration_seconds
+    : 0.05;
+  const tracks = soundLayerFromPreview(sequence, labels, options);
   const trackKeyByIndex = new Map(tracks.map((track) => [track.trackIndex, track.key]));
   const notes = (Array.isArray(sequence.tracks) ? sequence.tracks : []).flatMap((track) => {
     const key = trackKeyByIndex.get(track.track_index) ?? `${sequence.index}:${track.track_index}`;

@@ -26,7 +26,16 @@ import {
   saveAppearance,
   type Appearance,
 } from './appearance';
-import { PreviewEngine, sequenceFromPreview } from './audio/engine';
+import { PreviewEngine, sequenceFromPreview, soundLayerFromPreview } from './audio/engine';
+import { soundSignature, type SoundId } from './audio/sounds';
+import {
+  loadSoundPreferences,
+  saveSoundPreferences,
+  sequenceOverrides,
+  withSoundOverride,
+  withSoundOverrides,
+  type SoundPreferences,
+} from './soundPreferences';
 import { TopBar } from './components/TopBar';
 import { Sidebar } from './components/Sidebar';
 import { LibraryView } from './components/LibraryView';
@@ -163,9 +172,11 @@ export default function App() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [mutedTracks, setMutedTracks] = useState<Set<string>>(new Set());
   const [soloTracks, setSoloTracks] = useState<Set<string>>(new Set());
+  const [soundPreferences, setSoundPreferences] = useState<SoundPreferences>(() => loadSoundPreferences());
   const [scan, setScan] = useState<ScanStatus>(EMPTY_SCAN);
   const [scanOpen, setScanOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [autoplayBusy, setAutoplayBusy] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [exportItems, setExportItems] = useState<LibraryItem[]>([]);
@@ -174,9 +185,24 @@ export default function App() {
   const scanRef = useRef<ScanStatus>(EMPTY_SCAN);
   const libraryRequest = useRef(0);
   const autoSelected = useRef(false);
+  // Records the file a user click asked to preview, so autoplay survives the
+  // details reload and never fires on the row the library picks by itself.
+  const autoplayFor = useRef<number | null>(null);
   const engineKeyRef = useRef('');
+  const engineSoundRef = useRef('');
+  // Mirror of soundPreferences for write paths. Reading state directly would
+  // drop a second edit made in the same tick, and the ref is what makes
+  // "apply to all tracks" atomic instead of last-one-wins.
+  const soundPreferencesRef = useRef(soundPreferences);
   const lastLiveFacetRefresh = useRef(0);
   const lastEngineError = useRef<string | null>(null);
+
+  const openFile = useCallback((id: number) => {
+    // A click on a different file arms its preview; the sequence effect fires it
+    // once that file's details have loaded, and only for that file.
+    if (id !== selectedFileId) autoplayFor.current = id;
+    setSelectedFileId(id);
+  }, [selectedFileId]);
 
   const notify = useCallback((message: string, tone: ToastTone = 'info') => {
     const id = ++toastId.current;
@@ -193,6 +219,21 @@ export default function App() {
       return next;
     });
   }, []);
+
+  const autoplay = bootstrap?.settings?.preview_autoplay === '1';
+
+  const toggleAutoplay = useCallback(async () => {
+    const next = autoplay ? '0' : '1';
+    setAutoplayBusy(true);
+    try {
+      const result = await api.updateSettings({ preview_autoplay: next });
+      setBootstrap((current) => (current ? { ...current, settings: result.settings } : current));
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Could not change the autoplay setting.', 'error');
+    } finally {
+      setAutoplayBusy(false);
+    }
+  }, [autoplay, notify]);
 
   useEffect(() => {
     applyAppearance(appearance);
@@ -345,6 +386,7 @@ export default function App() {
     engine.setSequence(null);
     setSelectedSequence(0);
     engineKeyRef.current = '';
+    engineSoundRef.current = '';
     (async () => {
       try {
         const payload = await api.file(selectedFileId);
@@ -365,17 +407,24 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFileId]);
 
-  useEffect(() => {
-    if (!details?.cache) {
-      engine.setSequence(null);
-      engineKeyRef.current = '';
-      return;
-    }
-    const key = `${details.file.id}:${selectedSequence}`;
-    if (engineKeyRef.current === key) return;
-    const sequence = details.cache.preview.sequences.find((item) => item.index === selectedSequence)
-      || details.cache.preview.sequences[0];
-    if (!sequence) return;
+  // One source of truth for the voice layer. The rebuild guard and the details
+  // panel read the same resolution, so a track chip can never advertise a sound
+  // the engine is not actually playing. This only touches track-level data;
+  // building the note array stays reserved for the moments a rebuild is due.
+  const soundLayer = useMemo(() => {
+    const sequence = details?.cache?.preview.sequences.find((item) => item.index === selectedSequence)
+      || details?.cache?.preview.sequences[0];
+    if (!details || !sequence) return null;
+    // "Accepted" means the reviewer agreed with the machine; "corrected" means
+    // they overrode it. Only an override should outrank a label at a narrower
+    // scope, so accepting a file category cannot silently re-voice every part.
+    const fileInstrumentAction = details.corrections.file
+      .find((item) => item.dimension === 'instrument')?.action;
+    const trackInstrumentActions = new Map(
+      details.corrections.tracks
+        .filter((item) => item.dimension === 'instrument')
+        .map((item) => [`${item.sequence_index}:${item.track_index}`, item.action]),
+    );
     const labels = details.tracks
       .filter((track) => track.sequence_index === sequence.index)
       .map((track) => ({
@@ -383,11 +432,62 @@ export default function App() {
         track_index: track.track_index,
         instrument: track.instrument,
         role: track.role,
+        instrument_source: trackInstrumentActions.get(`${track.sequence_index}:${track.track_index}`) === 'corrected'
+          ? 'user'
+          : 'auto',
       }));
-    const engineSequence = sequenceFromPreview(sequence, labels);
+    const options = {
+      fileInstrument: details.file.instrument,
+      fileInstrumentSource: fileInstrumentAction === 'corrected' ? 'user' : 'auto',
+      overrides: sequenceOverrides(soundPreferences, details.file.path, sequence.index),
+    };
+    const tracks = soundLayerFromPreview(sequence, labels, options);
+    const sounds: Record<string, SoundId> = {};
+    for (const track of tracks) sounds[track.key] = track.sound;
+    return {
+      fileId: details.file.id,
+      identity: `${details.file.id}:${sequence.index}`,
+      signature: soundSignature(tracks),
+      sounds,
+      sequence,
+      labels,
+      options,
+    };
+  }, [details, selectedSequence, soundPreferences]);
+
+  useEffect(() => {
+    if (!soundLayer) {
+      engine.setSequence(null);
+      engineKeyRef.current = '';
+      engineSoundRef.current = '';
+      return;
+    }
+    const { fileId, identity, signature, sequence, labels, options } = soundLayer;
+    // The arming is spent the first time this file's voice layer is reached,
+    // whether or not it results in playback. Leaving it set would let a click
+    // made with autoplay off start the transport later on, when autoplay gets
+    // switched on or a correction forces a rebuild.
+    const armed = false;
+    const autoplayNow = autoplay && autoplayFor.current === fileId;
+    // Two independent reasons to rebuild. Identity covers "a different file or
+    // sequence is on screen"; the signature covers "the same sequence is voiced
+    // differently", which is what a correction or a manual pick does.
+    const sameSequence = engineKeyRef.current === identity;
+    if (sameSequence && engineSoundRef.current === signature) return;
+    const engineSequence = sequenceFromPreview(sequence, labels, options);
+    engineKeyRef.current = identity;
+    engineSoundRef.current = signature;
+    if (sameSequence) {
+      // Re-voice in place: the playhead, the loop and the Audition tempo stay
+      // put, so fixing a wrong label mid-preview does not throw you back to 0.
+      engine.reloadSequence(engineSequence);
+      return;
+    }
+    // setSequence releases every voice of the previous file before the new
+    // one is installed, so autoplay cannot stack notes across two files.
     engine.setSequence(engineSequence);
-    engineKeyRef.current = key;
-  }, [details, selectedSequence, engine]);
+    if (autoplayNow) void engine.play();
+  }, [soundLayer, engine, autoplay]);
 
   useEffect(() => {
     engine.setTrackFilter(mutedTracks, soloTracks);
@@ -533,6 +633,39 @@ export default function App() {
       throw error;
     }
   };
+
+  const commitSoundPreferences = useCallback((next: SoundPreferences) => {
+    // The ref is written before the state so a follow-up edit in the same tick
+    // extends this map rather than overwriting it with the previous render's.
+    soundPreferencesRef.current = next;
+    setSoundPreferences(next);
+    if (!saveSoundPreferences(next)) {
+      notify('This browser is blocking local storage, so sound picks last only for this session.', 'info');
+    }
+  }, [notify]);
+
+  /** Pick one track's preview voice. 'auto' hands the decision back to the analysis. */
+  const setTrackSound = useCallback((sequenceIndex: number, trackIndex: number, sound: SoundId) => {
+    if (!details) return;
+    commitSoundPreferences(
+      withSoundOverride(soundPreferencesRef.current, details.file.path, sequenceIndex, trackIndex, sound),
+    );
+  }, [commitSoundPreferences, details]);
+
+  /**
+   * One pick for every track in the sequence. Passing null clears them all,
+   * which is what "reset to auto" means: the analysis decides per track again.
+   */
+  const setSequenceSound = useCallback((sound: SoundId | null) => {
+    if (!details || !soundLayer) return;
+    commitSoundPreferences(withSoundOverrides(
+      soundPreferencesRef.current,
+      details.file.path,
+      soundLayer.sequence.index,
+      soundLayer.sequence.tracks.map((track) => track.track_index),
+      sound,
+    ));
+  }, [commitSoundPreferences, details, soundLayer]);
 
   const addTag = async (name: string) => {
     if (!details) return;
@@ -829,7 +962,7 @@ export default function App() {
             title={title}
             subtitle={subtitle}
             onPatchFilters={patchFilters}
-            onSelect={(item) => setSelectedFileId(item.id)}
+            onSelect={(item) => openFile(item.id)}
             onToggleSelected={(id) => setSelectedIds((current) => {
               const next = new Set(current);
               if (next.has(id)) next.delete(id);
@@ -857,6 +990,10 @@ export default function App() {
             onToggleSolo={toggleSolo}
             onSetFileLabel={setFileLabel}
             onSetTrackLabel={setTrackLabel}
+            trackSounds={soundLayer?.sounds || {}}
+            trackSoundPicks={(details && soundPreferences[details.file.path]) || {}}
+            onSetTrackSound={setTrackSound}
+            onSetSequenceSound={setSequenceSound}
             onToggleFavorite={() => void handleDetailsFavorite()}
             onReveal={() => void revealFile()}
             onExport={exportSelection}
@@ -866,7 +1003,7 @@ export default function App() {
             onRemoveFromCollection={removeFromCollection}
             onSaveNotes={saveNotes}
             onOpenFile={(id) => {
-              setSelectedFileId(id);
+              openFile(id);
               setSelectedIds(new Set());
             }}
             collections={facets?.collections || []}
@@ -876,6 +1013,9 @@ export default function App() {
         <TransportBar
           engine={engine}
           scan={scan}
+          autoplay={autoplay}
+          autoplayBusy={autoplayBusy}
+          onToggleAutoplay={() => void toggleAutoplay()}
           onOpenScan={() => setScanOpen(true)}
           onPauseScan={() => void pauseScan()}
           onResumeScan={() => void resumeScan()}

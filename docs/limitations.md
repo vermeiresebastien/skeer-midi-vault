@@ -93,6 +93,30 @@ general-purpose classification accuracy.
   security policies may produce a copied file instead of a native drag. A real
   DAW drag-and-drop test is not included in this release; Reveal and Copy/export
   are the guaranteed paths.
+- **Preview sounds are approximations, not samples.** Each voice is a small
+  oscillator recipe (waveform, filter, envelope, one or two extra partials). It
+  stands in for a category so you can tell a bass line from a pad at a glance; it
+  is not a piano, and it is not the sound the file was authored with.
+- **The category→voice mapping is opinionated.** Ten sounds cover a hundred-plus
+  GM programs, so several instruments deliberately share one voice, and a track
+  classified `Unknown` inherits the file's category. When you disagree, pick the
+  sound yourself.
+- **Correcting a file category re-voices the whole file.** It is meant to rescue
+  misread loops and one-part files, and it does so by outranking each part's
+  automatic label. On a genuinely multi-instrument arrangement that can be too
+  blunt: the machine's per-part guess was probably better. Fix the individual
+  parts, or use *follow analysis* in the Tracks card. Merely **accepting** an
+  automatic prediction never re-voices anything — only a real correction does.
+- **Sound picks live in the browser, not the library.** They are stored under the
+  file's path in this browser's local storage. They are not in the SQLite index,
+  so they are not in a database backup, do not follow the library to another
+  machine or browser profile, and are lost when local storage is cleared.
+  Renaming or moving a source file orphans its picks.
+- **The GM program sent to hardware is a stand-in.** When a Web MIDI output is
+  selected, an explicitly chosen sound maps to one GM program number; `Auto`, the
+  neutral default and the drum kit leave the file's own program untouched. Your
+  hardware's patch for program 24 is not this app's `pluck`, and a kit still
+  depends on the receiving device mapping channel 10 to percussion.
 
 ## Interface and accessibility
 

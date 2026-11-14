@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { Collection, Evidence, FileDetails } from '../types';
 import { INSTRUMENT_CATEGORIES, ROLE_CATEGORIES } from '../types';
 import type { PreviewEngine } from '../audio/engine';
+import { SELECTABLE_SOUNDS, soundHint, soundLabel, type SoundId } from '../audio/sounds';
 import { rawFileUrl } from '../api';
 import { familyLabel, instrumentColor, roleLabel, trackColor } from '../lib/colors';
 import {
@@ -44,6 +45,10 @@ export function DetailsPanel({
   onToggleSolo,
   onSetFileLabel,
   onSetTrackLabel,
+  trackSounds,
+  trackSoundPicks,
+  onSetTrackSound,
+  onSetSequenceSound,
   onToggleFavorite,
   onReveal,
   onExport,
@@ -67,6 +72,12 @@ export function DetailsPanel({
   onToggleSolo: (trackKey: string) => void;
   onSetFileLabel: (dimension: 'instrument' | 'role', value: string, clear?: boolean) => Promise<void>;
   onSetTrackLabel: (sequence: number, track: number, dimension: 'instrument' | 'role', value: string, clear?: boolean) => Promise<void>;
+  /** Voice the engine plays per `${sequence}:${track}` key. */
+  trackSounds: Record<string, SoundId>;
+  /** The user's explicit picks, same keys; absent means "follow the analysis". */
+  trackSoundPicks: Record<string, SoundId>;
+  onSetTrackSound: (sequence: number, track: number, sound: SoundId) => void;
+  onSetSequenceSound: (sound: SoundId | null) => void;
   onToggleFavorite: () => void;
   onReveal: () => void;
   onExport: () => void;
@@ -456,6 +467,28 @@ export function DetailsPanel({
             </div>
             <span className="mute-solo-legend"><span>M</span> mute <span>S</span> solo</span>
           </div>
+          <div className="sound-bulk">
+            <span className="sound-bulk-label">Preview sound</span>
+            <Select
+              value=""
+              aria-label="Set the preview sound for every track in this sequence"
+              title="Apply one preview sound to all tracks in this sequence"
+              onChange={(event) => onSetSequenceSound(event.target.value ? event.target.value as SoundId : null)}
+            >
+              <option value="">Apply to all…</option>
+              {SELECTABLE_SOUNDS.filter((id) => id !== 'auto').map((id) => (
+                <option key={id} value={id}>{soundLabel(id)}</option>
+              ))}
+            </Select>
+            <button
+              type="button"
+              className="text-action"
+              onClick={() => onSetSequenceSound(null)}
+              title="Clear every pick so each track follows its own classification again"
+            >
+              follow analysis
+            </button>
+          </div>
           <div className="track-list">
             {selectedTracks.length === 0 ? (
               <p className="subtle-empty">No note-bearing tracks in this sequence.</p>
@@ -465,6 +498,8 @@ export function DetailsPanel({
               const muted = mutedTracks.has(key);
               const soloed = soloTracks.has(key);
               const editing = trackEditor === key;
+              const picked = trackSoundPicks[key];
+              const resolvedSound = trackSounds[key] || 'default';
               const expanded = expandedTracks.has(key);
               const trackConflicts = track.conflicts || [];
               return (
@@ -527,6 +562,15 @@ export function DetailsPanel({
                       {track.instrument_source === 'user' ? <em>you</em> : null}
                     </span>
                     <span className="track-label role">{roleLabel(track.role)}</span>
+                    <span
+                      className={`track-label sound ${picked ? 'is-picked' : ''}`}
+                      title={picked
+                        ? `${soundHint(resolvedSound)} Your pick.`
+                        : `${soundHint(resolvedSound)} Follows the classification.`}
+                    >
+                      {soundLabel(resolvedSound)}
+                      {picked ? <em>you</em> : null}
+                    </span>
                     <Confidence
                       value={Math.min(track.instrument_confidence, track.role_confidence)}
                       source={track.instrument_source === 'user' || track.role_source === 'user' ? 'user' : undefined}
@@ -566,6 +610,17 @@ export function DetailsPanel({
                         >
                           {ROLE_CATEGORIES.filter((role) => role !== 'Complete song or multi-part arrangement').map((role) => (
                             <option key={role} value={role}>{roleLabel(role)}</option>
+                          ))}
+                        </Select>
+                      </label>
+                      <label>
+                        <span>Sound</span>
+                        <Select
+                          value={picked || 'auto'}
+                          onChange={(event) => onSetTrackSound(track.sequence_index, track.track_index, event.target.value as SoundId)}
+                        >
+                          {SELECTABLE_SOUNDS.map((id) => (
+                            <option key={id} value={id}>{id === 'auto' ? 'Auto (follow analysis)' : soundLabel(id)}</option>
                           ))}
                         </Select>
                       </label>

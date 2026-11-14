@@ -158,8 +158,23 @@ is missing, run `npm --prefix web ci` once and `npm --prefix web run build`.
 - Transport play/pause, stop-to-zero, seek, loop, audition tempo, per-track
   mute/solo, optional Web MIDI output device, and sequence switching for
   independent format-2 files.
+- An `Auto` toggle on the transport turns click-to-preview on: with it enabled,
+  selecting a different file starts its preview immediately. The setting is
+  stored in the library database, defaults to off and survives restarts.
 - Preview sounds are approximations, not the original instruments. The interface
   says so directly.
+- Each track plays the voice its classification implies (drum kit, grand piano,
+  electric piano, bass, plucked string, strings, brass, synth lead, synth pad, or
+  a neutral default). Who is believed depends on who said it: your pick for that
+  track first, then a category you corrected by hand, then the machine's guess for
+  the track, then a file category you corrected, then the machine's file guess.
+  Correcting a category — at file or track level — changes the voice without
+  moving the playhead, resetting the loop or touching the audition tempo.
+- A **Sound** picker per track, plus *Apply to all* and *follow analysis* in the
+  Tracks card, overrides the classification whenever you prefer a different voice.
+  Picks are stored in the browser (per file path, this machine only), never in the
+  index, and are also sent as the General MIDI program when a hardware output is
+  selected. `Auto` hands the decision back to the classification.
 
 ### Data and maintenance
 

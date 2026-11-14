@@ -197,6 +197,21 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn("instruments", facets)
 
+    def test_preview_autoplay_persists(self) -> None:
+        status, payload, _ = self._request("/settings")
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["settings"]["preview_autoplay"], "0")
+        status, payload, _ = self._request("/settings", "PATCH", {"preview_autoplay": "1"})
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["settings"]["preview_autoplay"], "1")
+        reopened = Database(self.data / "midivault.sqlite3")
+        self.assertEqual(reopened.get_settings()["preview_autoplay"], "1")
+
+    def test_unknown_setting_keys_are_dropped(self) -> None:
+        status, payload, _ = self._request("/settings", "PATCH", {"not_a_setting": "x"})
+        self.assertEqual(status, 200)
+        self.assertNotIn("not_a_setting", payload["settings"])
+
     def test_scan_settings_and_export(self) -> None:
         status, payload, _ = self._request(
             "/settings", "PATCH", {"scan_intensity": "eco", "parse_workers": "1"}

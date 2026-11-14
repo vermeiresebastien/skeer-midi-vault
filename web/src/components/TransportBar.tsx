@@ -20,6 +20,9 @@ export function TransportBar({
   onResumeScan,
   onCancelScan,
   onNotify,
+  autoplay,
+  autoplayBusy,
+  onToggleAutoplay,
 }: {
   engine: PreviewEngine;
   scan: ScanStatus;
@@ -28,6 +31,9 @@ export function TransportBar({
   onResumeScan: () => void;
   onCancelScan: () => void;
   onNotify: (message: string, tone?: 'info' | 'success' | 'error') => void;
+  autoplay: boolean;
+  autoplayBusy: boolean;
+  onToggleAutoplay: () => void;
 }) {
   const snapshot = useEngineSnapshot(engine);
   const [seeking, setSeeking] = useState(false);
@@ -116,6 +122,18 @@ export function TransportBar({
           className="transport-secondary"
         >
           <LoopIcon size={16} />
+        </IconButton>
+        <IconButton
+          label={autoplay
+            ? 'Autoplay on: clicking another file previews it'
+            : 'Autoplay off: previews only start when you press play'}
+          onClick={onToggleAutoplay}
+          active={autoplay}
+          aria-pressed={autoplay}
+          disabled={autoplayBusy}
+          className="transport-autoplay"
+        >
+          Auto
         </IconButton>
         <div className="transport-time mono">
           <span>{formatTime(snapshot.sourceTime)}</span>

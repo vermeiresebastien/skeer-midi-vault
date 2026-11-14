@@ -63,6 +63,9 @@ blocked verification is called out explicitly.
 - [x] Play/pause, stop-to-zero, seek by slider and roll, loop, audition tempo knob.
 - [x] Per-track mute/solo and jump-to-track.
 - [x] Drum preview.
+- [x] Preview voice follows the classification (file or track) and can be
+      overridden per track, or for a whole sequence, from the details panel.
+      Overrides live in the browser, not the index.
 - [x] Web MIDI output selector, generated program changes + note on/off.
 - [x] Scheduler independent of rendering; all-notes-off on stop/switch/output change.
 - [x] Preview-timbre disclaimer.

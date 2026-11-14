@@ -135,6 +135,18 @@
   animation: spin 1s linear infinite;
 }
 
+/* Text variant: .icon-btn is a fixed 28px square, so widen it for a label.
+   Lives here because components.css is imported after layout.css and the
+   transport rules there must not win this cascade by source order. */
+.icon-btn.transport-autoplay {
+  width: auto;
+  padding: 0 7px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
 /* -------------------------------------------------------------------- badgs */
 .badge {
   display: inline-flex;
@@ -1083,6 +1095,46 @@ input[type='range']::-moz-range-thumb {
   font-size: 7px;
 }
 
+.sound-bulk {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 7px;
+}
+
+.sound-bulk-label {
+  color: var(--muted);
+  font-size: 8.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sound-bulk .select-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 168px;
+}
+
+.sound-bulk .select {
+  font-size: 9.5px;
+}
+
+.track-label.sound {
+  max-width: 34%;
+  padding: 1px 4px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 7.5px;
+  letter-spacing: 0.02em;
+}
+
+.track-label.sound.is-picked {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+}
+
 .track-list {
   display: flex;
   flex-direction: column;
@@ -1278,7 +1330,7 @@ input[type='range']::-moz-range-thumb {
 
 .track-editor {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 7px;
   padding: 8px;
   border-top: 1px solid var(--line);
