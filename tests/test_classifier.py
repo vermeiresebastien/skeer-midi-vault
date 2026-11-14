@@ -167,6 +167,37 @@ class ClassifierTests(unittest.TestCase):
         _p, _a, classification = classify_bytes(build_smf([track], midi_format=0), "chords.mid")
         self.assertLessEqual(classification["file"]["genre_confidence"], 0.45)
 
+    def test_unnamed_track_falls_back_to_channel_label(self) -> None:
+        # Regression: the unnamed-track fallback read `track.channel` from a
+        # dict, raising AttributeError on every EZDrummer-style clip. The
+        # label must come from the "channel" key instead.
+        track = MidiTrack().tempo(0, 120).time_signature(0, 4, 4)
+        for bar in range(2):
+            for step, pitch in enumerate((36, 38, 42, 38, 36, 38, 42, 38)):
+                track.note((bar * 8 + step) * 240, pitch, 120, 100, channel=9)
+        track.end(2 * 8 * 240)
+        _p, _a, classification = classify_bytes(
+            build_smf([track], midi_format=0), "unnamed groove.mid", ""
+        )
+        self.assertEqual(classification["file"]["instrument"], "Drums/percussion")
+        labels = [item["label"] for item in classification["file"]["instrument_evidence"]]
+        self.assertTrue(any("ch 10" in label for label in labels), labels)
+
+    def test_silent_bar_does_not_break_rhythm_analysis(self) -> None:
+        # Regression: a clip that rests for a whole bar made the per-bar list
+        # jump past its end, raising IndexError inside _grid_rhythm. Bar 1
+        # here is deliberately empty between bars 0 and 2.
+        track = MidiTrack().track_name("Sparse").tempo(0, 120).time_signature(0, 4, 4)
+        for step in range(3):
+            track.note(step * 480, 36 + step, 200, 90)
+            track.note((2 * 4 + step) * 480, 48 + step, 200, 90)
+        track.end(3 * 4 * 480)
+        _p, analysis, _c = classify_bytes(
+            build_smf([track], midi_format=0), "sparse.mid", ""
+        )
+        self.assertEqual(len(analysis["tracks"]), 1)
+        self.assertIsInstance(analysis["tracks"][0]["pattern_repeat"], float)
+
 
 if __name__ == "__main__":
     unittest.main()

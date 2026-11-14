@@ -392,7 +392,7 @@ def _file_instrument(primary_tracks: list[dict[str, Any]],
         category = prediction["category"]
         weight = track["note_count"] * (0.45 + 0.55 * prediction["confidence"])
         weights[category] += weight
-        track_label = track.get("name") or f"ch {track.channel + 1}"
+        track_label = track.get("name") or f"ch {track.get('channel', 0) + 1}"
         evidence.append(_evidence(
             "track_analysis", "calculated",
             f"Track “{track_label}” → {category} "

@@ -263,7 +263,9 @@ def _grid_rhythm(notes: list[Note], timing_type: str, bar_beats: float) -> dict[
         bars: list[set[int]] = []
         for note, pos in zip(notes, bar_positions):
             bar = int((note.start_seconds if timing_type == "smpte" else note.start_beat) // max(0.25, bar_beats))
-            if len(bars) <= bar:
+            # `bar` can jump past the end when a clip rests for a whole bar, so
+            # grow to fill the gap instead of appending a single set per note.
+            while len(bars) <= bar:
                 bars.append(set())
             bars[bar].add(pos)
         if len(bars) >= 2:
