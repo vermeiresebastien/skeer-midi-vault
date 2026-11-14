@@ -44,7 +44,7 @@ python -m midivault.server --open       # run from source; serves web/dist on 12
 npm --prefix web ci                     # frontend deps only; the Python app has ZERO runtime deps
 npm --prefix web run dev                # Vite :5173, proxies /api -> :8737
 npm --prefix web run build              # tsc --noEmit && vite build — this is also the only typecheck
-python -m unittest discover -s tests    # 51 tests, ~11s; framework is unittest, NOT pytest
+python -m unittest discover -s tests    # 55 tests, ~12s; framework is unittest, NOT pytest
 python scripts/evaluate_classification.py
 node tests/e2e-web.mjs                  # needs playwright-core (in web/node_modules) + CHROME_PATH
 ```
@@ -73,17 +73,22 @@ invent one unprompted. Tests isolate in `tempfile` directories; they never touch
   synthetic fixtures, never claims about real-world MIDI. Genre stays a low-confidence
   hint. See [docs/limitations.md](docs/limitations.md).
 
-## Version bumps need all four
+## Version bumps need all five
 
 `midivault/__init__.py` · `packaging/skeer-midi-vault.iss` (`AppVersion`,
-`VersionInfoVersion`) · `build/version_info.txt` · `desktop.py` (`VERSION`).
+`VersionInfoVersion`) · `build/version_info.txt` · `desktop.py` (`VERSION`) ·
+`web/package.json` (`version`).
+
+`midivault/__init__.py` is the only one the interface can see: `/api/bootstrap`
+publishes it as `app.version`, which Settings → About and
+`window.__SKEER_MIDIVAULT_DEBUG__.version` both read. Never hardcode a version
+string in `web/src/`.
 
 ## Docs drift — verified against the tree
 
-- `docs/architecture.md` lists `midivault/settings.py`, which does not exist
-  (settings are a `settings` table + `/api/settings`).
 - `web/package.json` `screenshots` points at a missing `tests/screenshots.mjs`;
   capture lives inside `tests/e2e-web.mjs`.
-- `npm --prefix web test` matches no files and fails — there are no frontend tests.
+- `npm --prefix web test` runs `vitest`, which is not a dependency and matches no
+  files — there are no frontend unit tests.
 
 Check a documented path against the real tree before acting on it.

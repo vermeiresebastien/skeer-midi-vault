@@ -104,7 +104,8 @@ overlay.
 
 ## Interaction details
 
-- Search has an orange focus ring; `⌘/Ctrl+K` focuses it.
+- Search has an orange focus ring; `/` focuses it and `Escape` closes the filter
+  drawer. Neither shortcut fires while typing in a field.
 - Keyboard space toggles transport when focus is not inside a form control;
   arrow keys adjust the tempo knob when it is focused.
 - Toggles use a clear on/off treatment and maintain accessible labels.
@@ -113,7 +114,9 @@ overlay.
 - The preview voice is resolved in one place, in this order: an explicit Sound
   pick for the part, a part category the user *corrected*, the machine's guess for
   the part, a file category the user *corrected*, the machine's file guess, then a
-  neutral default. Channel 10 parts always take the kit. Accepting a prediction is
+  neutral default. The percussion channel takes the kit wherever the machine's
+  guess stands, but a category corrected to something the voice table can play
+  outranks that convention. Accepting a prediction is
   not a correction: it records review, it does not re-voice anything. The chip on
   each track row is rendered from the same resolution the engine plays, so the
   label and the sound cannot disagree.
@@ -126,11 +129,13 @@ overlay.
 
 ## Responsive behavior
 
-- Below 1360 px the top totals compress and low-priority columns hide.
-- Below 1120 px the right details column becomes an overlay sheet and the sidebar
-  label shortens.
-- Below 760 px the layout stacks to a compact browse/detail flow; the transport
-  remains reachable.
+- Media queries step in at 1540, 1360, 1220, 1080, 960 and 820 px, plus one
+  760 px *height* query that shortens the top bar and transport.
+- Each width step narrows the sidebar and details columns and drops low-priority
+  library columns; the row grid re-flows rather than re-paginating.
+- Below 960 px the shell stops shrinking (`body { min-width: 820px }`) and the
+  window scrolls horizontally. There is no phone layout and no overlay sheet:
+  browse and details stay two columns at every size.
 - Interface scale multiplies the shell with inverse width/height compensation so
   125% does not overflow a 1440×1000 window.
 

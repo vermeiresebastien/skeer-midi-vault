@@ -275,7 +275,7 @@ the optional benchmark script to sample process-tree memory.
 
 | Check | Result | Report |
 | --- | --- | --- |
-| Python unit/integration tests | **51/51** | [`docs/test-report.md`](docs/test-report.md) |
+| Python unit/integration tests | **55/55** | [`docs/test-report.md`](docs/test-report.md) |
 | Browser end-to-end checks | **16/16** (now includes piano-roll drag and scrub) | [`docs/e2e-results.json`](docs/e2e-results.json) |
 | Standalone packaged app | **passed** health, frozen process-worker scan, quit, zero orphan workers | [`tests/test_packaged_smoke.py`](tests/test_packaged_smoke.py) |
 | Classification regression | file 31/31 family, 31/31 role; track 13/13 family, 11/13 role | [`docs/classification-evaluation.md`](docs/classification-evaluation.md) |

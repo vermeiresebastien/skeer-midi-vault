@@ -467,8 +467,9 @@ export default function App() {
     // whether or not it results in playback. Leaving it set would let a click
     // made with autoplay off start the transport later on, when autoplay gets
     // switched on or a correction forces a rebuild.
-    const armed = false;
-    const autoplayNow = autoplay && autoplayFor.current === fileId;
+    const armed = autoplayFor.current === fileId;
+    if (armed) autoplayFor.current = null;
+    const autoplayNow = armed && autoplay;
     // Two independent reasons to rebuild. Identity covers "a different file or
     // sequence is on screen"; the signature covers "the same sequence is voiced
     // differently", which is what a correction or a manual pick does.
@@ -524,12 +525,14 @@ export default function App() {
     window.__SKEER_MIDIVAULT_DEBUG__ = {
       engine,
       app: 'SKEER MIDI VAULT',
-      version: '1.0.0',
+      // The service is the only place the version is written down, so the
+      // debug handle reports what the running build really is.
+      version: bootstrap?.app.version ?? 'unknown',
     };
     return () => {
       delete window.__SKEER_MIDIVAULT_DEBUG__;
     };
-  }, [engine]);
+  }, [engine, bootstrap]);
 
   useEffect(() => () => {
     engine.stop();

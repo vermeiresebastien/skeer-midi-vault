@@ -115,8 +115,10 @@ When changing the application version, update:
 - `packaging/skeer-midi-vault.iss` (`AppVersion` and `VersionInfoVersion`)
 - `build/version_info.txt`
 - `desktop.py` (`VERSION`, for the runtime file/log)
+- `web/package.json` (`version`, metadata only)
 
-The application version is also shown in **Settings → About**.
+**Settings → About** shows `app.version` from `/api/bootstrap`, i.e. whatever
+`midivault/__init__.py` says, so it needs no edit of its own.
 
 ## Legal
 

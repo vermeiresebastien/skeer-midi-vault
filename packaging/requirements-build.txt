@@ -1,4 +1,6 @@
-# Build-only dependencies (not needed by the installed application).
+# Build-time only: the source server (python -m midivault.server) needs nothing.
+# pystray and Pillow are imported by desktop.py at runtime, so PyInstaller
+# bundles both into the shipped EXE - they are not optional there.
 pyinstaller>=6.0
 pystray>=0.19
 Pillow>=10.0

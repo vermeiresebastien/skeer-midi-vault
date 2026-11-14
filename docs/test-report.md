@@ -4,6 +4,11 @@ Date: 2026-11-02<br>
 Version: 1.0.0<br>
 Platform: Windows 10 22H2, AMD Ryzen 9 3900X, 24 logical cores, 63.9 GB RAM
 
+Re-verification: `python -m unittest discover -s tests` was run again on
+2026-11-14 and reported **Ran 55 tests — OK** in ~12 s (`test_api.py` and
+`test_classifier.py` have grown since). Everything below is the original
+2026-11-02 session and keeps the numbers that session produced.
+
 Machine-readable results: [`e2e-results.json`](e2e-results.json),
 [`playback-stability.json`](playback-stability.json),
 [`benchmark-results.json`](benchmark-results.json),

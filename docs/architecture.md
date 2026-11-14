@@ -109,10 +109,10 @@ midivault/
     versions.py          PARSER_VERSION / CLASSIFIER_VERSION / RULESET
   db.py                  schema, migrations, FTS5, all SQL
   scanner.py             scan controller and background workers
+  pipeline.py            worker-side parse → analyse → classify, cache payload
   api.py                 loopback JSON/HTTP routes, MIDI streaming
   server.py              entry point, static bundle host
   platform.py            drives, protected folders, reparse/cloud flags
-  settings.py            persisted scanner preferences
 web/
   src/                   React UI
   src/audio/             preview synth, lookahead scheduler, MIDI output

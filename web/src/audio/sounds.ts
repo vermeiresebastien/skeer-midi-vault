@@ -281,9 +281,13 @@ export function resolveTrackSound({
   fileInstrumentSource,
 }: SoundInput): SoundId {
   if (override && override !== 'auto' && isSoundId(override)) return override;
-  if (channel === 9) return 'drum-kit';
   const fromTrack = soundFromLabels(instrument, role);
   const trackSaysNothing = UNSPECIFIED.includes(instrument);
+  // Channel 9 is the percussion convention, and with nothing better to go on it
+  // wins. A category the reviewer corrected by hand is better: a kit sample
+  // mapped onto channel 9 as a piano part should sound like a piano, so the
+  // convention never overrides an explicit human statement about the track.
+  if (channel === 9 && !(fromTrack && instrumentSource === 'user')) return 'drum-kit';
   // A hand-corrected track label is the most specific human statement available.
   if (fromTrack && instrumentSource === 'user') return fromTrack;
   if (fileInstrument && !UNSPECIFIED.includes(fileInstrument)) {
@@ -293,6 +297,9 @@ export function resolveTrackSound({
     if (fromFile && (fileInstrumentSource === 'user' || trackSaysNothing)) return fromFile;
   }
   if (fromTrack) return fromTrack;
+  // A channel-9 track the reviewer set to something the table cannot voice
+  // still plays the kit; the correction only redirects a family we recognise.
+  if (channel === 9) return 'drum-kit';
   return 'default';
 }
 

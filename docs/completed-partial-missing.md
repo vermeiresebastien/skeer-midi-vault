@@ -167,7 +167,7 @@ blocked verification is called out explicitly.
 - Recording, MIDI learn, synth preset management.
 - Automatic duplicate deletion (by design).
 - Cloud sync, user accounts, uploads, telemetry or remote access.
-- A full installer, code signing, auto-update or native wrapper.
+- Code signing, auto-update or a native wrapper.
 - macOS/Linux validation, localization and full accessibility certification.
 - In-app database restore screen (backup download and manual restore only).
 

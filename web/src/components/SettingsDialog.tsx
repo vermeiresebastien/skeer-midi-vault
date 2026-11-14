@@ -479,7 +479,7 @@ export function SettingsDialog({
           {tab === 'about' ? (
             <div className="about-settings">
               <img src="/brand/skeer-wordmark.png" alt="SKEER" className="about-wordmark" />
-              <h3>MIDI VAULT <span>1.0</span></h3>
+              <h3>MIDI VAULT <span>{bootstrap?.app.version || '—'}</span></h3>
               <p className="about-lede">
                 A private local MIDI library with transparent musical analysis,
                 editable classifications, piano-roll audition and DAW handoff.
