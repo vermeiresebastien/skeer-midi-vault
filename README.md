@@ -104,7 +104,8 @@ is missing, run `npm --prefix web ci` once and `npm --prefix web run build`.
 - Discovers mounted local drives and mapped network locations; allows individual
   drives or arbitrary folders.
 - Incremental scans skip unchanged files using size, mtime, parser version and
-  classifier version.
+  classifier version, then confirm the skip against the stored content hash, so an
+  editor that rewrote a file in place without disturbing either is still re-indexed.
 - Explicit **Pause**, **Resume** and **Cancel**, with in-flight work finishing
   safely and completed rows staying committed.
 - Background process workers keep parsing out of the interface. Memory and
@@ -282,10 +283,11 @@ the optional benchmark script to sample process-tree memory.
 
 | Check | Result | Report |
 | --- | --- | --- |
-| Python unit/integration tests | **79/79** (now includes schema migration and the loopback boundary) | [`docs/test-report.md`](docs/test-report.md) |
+| Python unit/integration tests | **97/97** (now includes schema migration and the loopback boundary) | [`docs/test-report.md`](docs/test-report.md) |
 | Browser end-to-end checks | **16/16** (now includes piano-roll drag and scrub) | [`docs/e2e-results.json`](docs/e2e-results.json) |
 | Autoplay deck checks | **8/8** — auto-advance, bounded run, manual stop, selection survives filtering | [`tests/autoplay-deck.mjs`](tests/autoplay-deck.mjs) |
-| Standalone packaged app | **passed** health, session token enforced (`403` without it), frozen process-worker scan, quit, zero orphan workers | [`tests/test_packaged_smoke.py`](tests/test_packaged_smoke.py) |
+| Sound path and interaction checks | **23/23** across four harnesses — MIDI output lifecycle, Space activation, deck past a soundless row, scan-setting round trip | [`docs/test-report.md`](docs/test-report.md) |
+| Standalone packaged app | **passed** health, session token enforced (`403` without it), keep-alive framing on the shipped socket (`403 → 200`, `415 → 200`), parser generation and scan-settings defaults reported by the frozen service, frozen process-worker scan, quit, zero orphan workers | [`tests/test_packaged_smoke.py`](tests/test_packaged_smoke.py) |
 | Classification regression | file 31/31 family, 31/31 role; track 13/13 family, 11/13 role | [`docs/classification-evaluation.md`](docs/classification-evaluation.md) |
 | Scan/search benchmark | 1,000 files: **83 files/s** full, **255 files/s** incremental; peak tree RSS **88.2 MB**; search p50 **~13.5 ms** | [`docs/benchmark-results.json`](docs/benchmark-results.json) |
 | Playback stability | source-time drift **0.989×** over 7.6 s while scanning and filtering; 0 late/0 skipped notes | [`docs/playback-stability.json`](docs/playback-stability.json) |
@@ -303,6 +305,12 @@ python scripts/benchmark.py --files 1000 --workers 2
 node tests/e2e-web.mjs
 node tests/playback-stability.mjs
 node tests/autoplay-deck.mjs
+
+# drives the built UI against a stubbed service — no Python, nothing written
+node tests/midi-output-guard.mjs
+node tests/space-activation.mjs
+node tests/deck-broken-row.mjs
+node tests/scan-settings.mjs
 
 # standalone frozen app (health → scan with process workers → quit/orphan check)
 python tests/test_packaged_smoke.py

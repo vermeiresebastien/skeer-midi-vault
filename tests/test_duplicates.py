@@ -4,7 +4,11 @@ import json
 import unittest
 
 from midivault.engine.duplicates import exact_groups, similar_groups
-from midivault.engine.versions import FINGERPRINT_VERSION
+from midivault.engine.versions import (
+    CLASSIFIER_VERSION,
+    FINGERPRINT_VERSION,
+    PARSER_VERSION,
+)
 
 
 class DuplicateTests(unittest.TestCase):
@@ -30,6 +34,8 @@ class DuplicateTests(unittest.TestCase):
                 "duration_seconds": 18.0,
                 "note_count": 32,
                 "scan_state": "indexed",
+                "parser_version": PARSER_VERSION,
+                "classifier_version": CLASSIFIER_VERSION,
                 "fingerprint_json": json.dumps({
                     "fv": FINGERPRINT_VERSION,
                     "pc": pc, "on": onset, "pitch_mean": 40, "density": 1.8,
@@ -62,6 +68,8 @@ class DuplicateTests(unittest.TestCase):
                 "duration_seconds": 18.0,
                 "note_count": 32,
                 "scan_state": "indexed",
+                "parser_version": PARSER_VERSION,
+                "classifier_version": CLASSIFIER_VERSION,
                 "fingerprint_json": json.dumps(payload),
             }
 
@@ -76,6 +84,53 @@ class DuplicateTests(unittest.TestCase):
         self.assertEqual(similar_groups([unstamped, dict(make(4, core))]), [])
         # Same generation, same numbers: the signal itself still works.
         self.assertEqual(len(similar_groups([stamped, make(5, {**core, "fv": FINGERPRINT_VERSION})])), 1)
+
+    def test_a_row_from_another_parser_or_classifier_build_is_not_compared(self) -> None:
+        """The vector's own stamp is not enough to make two rows comparable.
+
+        ``fingerprint_json`` is built from the analysis, which is built from the
+        parse. A row can carry a current ``fv`` while its features came from an
+        older parser or classifier build — that happens to every file under a
+        source that was disabled across a version bump. Its numbers are a
+        different measurement, so it must sit out until it is re-indexed.
+        """
+        def make(file_id: int, **versions: int) -> dict:
+            return {
+                "id": file_id,
+                "instrument": "Bass",
+                "role": "Bassline",
+                "tempo_bpm": 108.0,
+                "duration_seconds": 18.0,
+                "note_count": 32,
+                "scan_state": "indexed",
+                "parser_version": versions.get("parser", PARSER_VERSION),
+                "classifier_version": versions.get("classifier", CLASSIFIER_VERSION),
+                "fingerprint_json": json.dumps({
+                    "fv": FINGERPRINT_VERSION,
+                    "pc": [0.5, 0, 0, 0, 0, 0, 0, 0.5, 0, 0, 0, 0],
+                    "on": [1.0] + [0.0] * 15,
+                    "pitch_mean": 40, "density": 1.8,
+                }),
+            }
+
+        current = [make(1), make(2)]
+        self.assertEqual(len(similar_groups(current)), 1)
+
+        # Identical vectors, but one was analysed by an older parser build.
+        self.assertEqual(similar_groups([make(1, parser=PARSER_VERSION - 1), make(2)]), [])
+        # ... or by an older ruleset.
+        self.assertEqual(similar_groups([make(1, classifier=CLASSIFIER_VERSION - 1), make(2)]), [])
+        # An absent stamp is unknown, not current.
+        stale = make(1)
+        del stale["parser_version"]
+        self.assertEqual(similar_groups([stale, make(2)]), [])
+
+        # Exact duplicates are unaffected: they compare bytes, not features.
+        byte_identical = [
+            {"id": 1, "content_hash": "aaa", "scan_state": "indexed"},
+            {"id": 2, "content_hash": "aaa", "scan_state": "indexed"},
+        ]
+        self.assertEqual(len(exact_groups(byte_identical)), 1)
 
 
 if __name__ == "__main__":

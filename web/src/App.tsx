@@ -152,6 +152,38 @@ function toLibraryItem(file: FileDetails['file']): LibraryItem {
   };
 }
 
+/**
+ * The controls a browser activates on Space by itself. The global play/pause
+ * shortcut has to leave them alone: preventDefault() on the keydown is exactly
+ * what cancels the click a focused button would otherwise get on keyup, so a
+ * keyboard user who had tabbed onto transport, filter or row controls got the
+ * transport instead of the thing they were standing on. `summary` covers the
+ * details/summary disclosure, and the ARIA roles are the ones the app gives its
+ * own interactive rows and chips, which activate on Space by contract.
+ */
+const SPACE_ACTIVATES = [
+  'button',
+  'a[href]',
+  'summary',
+  'select',
+  'input[type="checkbox"]',
+  'input[type="radio"]',
+  '[role="button"]',
+  '[role="link"]',
+  '[role="checkbox"]',
+  '[role="radio"]',
+  '[role="switch"]',
+  '[role="tab"]',
+  '[role="menuitem"]',
+  '[role="option"]',
+].join(',');
+
+function activatesOnSpace(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false;
+  // An icon or label inside the control is the event target, so walk up to it.
+  return target.closest(SPACE_ACTIVATES) !== null;
+}
+
 export default function App() {
   const engineRef = useRef<PreviewEngine | null>(null);
   if (!engineRef.current) engineRef.current = new PreviewEngine();
@@ -497,9 +529,22 @@ export default function App() {
 
   useEffect(() => {
     if (!soundLayer) {
+      // No voice layer at all: the details call failed, or the file came back
+      // with no preview sequence. That is the same "nothing to hear" case the
+      // empty-notes branch below handles, so the arming is spent here too and
+      // the deck gets past the row — otherwise one unreadable file stops an
+      // ear-scan of the whole crate, and the arming survives to start the
+      // transport the moment that row's layer does arrive.
       engine.setSequence(null);
       engineKeyRef.current = '';
       engineSoundRef.current = '';
+      // Every file passes through this branch while its details are in flight,
+      // and while nothing is selected at all. Spending the arming there would
+      // throw away the click that started the deck.
+      if (detailsLoading || selectedFileId === null) return;
+      const armedRow = autoplayFor.current === selectedFileId;
+      if (armedRow) autoplayFor.current = null;
+      if (armedRow && autoplay) stepDeck(1);
       return;
     }
     const { fileId, identity, signature, sequence, labels, options } = soundLayer;
@@ -535,7 +580,7 @@ export default function App() {
       return;
     }
     void engine.play();
-  }, [soundLayer, engine, autoplay, stepDeck]);
+  }, [soundLayer, engine, autoplay, stepDeck, detailsLoading, selectedFileId]);
 
   useEffect(() => {
     engine.setTrackFilter(mutedTracks, soloTracks);
@@ -555,6 +600,9 @@ export default function App() {
         return;
       }
       if (event.code === 'Space') {
+        // A focused control that Space belongs to keeps the key: the shortcut
+        // owns it everywhere else, including on the body and the roll view.
+        if (activatesOnSpace(event.target)) return;
         event.preventDefault();
         if (!engine.getSnapshot().hasSequence) return;
         if (engine.getSnapshot().playing) engine.pause();

@@ -8,6 +8,7 @@ never modified.
 from __future__ import annotations
 
 import concurrent.futures
+import contextlib
 import os
 import sys
 import threading
@@ -24,6 +25,7 @@ from .engine.versions import (
     PARSER_VERSION,
     SUPPORTED_EXTENSIONS,
 )
+from .hashing import sha256_file
 from .pipeline import parse_and_classify_file
 
 INTENSITY = {
@@ -114,7 +116,14 @@ class ScanManager:
     # ------------------------------------------------------------------ control
     def start(self, source_ids: Iterable[int] | None = None,
               mode: str = "incremental", intensity: str = "balanced",
-              workers: int | None = None) -> dict[str, Any]:
+              workers: int | None = None, invalidate: bool = False) -> dict[str, Any]:
+        """Begin a scan. Every rejection raises before anything is written.
+
+        ``invalidate`` drops the derived analysis for exactly the sources this
+        run will re-parse, and only once the run row exists: doing it in the
+        caller's route instead left the index zeroed when the scan then refused
+        to start, which no later scan could repair.
+        """
         previous = self._thread
         if previous and previous.is_alive() and previous is not threading.current_thread():
             with self._lock:
@@ -147,6 +156,8 @@ class ScanManager:
                  "parser_version": PARSER_VERSION, "classifier_version": CLASSIFIER_VERSION,
                  "fingerprint_version": FINGERPRINT_VERSION},
             )
+            if invalidate:
+                self.db.invalidate_sources([source["id"] for source in sources])
             now = time.monotonic()
             self._paused = False
             self._cancel = False
@@ -219,6 +230,37 @@ class ScanManager:
             time.sleep(0.12)
         return not self._cancel
 
+    def _is_unchanged(self, record: dict[str, Any] | None, file_info: dict[str, Any],
+                      mode: str, verify: bool) -> bool:
+        """Whether an incremental scan may leave this file's analysis alone.
+
+        Size and mtime are only a hypothesis. A sync client or a backup restore
+        can hand back the same byte count carrying the original timestamps over
+        different content, and the stored digest is the only thing that says so.
+        A legacy fingerprint version is never unchanged, so the file is
+        re-indexed once instead of being skipped forever.
+        """
+        if mode != "incremental" or record is None:
+            return False
+        if record.get("scan_state") not in ("indexed", "missing"):
+            return False
+        if record.get("size") != file_info["size"]:
+            return False
+        if record.get("mtime_ns") != file_info["mtime_ns"]:
+            return False
+        if record.get("parser_version") != PARSER_VERSION:
+            return False
+        if record.get("classifier_version") != CLASSIFIER_VERSION:
+            return False
+        if record.get("fingerprint_version") != FINGERPRINT_VERSION:
+            return False
+        stored = record.get("content_hash")
+        if not stored:
+            return False
+        if verify:
+            return sha256_file(file_info["path"]) == stored
+        return True
+
     def _run(self, run_id: int, sources: list[dict[str, Any]], mode: str,
              intensity: str, worker_count: int) -> None:
         started = time.monotonic()
@@ -236,6 +278,11 @@ class ScanManager:
         pending_failures: list[dict[str, Any]] = []
         pending_skips: list[str] = []
         last_flush = time.monotonic()
+        # Settings values are strings. Anything except an explicit off keeps the
+        # digest check on: a skipped edit is a wrong answer, not a slow one.
+        verify = str(self.db.get_settings().get("verify_unchanged", "1")).lower()
+        verify_unchanged = verify not in ("0", "false", "off", "no")
+        readers = contextlib.ExitStack()
 
         def flush_pending() -> None:
             """Commit a batch of completed work in one short transaction."""
@@ -286,6 +333,10 @@ class ScanManager:
                 executor = concurrent.futures.ThreadPoolExecutor(max_workers=worker_count)
             else:
                 executor = concurrent.futures.ProcessPoolExecutor(max_workers=worker_count)
+            # One read handle for the whole traversal. SELECTs do not open a
+            # transaction under the default isolation mode, so this still sees
+            # every write the batch commits.
+            reader = readers.enter_context(self.db.reader())
             excludes = self.db.excluded_paths()
             generator = self._walk_sources(sources, excludes, run_id)
             self._set_progress(message="Scanning local sources…", current_path="")
@@ -317,19 +368,8 @@ class ScanManager:
                     with self._lock:
                         self._status["discovered"] += 1
                     file_info["source_id"] = self._source_for_path(file_info["path"], sources)
-                    record = self.db.get_scan_file_record(file_info["path"])
-                    untouched = (
-                        mode == "incremental"
-                        and record is not None
-                        and record.get("scan_state") in ("indexed", "missing")
-                        and record.get("size") == file_info["size"]
-                        and record.get("mtime_ns") == file_info["mtime_ns"]
-                        and record.get("parser_version") == PARSER_VERSION
-                        and record.get("classifier_version") == CLASSIFIER_VERSION
-                        # A legacy fingerprint is not comparable, so the file is
-                        # re-indexed once rather than silently skipped forever.
-                        and record.get("fingerprint_version") == FINGERPRINT_VERSION
-                    )
+                    record = self.db.get_scan_file_record(file_info["path"], con=reader)
+                    untouched = self._is_unchanged(record, file_info, mode, verify_unchanged)
                     if untouched:
                         pending_skips.append(file_info["path"])
                         if len(pending_skips) >= 24:
@@ -428,6 +468,12 @@ class ScanManager:
                 self.db.mark_missing_not_seen(
                     run_id, source["id"], skip_prefixes=state.get("unreadable", [])
                 )
+            # Rows whose source row was deleted by an older build are invisible
+            # to that sweep: source_id is NULL, and NULL never equals anything.
+            gone = [file_id for file_id, path in self.db.orphan_indexed_rows()
+                    if not os.path.exists(path)]
+            if gone:
+                self.db.mark_rows_missing(gone)
             self._set_progress(message="Finding duplicates…", completion=96)
             self._persist()
             duplicate_counts = self.db.finalise_duplicate_groups()
@@ -468,6 +514,7 @@ class ScanManager:
                 })
             self._persist()
         finally:
+            readers.close()
             if executor is not None:
                 try:
                     executor.shutdown(wait=not self._cancel, cancel_futures=True)

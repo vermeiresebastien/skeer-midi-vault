@@ -6,9 +6,9 @@ fingerprint. Similar files are never presented as byte-identical copies and are
 never deleted.
 
 Similarity only ever compares fingerprints of the current generation: a vector
-from an older ``fv`` generation is dropped from the candidate set rather than
-scored, so a fingerprint-format change can never produce a plausible-looking
-wrong answer.
+from an older ``fv`` format, or one derived from another parser or classifier
+generation, is dropped from the candidate set rather than scored, so a change in
+how notes are extracted can never produce a plausible-looking wrong answer.
 """
 from __future__ import annotations
 
@@ -17,7 +17,12 @@ import math
 from collections import defaultdict
 from typing import Any, Iterable
 
-from .versions import FINGERPRINT_VERSION, LEGACY_FINGERPRINT_VERSION
+from .versions import (
+    CLASSIFIER_VERSION,
+    FINGERPRINT_VERSION,
+    LEGACY_FINGERPRINT_VERSION,
+    PARSER_VERSION,
+)
 
 
 def _cosine(a: list[float], b: list[float]) -> float:
@@ -145,6 +150,14 @@ def similar_groups(files: Iterable[dict[str, Any]],
         if not fingerprint:
             continue
         if fingerprint_generation(file) != current_version:
+            continue
+        # ``fv`` stamps the vector format only. The vector is built from parsed
+        # notes plus the classifier's primary-sequence choice and tempo, so a
+        # byte-identical file analysed by another generation scores a real
+        # distance against a vector that means something else.
+        if int(file.get("parser_version") or 0) != PARSER_VERSION:
+            continue
+        if int(file.get("classifier_version") or 0) != CLASSIFIER_VERSION:
             continue
         tempo = float(file.get("tempo_bpm") or 0)
         if tempo <= 0:

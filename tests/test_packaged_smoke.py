@@ -1,7 +1,8 @@
 """Smoke-test the packaged Windows executable.
 
 Runs the windowed PyInstaller build as a server, performs a real demo scan with
-the frozen process pool, then asks the embedded desktop service to quit.
+the frozen process pool, checks the shipped service's HTTP framing and settings
+defaults over a keep-alive socket, then asks the embedded desktop service to quit.
 """
 from __future__ import annotations
 
@@ -17,6 +18,9 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from midivault.engine.versions import PARSER_VERSION  # noqa: E402
+
 EXE = Path(os.environ.get(
     "SKEER_PACKAGED_EXE",
     ROOT / "launch" / "SKEER MIDI VAULT" / "SKEER MIDI VAULT.exe",
@@ -56,6 +60,47 @@ def api(base: str, path: str, method: str = "GET", payload: dict | None = None) 
     )
     with urllib.request.urlopen(request, timeout=5) as response:
         return json.loads(response.read().decode("utf-8"))
+
+
+def _request(method: str, path: str, body: bytes = b"", **headers: str) -> bytes:
+    lines = [
+        f"{method} {path} HTTP/1.1",
+        "Host: 127.0.0.1",
+        "Connection: keep-alive",
+        f"Content-Length: {len(body)}",
+    ]
+    lines += [f"{key.replace('_', '-')}: {value}" for key, value in headers.items()]
+    return ("\r\n".join(lines) + "\r\n\r\n").encode("latin-1") + body
+
+
+def framing_roundtrip(port: int, first: bytes, second: bytes) -> tuple[int, int, bytes]:
+    """Two requests down one connection, parsed straight off the socket.
+
+    This is what the unit suite cannot prove about the deliverable: a refused
+    request that leaves its body on the wire makes the service read those bytes
+    as the next request line. The second answer is the one that matters.
+    """
+    with socket.create_connection(("127.0.0.1", port), timeout=6) as sock:
+        stream = sock.makefile("rb")
+
+        def answer() -> tuple[int, bytes]:
+            line = stream.readline()
+            status = int(line.split()[1]) if line else 0
+            length = 0
+            while True:
+                head = stream.readline()
+                if head in (b"\r\n", b"\n", b""):
+                    break
+                key, _, value = head.decode("latin-1").partition(":")
+                if key.strip().lower() == "content-length":
+                    length = int(value.strip() or 0)
+            return status, (stream.read(length) if length else b"")
+
+        sock.sendall(first)
+        first_status, _ = answer()
+        sock.sendall(second)
+        second_status, body = answer()
+        return first_status, second_status, body
 
 
 def main() -> int:
@@ -143,6 +188,29 @@ def main() -> int:
         ]
         print("fatal issues", fatal_issues)
         assert not fatal_issues
+
+        # ---- the artifact must behave like the source that was tested.
+        bootstrap = api(base, "/bootstrap")
+        print("frozen parser generation", bootstrap["versions"]["parser"])
+        assert bootstrap["versions"]["parser"] == PARSER_VERSION, bootstrap["versions"]
+        assert bootstrap["settings"].get("verify_unchanged") == "1", bootstrap["settings"]
+        refused, follow, body = framing_roundtrip(
+            port,
+            _request("POST", "/api/library/1/favorite", b'{"favorite":true}'),
+            _request("GET", "/api/health"),
+        )
+        print("keep-alive after a tokenless write", refused, follow)
+        assert (refused, follow) == (403, 200), (refused, follow, body[:80])
+        assert b'"app"' in body, body[:80]
+        refused2, follow2, body2 = framing_roundtrip(
+            port,
+            _request("PATCH", "/api/settings", b"not-json",
+                     Content_Type="text/plain", X_SKEER_Token=session_token(base)),
+            _request("GET", "/api/session"),
+        )
+        print("keep-alive after a rejected content type", refused2, follow2)
+        assert (refused2, follow2) == (415, 200), (refused2, follow2, body2[:80])
+        assert b'"token"' in body2, body2[:80]
 
         api(base, "/app/quit", "POST", {})
         for _ in range(300):

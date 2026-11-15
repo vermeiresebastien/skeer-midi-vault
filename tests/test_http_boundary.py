@@ -214,6 +214,117 @@ class HttpBoundaryTests(unittest.TestCase):
         self.assertNotEqual(status, 403, "DELETE without a body is not blocked by content type")
         self.assertNotEqual(status, 401)
 
+    # ------------------------------------------------------- keep-alive framing
+    def _second_request(self, conn: http.client.HTTPConnection):
+        """Read whatever the server answers to a plain GET on this connection."""
+        conn.request("GET", "/api/health")
+        try:
+            response = conn.getresponse()
+        except (http.client.BadStatusLine, http.client.RemoteDisconnected,
+                ConnectionError, OSError) as exc:
+            self.fail(f"a refused request desynchronised the connection: "
+                      f"{type(exc).__name__}: {exc}")
+        raw = response.read()
+        try:
+            return response.status, json.loads(raw)
+        except (ValueError, UnicodeDecodeError):
+            return response.status, {"error": raw.decode("utf-8", "replace")}
+
+    def _put_body_request(self, conn: http.client.HTTPConnection, *, body: bytes,
+                          headers: dict[str, str], expected: int = 403) -> None:
+        conn.putrequest("POST", f"/api/library/{self.file_id}/favorite",
+                        skip_accept_encoding=True)
+        for name, value in headers.items():
+            conn.putheader(name, value)
+        conn.putheader("Content-Length", str(len(body)))
+        conn.endheaders()
+        conn.send(body)
+        refused = conn.getresponse()
+        refused.read()
+        self.assertEqual(refused.status, expected, "the request under test must be refused")
+
+    def test_a_refused_write_drains_its_body_before_the_next_request(self) -> None:
+        """HTTP/1.1 reuses the connection, so an unread body is the next request.
+
+        The 403 is correct, but if the bytes of the refused body stay in the
+        socket the server reads ``{"value": true}`` as a request line and answers
+        it — the client's real request then gets the wrong response, or the
+        connection is torn down mid-conversation. A guard that rejects a request
+        must still consume what it refused.
+        """
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+        try:
+            self._put_body_request(
+                conn, body=json.dumps({"value": True}).encode("utf-8"),
+                headers={"Content-Type": "application/json"},  # no token -> 403
+            )
+            status, payload = self._second_request(conn)
+            self.assertEqual(status, 200, payload)
+            self.assertTrue(payload.get("ok"))
+        finally:
+            conn.close()
+
+    def test_a_refused_host_drains_its_body_before_the_next_request(self) -> None:
+        """Same framing rule on the rebinding guard, which runs before routing."""
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+        try:
+            conn.putrequest("POST", "/api/scan/start", skip_host=True, skip_accept_encoding=True)
+            conn.putheader("Host", "vault.attacker.tld")
+            body = json.dumps({"mode": "full"}).encode("utf-8")
+            conn.putheader("Content-Type", "application/json")
+            conn.putheader("Content-Length", str(len(body)))
+            conn.endheaders()
+            conn.send(body)
+            refused = conn.getresponse()
+            refused.read()
+            self.assertEqual(refused.status, 403)
+            self.assertEqual(
+                self.db.query_library(page_size=1)["total"], 1,
+                "the refused scan must not have started",
+            )
+            status, payload = self._second_request(conn)
+            self.assertEqual(status, 200, payload)
+        finally:
+            conn.close()
+
+    def test_a_refused_body_is_not_read_twice(self) -> None:
+        """The 415 path already took the body off the socket.
+
+        Draining again there would eat the *next* request's bytes, which is the
+        same desync in the opposite direction — so the guard must be able to tell
+        a body it refused from a body it consumed and rejected.
+        """
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+        try:
+            self._put_body_request(
+                conn, body=b'{"value": true}', expected=415,
+                headers={"Content-Type": "text/plain", "X-SKEER-Token": SESSION_TOKEN},
+            )
+            status, payload = self._second_request(conn)
+            self.assertEqual(status, 200, payload)
+            self.assertTrue(payload.get("ok"))
+        finally:
+            conn.close()
+
+    def test_an_over_cap_body_is_refused_without_reading_it(self) -> None:
+        """A 413 must answer at once and drop the connection, not stall on a read."""
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+        try:
+            conn.putrequest("POST", f"/api/library/{self.file_id}/favorite",
+                            skip_accept_encoding=True)
+            conn.putheader("Content-Type", "application/json")
+            conn.putheader("X-SKEER-Token", SESSION_TOKEN)
+            conn.putheader("Content-Length", str(8 * 1024 * 1024))
+            conn.endheaders()
+            conn.send(b"x" * 4096)
+            started = time.monotonic()
+            status = conn.getresponse().status
+            self.assertEqual(status, 413)
+            self.assertLess(time.monotonic() - started, 5.0,
+                            "the server blocked reading a body it had already refused")
+        finally:
+            conn.close()
+
     # ------------------------------------------------------------------ session
     def test_session_endpoint_hands_the_token_to_the_loopback_page(self) -> None:
         status, payload = self.json_call("GET", "/api/session")

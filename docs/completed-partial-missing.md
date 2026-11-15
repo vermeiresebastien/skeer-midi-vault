@@ -10,7 +10,8 @@ blocked verification is called out explicitly.
 
 - [x] Add and remember drives and arbitrary folders.
 - [x] Optional network/removable/optical source handling and local-only defaults.
-- [x] Incremental scan using size/mtime/parser/classifier versions.
+- [x] Incremental scan using size/mtime/parser/classifier versions, confirmed
+      against the stored content hash before a file is skipped.
 - [x] Persistent SQLite index with scan history and issues.
 - [x] Explicit pause, resume and cancel with committed results preserved.
 - [x] Background scan worker pool independent of the UI thread.

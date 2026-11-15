@@ -13,6 +13,7 @@ import tempfile
 import threading
 import time
 import traceback
+from contextlib import suppress
 from datetime import datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -52,6 +53,11 @@ class ApiError(Exception):
 LOOPBACK_HOST_NAMES = frozenset({"127.0.0.1", "localhost", "::1"})
 UNSAFE_METHODS = frozenset({"POST", "PATCH", "PUT", "DELETE"})
 TOKEN_HEADER = "X-SKEER-Token"
+MAX_BODY_BYTES = 4 * 1024 * 1024
+# How long a rejected request may keep the connection open while its unread body
+# is drained. A client that announces a body and never sends one would otherwise
+# park a handler thread indefinitely.
+DRAIN_TIMEOUT_SECONDS = 2.0
 
 
 class AppContext:
@@ -87,6 +93,9 @@ class MidiVaultHandler(BaseHTTPRequestHandler):
     server_version = "SkeerMidiVault/1.0"
     protocol_version = "HTTP/1.1"
     context: AppContext
+    # Set once the request body has been taken off the socket, so the drain in
+    # _dispatch does not read the next pipelined request by mistake.
+    _body_consumed = False
 
     # --------------------------------------------------------------- HTTP verbs
     def do_OPTIONS(self) -> None:  # noqa: N802
@@ -174,14 +183,54 @@ class MidiVaultHandler(BaseHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError):
             pass
 
+    def _drain_body(self) -> None:
+        """Consume a body that was rejected before it was read.
+
+        A refused write that leaves its body in the socket makes the client's
+        next request on the same keep-alive connection parse as a request line.
+        Over-cap and malformed lengths are not drained at all: the connection is
+        closed instead, so this never reads an unbounded amount. The read is also
+        time-boxed, because a client may announce a body it never sends, and a
+        blocking read here would tie up a handler thread for the whole library.
+        """
+        if self._body_consumed:
+            return
+        self._body_consumed = True
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            self.close_connection = True
+            return
+        if length <= 0:
+            return
+        if length > MAX_BODY_BYTES:
+            self.close_connection = True
+            return
+        previous_timeout = self.connection.gettimeout()
+        self.connection.settimeout(DRAIN_TIMEOUT_SECONDS)
+        try:
+            remaining = length
+            while remaining > 0:
+                block = self.rfile.read(min(remaining, 65536))
+                if not block:
+                    self.close_connection = True
+                    return
+                remaining -= len(block)
+        except OSError:
+            self.close_connection = True
+        finally:
+            with suppress(OSError):
+                self.connection.settimeout(previous_timeout)
+
     def _read_json(self) -> dict[str, Any]:
         try:
             length = int(self.headers.get("Content-Length", "0"))
         except ValueError:
             raise ApiError("Invalid Content-Length")
-        if length > 4 * 1024 * 1024:
+        if length > MAX_BODY_BYTES:
             raise ApiError("Request body too large", 413)
         raw = self.rfile.read(length) if length else b""
+        self._body_consumed = True
         if not raw:
             return {}
         # A browser sends a form or a plain-text fetch without a preflight, so a
@@ -199,32 +248,38 @@ class MidiVaultHandler(BaseHTTPRequestHandler):
         return payload
 
     def _dispatch(self, method: str) -> None:
-        if not self._host_is_allowed():
-            self.send_json({"error": "This service only answers on its loopback address."}, 403)
-            return
-        if method == "OPTIONS":
-            self._send_empty(HTTPStatus.NO_CONTENT)
-            return
-        parsed = urlparse(self.path)
+        self._body_consumed = False
         try:
-            if method in UNSAFE_METHODS:
-                self._check_write_guard()
-            if parsed.path.startswith("/api/"):
-                self._handle_api(method, parsed.path, parse_qs(parsed.query))
-            elif method == "GET":
-                self._serve_static(parsed.path)
-            else:
-                raise ApiError("Only GET is allowed for static files", 405)
-        except ApiError as exc:
-            self.send_json({"error": exc.message}, exc.status)
-        except BrokenPipeError:
-            pass
-        except Exception as exc:  # Return a useful message instead of killing the server.
-            traceback.print_exc()
+            if not self._host_is_allowed():
+                self.send_json({"error": "This service only answers on its loopback address."}, 403)
+                return
+            if method == "OPTIONS":
+                self._send_empty(HTTPStatus.NO_CONTENT)
+                return
+            parsed = urlparse(self.path)
             try:
-                self.send_json({"error": f"Internal server error: {type(exc).__name__}: {exc}"}, 500)
-            except Exception:
+                if method in UNSAFE_METHODS:
+                    self._check_write_guard()
+                if parsed.path.startswith("/api/"):
+                    self._handle_api(method, parsed.path, parse_qs(parsed.query))
+                elif method == "GET":
+                    self._serve_static(parsed.path)
+                else:
+                    raise ApiError("Only GET is allowed for static files", 405)
+            except ApiError as exc:
+                self.send_json({"error": exc.message}, exc.status)
+            except BrokenPipeError:
                 pass
+            except Exception as exc:  # Return a useful message instead of killing the server.
+                traceback.print_exc()
+                try:
+                    self.send_json({"error": f"Internal server error: {type(exc).__name__}: {exc}"}, 500)
+                except Exception:
+                    pass
+        finally:
+            # Whatever refused this request, an unread body would be parsed as
+            # the next request line on this keep-alive connection.
+            self._drain_body()
 
     # ------------------------------------------------------------------ routing
     def _handle_api(self, method: str, path: str, query: dict[str, list[str]]) -> None:
@@ -535,18 +590,21 @@ class MidiVaultHandler(BaseHTTPRequestHandler):
             self._serve_backup()
             return
         if route == "rebuild" and method == "POST":
-            payload = self._read_json() if self.headers.get("Content-Length") else {}
+            payload = self._read_json()
+            settings = ctx.db.get_settings()
+            source_ids = payload.get("source_ids") or None
             try:
-                ctx.db.invalidate_index()
+                # Invalidation lives inside the run: if the scan refuses to start,
+                # the index keeps its cached analysis instead of being left empty.
                 status = ctx.scanner.start(
-                    source_ids=payload.get("source_ids"),
+                    source_ids=source_ids,
                     mode="full",
-                    intensity=payload.get("intensity")
-                    or ctx.db.get_settings().get("scan_intensity", "balanced"),
+                    intensity=payload.get("intensity") or settings.get("scan_intensity", "balanced"),
+                    invalidate=True,
                 )
             except ScanError as exc:
                 raise ApiError(str(exc), 409)
-            self.send_json({"scan": status, "message": "Index cache invalidated; full rescan started. User data was preserved."}, 202)
+            self.send_json({"scan": status, "message": "Full rescan started; derived analysis for the selected sources was invalidated. User data was preserved."}, 202)
             return
         if route == "maintenance/clear-issues" and method == "POST":
             ctx.db.clear_scan_issues()

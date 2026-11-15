@@ -3,8 +3,10 @@
  *
  * The lookahead scheduler owns note timing on the AudioContext clock. React
  * rendering only reads a snapshot; no piano-roll frame drives scheduling. The
- * same scheduler can route notes to a Web MIDI output. All notes are released
- * on stop, pause, file/sequence switch and output-device change.
+ * same scheduler can route notes to a Web MIDI output, and every send goes
+ * through one guarded path: all notes are released on stop, pause,
+ * file/sequence switch, output-device change, a port that throws or reports
+ * itself disconnected, and when the page is unloaded.
  */
 import type { PreviewNote, PreviewSequence } from '../types';
 import {
@@ -81,6 +83,9 @@ interface MidiPortLike {
   id: string;
   name?: string;
   manufacturer?: string;
+  /** 'open' | 'closed' | 'disconnected'; a removed device stays listed but flips this. */
+  connection?: string;
+  onstatechange?: ((event: unknown) => void) | null;
   send: (data: number[] | Uint8Array, timestamp?: number) => void;
 }
 
@@ -149,6 +154,9 @@ export class PreviewEngine {
   private voices = new Set<Voice>();
   private midiTimers = new Set<number>();
   private midiActive = new Map<string, { channel: number; pitch: number; trackKey: string }>();
+  /** Re-entrancy guard: releasing held notes can itself hit the dead port. */
+  private midiPortReleasing = false;
+  private pageHideListener: (() => void) | null = null;
   private stats: EngineDebugStats = {
     scheduledNotes: 0,
     lateNotes: 0,
@@ -161,6 +169,22 @@ export class PreviewEngine {
 
   constructor() {
     this.snapshot = this.buildSnapshot();
+    // A reload or a closed tab never runs the transport's stop path, so a note
+    // already on the wire stays sounding on the hardware synth. pagehide is the
+    // last event that reliably fires on the way out.
+    this.pageHideListener = () => this.releaseMidiForPageTeardown();
+    window.addEventListener('pagehide', this.pageHideListener);
+  }
+
+  /**
+   * Drops the window listener this engine added. Only needed by harnesses that
+   * build engines the app never builds; the interface holds exactly one.
+   */
+  dispose(): void {
+    if (this.pageHideListener) {
+      window.removeEventListener('pagehide', this.pageHideListener);
+      this.pageHideListener = null;
+    }
   }
 
   // -------------------------------------------------------------- subscription
@@ -1147,6 +1171,11 @@ export class PreviewEngine {
   }
 
   // --------------------------------------------------------------------- Web MIDI
+  /** Bound so the same handler can sit on the port and on the access object. */
+  private onMidiStateChange = (event: unknown): void => {
+    this.handleMidiStateChange(event);
+  };
+
   async requestMidiAccess(): Promise<MidiOutputInfo[]> {
     const nav = navigator as Navigator & {
       requestMIDIAccess?: (options?: { sysex?: boolean }) => Promise<MidiAccessLike>;
@@ -1160,6 +1189,7 @@ export class PreviewEngine {
     try {
       const access = await nav.requestMIDIAccess({ sysex: false });
       this.midiAccess = access as unknown as MidiAccessLike;
+      this.midiAccess.onstatechange = this.onMidiStateChange;
       this.midiSupported = true;
       this.midiError = null;
       this.refreshMidiOutputs();
@@ -1177,12 +1207,21 @@ export class PreviewEngine {
     if (!this.midiAccess) return;
     this.midiOutputs = [];
     for (const [id, output] of this.midiAccess.outputs) {
+      // The access-level event is unreliable across browsers: Chrome reports a
+      // pulled device on the port itself. Listening to both is what lets the
+      // engine learn the output is gone before the next scheduled note does.
+      output.onstatechange = this.onMidiStateChange;
       this.midiOutputs.push({
         id,
         name: output.name || `MIDI ${id}`,
         manufacturer: output.manufacturer || '',
       });
     }
+  }
+
+  /** True while a port can still be written to; a removed device stays listed. */
+  private isPortUsable(port: MidiPortLike | null | undefined): boolean {
+    return !!port && port.connection !== 'disconnected' && port.connection !== 'closed';
   }
 
   async setOutput(outputId: string | null): Promise<void> {
@@ -1198,7 +1237,7 @@ export class PreviewEngine {
       return;
     }
     if (!this.midiAccess) await this.requestMidiAccess();
-    if (!this.midiAccess?.outputs.has(outputId)) {
+    if (!this.isPortUsable(this.midiAccess?.outputs.get(outputId))) {
       throw new Error('The selected MIDI output is no longer available.');
     }
     this.outputMode = 'midi';
@@ -1207,14 +1246,124 @@ export class PreviewEngine {
     this.emit(true);
   }
 
-  private midiOutput(): MidiPortLike | null {
+  /**
+   * The stored port whatever it currently reports. Only the release path uses
+   * this: a note already on the hardware is exactly the case where a port that
+   * says `disconnected` still has to be written to, because an output that
+   * flipped its flag without dying is otherwise left holding the note.
+   */
+  private storedMidiOutput(): MidiPortLike | null {
     if (!this.midiAccess || !this.midiOutputId) return null;
     return this.midiAccess.outputs.get(this.midiOutputId) ?? null;
   }
 
+  /**
+   * The selected output, or null when it should no longer carry new notes. A
+   * port that reports itself disconnected is dropped on the spot rather than
+   * left in place for the next scheduled note to throw on: a send that throws
+   * inside a setTimeout callback is invisible to the transport, so the deck
+   * would keep "playing" into a device nobody can hear.
+   */
+  private liveMidiOutput(): MidiPortLike | null {
+    if (!this.midiOutputId) return null;
+    const port = this.storedMidiOutput();
+    if (this.isPortUsable(port)) return port;
+    this.handleMidiPortLost(port
+      ? 'The MIDI output was closed. Playback is paused with all notes released.'
+      : 'The selected MIDI output disappeared. Playback is paused with all notes released.');
+    return null;
+  }
+
+  /**
+   * Single guarded path to the wire. Every note-on, note-off and program change
+   * goes through here, including the ones fired from a timer.
+   */
+  private midiSend(port: MidiPortLike, data: number[]): boolean {
+    try {
+      port.send(data);
+      return true;
+    } catch (error) {
+      this.handleMidiPortLost(
+        `The MIDI output refused a message (${error instanceof Error ? error.message : 'unknown error'}).`
+        + ' Playback is paused with all notes released.',
+      );
+      return false;
+    }
+  }
+
+  /**
+   * One place decides what a dead output means: release everything that might
+   * still be sounding on the hardware, drop the port so the UI falls back to
+   * the preview synth, and stop a transport that would otherwise keep
+   * scheduling sends into nothing.
+   */
+  private handleMidiPortLost(message: string): void {
+    // Releasing held notes writes to the same dead port, so this can be
+    // re-entered from midiSend; it is the inner call that has to give up.
+    if (this.midiPortReleasing) return;
+    this.midiPortReleasing = true;
+    try {
+      if (this.playing) {
+        // Sets the reason the transport stopped, cancels timers, releases notes.
+        this.failAudio(message);
+      } else {
+        this.stopAllNotes();
+      }
+      this.midiOutputId = null;
+      this.outputMode = 'synth';
+      this.stats.outputMode = 'synth';
+      this.midiError = message;
+      this.refreshMidiOutputs();
+      this.emit(true);
+    } finally {
+      this.midiPortReleasing = false;
+    }
+  }
+
+  /**
+   * Web MIDI reports a plug or a pull on the port and again on the access
+   * object. Either way, a lost output has to be dropped while it is silent.
+   */
+  private handleMidiStateChange(event: unknown): void {
+    const port = (event as { port?: MidiPortLike } | null | undefined)?.port;
+    if (!this.midiOutputId) return;
+    if (port && port.id !== this.midiOutputId) {
+      this.refreshMidiOutputs();
+      return;
+    }
+    const selected = port ?? this.midiAccess?.outputs.get(this.midiOutputId) ?? null;
+    if (this.isPortUsable(selected)) {
+      // Back in the drawer after all: refresh the label, keep the selection.
+      this.refreshMidiOutputs();
+      this.emit(true);
+      return;
+    }
+    this.handleMidiPortLost('The MIDI output was disconnected. Playback is paused with all notes released.');
+  }
+
+  /**
+   * Last-chance hardware release on the way out. A reload or a closed tab never
+   * runs the transport's stop path, so a note already on the wire would keep
+   * sounding on the synth until somebody power-cycles it. Held notes stay
+   * tracked on purpose: a page frozen into the back/forward cache resumes with
+   * its note-off timers still armed.
+   */
+  private releaseMidiForPageTeardown(): void {
+    if (!this.midiOutputId) return;
+    const port = this.midiAccess?.outputs.get(this.midiOutputId) ?? null;
+    if (!this.isPortUsable(port)) return;
+    for (const active of this.midiActive.values()) {
+      try {
+        port!.send([0x80 | active.channel, active.pitch, 0]);
+      } catch {
+        // The device is already gone; there is nothing left to silence.
+      }
+    }
+  }
+
   private sendMidiProgramChanges(): void {
     if (this.outputMode !== 'midi' || !this.sequence) return;
-    const output = this.midiOutput();
+    const output = this.liveMidiOutput();
     if (!output) return;
     const sentChannels = new Set<number>();
     for (const track of this.sequence.tracks) {
@@ -1224,32 +1373,40 @@ export class PreviewEngine {
       const channel = clamp(track.channel, 0, 15);
       if (sentChannels.has(channel)) continue;
       sentChannels.add(channel);
-      try {
-        output.send([0xc0 | channel, clamp(Math.round(program), 0, 127)]);
-      } catch {
-        // A disconnected device is handled by the UI/output status.
-      }
+      // A refusal drops the output outright, so the remaining program changes
+      // have nowhere to go and must not be attempted against a dead port.
+      if (!this.midiSend(output, [0xc0 | channel, clamp(Math.round(program), 0, 127)])) return;
     }
   }
 
   private scheduleMidi(note: PreviewNote, track: EngineTrack, audioStart: number, duration: number): void {
     if (!this.context) return;
     const delay = Math.max(0, (audioStart - this.context.currentTime) * 1000);
-    const output = this.midiOutput();
-    if (!output) return;
+    if (!this.midiOutputId) return;
     const channel = clamp(track.channel, 0, 15);
     const pitch = clamp(Math.round(note.p), 0, 127);
     const velocity = clamp(Math.round(note.v), 1, 127);
     const key = `${track.key}:${channel}:${pitch}`;
     const onTimer = window.setTimeout(() => {
       this.midiTimers.delete(onTimer);
-      output.send([0x90 | channel, pitch, velocity]);
+      // Re-read the port: the lookahead is a quarter-second of real time in
+      // which the device can have been pulled, closed, or dropped by an
+      // earlier refusal. An unguarded send here throws where nobody sees it.
+      const output = this.liveMidiOutput();
+      if (!output) return;
+      if (!this.midiSend(output, [0x90 | channel, pitch, velocity])) {
+        this.midiActive.delete(key);
+        return;
+      }
       this.midiActive.set(key, { channel, pitch, trackKey: track.key });
       const hold = Math.max(20, duration * 1000);
       const offTimer = window.setTimeout(() => {
         this.midiTimers.delete(offTimer);
-        output.send([0x80 | channel, pitch, 0]);
+        // The note is off the wire either way, so stopAllNotes must not send a
+        // second note-off for it.
         this.midiActive.delete(key);
+        const port = this.storedMidiOutput();
+        if (port) this.midiSend(port, [0x80 | channel, pitch, 0]);
       }, hold);
       this.midiTimers.add(offTimer);
     }, delay);
@@ -1258,13 +1415,11 @@ export class PreviewEngine {
   }
 
   private sendMidiNoteOff(channel: number, pitch: number): void {
-    const output = this.midiOutput();
+    // Releases go to the stored port even after it reports itself gone; a
+    // refusal is contained by midiSend, which is also what drops the output.
+    const output = this.storedMidiOutput();
     if (!output) return;
-    try {
-      output.send([0x80 | channel, pitch, 0]);
-    } catch {
-      // Output disappeared; nothing left to release.
-    }
+    this.midiSend(output, [0x80 | channel, pitch, 0]);
   }
 
   getDebugStats(): EngineDebugStats {

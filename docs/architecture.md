@@ -227,7 +227,11 @@ the current generation and how many indexed files are still legacy.
    placeholders via Windows file attributes. It never opens an archive.
 3. Every discovered `.mid`/`.midi` file is compared against the existing index
    using size, mtime, parser version and classifier version. Unchanged files are
-   skipped in incremental mode.
+   skipped in incremental mode, and by default a file that would be skipped is
+   re-hashed first: size and mtime can both survive an in-place edit, so the
+   content hash is what decides. The re-hash is a setting, not a policy bolted to
+   the code; turning it off trades correctness for scan time on crates too large
+   to re-read every pass.
 4. Changed/new files are hashed and handed to a bounded process pool. Worker
    processes parse, analyse and classify without touching SQLite or the UI.
 5. The coordinator writes committed results in small batches (up to 24 completed

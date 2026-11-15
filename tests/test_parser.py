@@ -79,8 +79,44 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(result.sequences[0].tempos[1].bpm, 60.0)
         self.assertAlmostEqual(result.duration_seconds, 5.0, places=3)
 
+    def test_conductor_track_wins_a_tempo_clash_at_the_same_tick(self) -> None:
+        """Two tracks may state a tempo for one tick; the first track is the map.
+
+        A DAW export often writes the tempo into the conductor track *and* into a
+        player or click track. Position in the file is not authority — the last
+        chunk parsed used to win, which made a bundled tempo track overwrite the
+        real map and put every bpm-synced feature out by a factor of two.
+        """
+        def build(conductor_bpm: float, player_bpm: float, *, player_prefix: int = 0):
+            conductor = MidiTrack().track_name("Conductor").tempo(0, conductor_bpm)
+            conductor.time_signature(0, 4, 4)
+            conductor.end(4 * 480)
+            player = MidiTrack().track_name("Player").program(0, 33)
+            for step in range(player_prefix):
+                player.cc(step, 7, 100)
+            player.tempo(0, player_bpm)
+            player.chord(0, [36, 40], 240)
+            player.end(4 * 480)
+            return parse_smf(build_smf([conductor, player], midi_format=1)).sequences[0]
+
+        self.assertEqual(build(120.0, 60.0).tempos[0].bpm, 120.0)
+        # The rule is track authority, not "the lowest number wins" or "the last
+        # event wins": flip the values and the conductor still leads.
+        self.assertEqual(build(60.0, 120.0).tempos[0].bpm, 60.0)
+        # A later event *within the same track* still beats an earlier one.
+        clash = MidiTrack().track_name("Both").tempo(0, 90).tempo(0, 140)
+        clash.end(4 * 480)
+        sequence = parse_smf(build_smf([clash], midi_format=0)).sequences[0]
+        self.assertAlmostEqual(sequence.tempos[0].bpm, 140.0, places=2)
+        # Authority outranks event position across tracks: the player states its
+        # tempo after three of its own events, the conductor states its map first.
+        self.assertEqual(build(120.0, 60.0, player_prefix=3).tempos[0].bpm, 120.0)
+        # Timing follows the winning tempo, not the losing one.
+        self.assertAlmostEqual(build(120.0, 60.0).duration_seconds, 2.0, places=3)
+
     def test_sustain_extends_note_duration(self) -> None:
         track = MidiTrack().track_name("Piano").program(0, 0).tempo(0, 120)
+
         track.sustain(0, True)
         track.note_on(0, 60, 90)
         track.note_off(480, 60)

@@ -220,6 +220,9 @@ def _best_chord_coverage(pitch_class_counts: Counter[int]) -> tuple[float, str |
     return best
 
 
+_MAX_PATTERN_BARS = 4096
+
+
 def _grid_rhythm(notes: list[Note], timing_type: str, bar_beats: float) -> dict[str, float]:
     if not notes:
         return {
@@ -265,6 +268,12 @@ def _grid_rhythm(notes: list[Note], timing_type: str, bar_beats: float) -> dict[
             bar = int((note.start_seconds if timing_type == "smpte" else note.start_beat) // max(0.25, bar_beats))
             # `bar` can jump past the end when a clip rests for a whole bar, so
             # grow to fill the gap instead of appending a single set per note.
+            # The gap is bounded: an SMF delta is unbounded, so one stranded note
+            # can sit a million bars out and cost hundreds of MB of empty sets.
+            # The cap is ~2 hours of music at 120 BPM, so no real clip is cut
+            # short by it.
+            if bar >= _MAX_PATTERN_BARS:
+                continue
             while len(bars) <= bar:
                 bars.append(set())
             bars[bar].add(pos)

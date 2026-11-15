@@ -5,11 +5,13 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 os.environ["SKEER_SCAN_EXECUTOR"] = "threads"
 
 from midivault.db import Database
-from midivault.scanner import ScanManager
+from midivault.engine.versions import PARSER_VERSION
+from midivault.scanner import ScanError, ScanManager
 from tests.midi_builder import MidiTrack, build_smf
 
 
@@ -82,7 +84,7 @@ class ScannerDatabaseTests(unittest.TestCase):
         self.assertEqual(len(self.db.list_scan_issues()), 1)
         first = next(item for item in library["items"] if item["filename"] == "First Bass.mid")
         self.assertTrue(first["content_hash"])
-        self.assertEqual(first["parser_version"], 1)
+        self.assertEqual(first["parser_version"], PARSER_VERSION)
         self.assertEqual(first["instrument"], "Bass")
         self.assertEqual(first["role"], "Bassline")
         self.assertTrue(first["key_name"])
@@ -248,6 +250,226 @@ class ScannerDatabaseTests(unittest.TestCase):
             cancelled = wait_scan(self.scanner)
             self.assertEqual(cancelled["state"], "cancelled")
             self.assertGreater(self.db.stats()["indexed"], 0)
+
+
+    # ------------------------------------------------------ index correctness
+    def _states(self) -> dict[str, dict]:
+        with self.db.connection() as con:
+            return {row["path"]: dict(row) for row in con.execute(
+                "SELECT path,scan_state,is_missing,source_id,parser_version FROM files"
+            ).fetchall()}
+
+    def test_deleting_a_source_does_not_leave_rows_claiming_to_be_indexed(self) -> None:
+        """A deleted source takes the only path to revalidating its rows with it.
+
+        ``files.source_id`` is ON DELETE SET NULL and the missing-file sweep
+        matches on source_id, so every row kept reporting "indexed" for a path no
+        later scan would ever visit. They stayed in the library, the counts and
+        search results whatever happened on disk. The rows and their user data
+        are kept; only the state is corrected.
+        """
+        rows = self._states()
+        owned = [path for path, row in rows.items() if row["scan_state"] == "indexed"]
+        self.assertEqual(len(owned), 3)
+        self.db.delete_source(self.source["id"])
+        after = self._states()
+        for path in owned:
+            self.assertEqual(after[path]["scan_state"], "missing", path)
+            self.assertEqual(after[path]["is_missing"], 1, path)
+            self.assertIsNone(after[path]["source_id"], path)
+        self.assertEqual(self.db.stats()["indexed"], 0)
+        self.assertEqual(self.db.list_sources(with_counts=False), [])
+        # The sweep cannot reach them any more either — nothing is left to claim.
+        self.assertEqual(self.db.orphan_indexed_rows(), [])
+
+    def test_a_scan_sweeps_rows_that_no_source_can_reach(self) -> None:
+        """An index written before that fix can hold rows with no source at all."""
+        ghost = self.library / "bass" / "First Bass.mid"
+        keeper = self.library / "keys" / "Simple Piano.mid"
+        with self.db.connection(write=True) as con:
+            con.execute("UPDATE files SET source_id=NULL WHERE path IN (?,?)",
+                        (str(ghost), str(keeper)))
+        ghost.unlink()
+        other = self.root / "other"
+        other.mkdir()
+        (other / "Solo Bass.mid").write_bytes(bass_midi(shift=4))
+        source = self.db.add_source(str(other), "Other", optional=True, enabled=True)
+        self.scanner.start(source_ids=[source["id"]], mode="incremental", intensity="eco", workers=1)
+        wait_scan(self.scanner)
+        states = self._states()
+        self.assertEqual(states[str(ghost)]["scan_state"], "missing")
+        self.assertEqual(states[str(ghost)]["is_missing"], 1)
+        # A row whose file is still on disk is not a ghost: it stays usable,
+        # because blanket-marking every unowned row would be its own bug.
+        self.assertEqual(states[str(keeper)]["scan_state"], "indexed")
+        self.assertEqual(states[str(other / "Solo Bass.mid")]["scan_state"], "indexed")
+
+    def test_invalidating_one_source_leaves_another_ones_analysis_alone(self) -> None:
+        """A rebuild re-analyses the sources it will actually walk, not all of them."""
+        other = self.root / "keys-only"
+        other.mkdir()
+        (other / "Solo Piano.mid").write_bytes(simple_midi(67))
+        second = self.db.add_source(str(other), "Keys only", optional=True, enabled=True)
+        self.scanner.start(source_ids=[second["id"]], mode="incremental", intensity="eco", workers=1)
+        wait_scan(self.scanner)
+
+        first_id = self.db.query_library(q="First Bass")["items"][0]["id"]
+        self.db.set_file_label(first_id, "instrument", "Synth")
+        self.db.invalidate_sources([self.source["id"]])
+
+        for path, row in self._states().items():
+            if row["source_id"] == self.source["id"]:
+                self.assertEqual(row["parser_version"], 0, path)
+            else:
+                self.assertEqual(row["parser_version"], PARSER_VERSION, path)
+        with self.db.connection() as con:
+            def unknown_tracks(source_id: int) -> int:
+                return con.execute(
+                    "SELECT COUNT(*) AS n FROM tracks WHERE auto_instrument='Unknown' "
+                    "AND file_id IN (SELECT id FROM files WHERE source_id=?)",
+                    (source_id,),
+                ).fetchone()["n"]
+
+            self.assertGreater(unknown_tracks(self.source["id"]), 0)
+            self.assertEqual(unknown_tracks(second["id"]), 0,
+                             "a file this run will not touch kept its stale reset")
+            kept = con.execute("SELECT instrument, instrument_source FROM files WHERE id=?",
+                               (first_id,)).fetchone()
+        self.assertEqual(kept["instrument"], "Synth")
+        self.assertEqual(kept["instrument_source"], "user")
+
+    def test_a_refused_rebuild_does_not_empty_the_index(self) -> None:
+        """The old route cleared the cache first and started the scan second.
+
+        When the scan then refused — no source selected, one already running —
+        the index was left zeroed and no later scan could repair it.
+        """
+        with self.assertRaises(ScanError):
+            self.scanner.start(source_ids=[], mode="full", intensity="eco", invalidate=True)
+        self.assertEqual(self.db.stats()["indexed"], 3)
+        with self.db.connection() as con:
+            zeroed = con.execute("SELECT COUNT(*) AS n FROM files WHERE parser_version=0").fetchone()["n"]
+            unknown = con.execute(
+                "SELECT COUNT(*) AS n FROM tracks WHERE auto_instrument='Unknown'"
+            ).fetchone()["n"]
+        self.assertEqual(zeroed, 0, "a refused run must not have invalidated anything")
+        self.assertEqual(unknown, 0)
+
+    def test_invalidate_on_start_clears_the_derived_cache_for_that_run(self) -> None:
+        self.scanner.start(source_ids=[self.source["id"]], mode="full", intensity="eco",
+                           workers=1, invalidate=True)
+        status = wait_scan(self.scanner)
+        self.assertEqual(status["indexed"], 3)
+        self.assertEqual(self.db.stats()["indexed"], 3)
+        self.assertEqual(
+            [row for row in self._states().values()
+             if row["scan_state"] == "indexed" and row["parser_version"] != PARSER_VERSION], []
+        )
+
+    # ------------------------------------------------------- unchanged checks
+    def _make_same_size_edit(self) -> tuple[Path, str, str]:
+        path = self.library / "bass" / "First Bass.mid"
+        original = path.read_bytes()
+        edited = bass_midi(shift=3)
+        # The whole point of the fixture: same length, same mtime, different bytes.
+        self.assertEqual(len(edited), len(original))
+        self.assertNotEqual(edited, original)
+        stamp = path.stat().st_mtime_ns
+        before = self.db.query_library(q="First Bass")["items"][0]["content_hash"]
+        path.write_bytes(edited)
+        os.utime(path, ns=(stamp, stamp))
+        stat = path.stat()
+        self.assertEqual(stat.st_size, len(original))
+        self.assertEqual(stat.st_mtime_ns, stamp)
+        return path, before, edited
+
+    def test_an_edit_that_keeps_size_and_mtime_is_still_reindexed(self) -> None:
+        """Size plus mtime is not a content check.
+
+        A copy restore, a sync client or a metadata-preserving editor can leave a
+        changed file with the length and timestamp the index already recorded, and
+        the incremental scan then skipped it forever: the library kept playing —
+        and searching on — bytes that are no longer in the file.
+        """
+        _path, before, _edited = self._make_same_size_edit()
+        self.scanner.start(source_ids=[self.source["id"]], mode="incremental",
+                           intensity="eco", workers=1)
+        status = wait_scan(self.scanner)
+        self.assertEqual(status["indexed"], 1)
+        self.assertEqual(status["skipped"], 2)
+        after = self.db.query_library(q="First Bass")["items"][0]
+        self.assertNotEqual(after["content_hash"], before)
+
+    def test_verification_can_be_turned_off_and_the_cheap_skip_returns(self) -> None:
+        """The hash check is a cost the user may decline, and it is visible."""
+        _path, before, _edited = self._make_same_size_edit()
+        self.db.update_settings({"verify_unchanged": "0"})
+        self.assertEqual(self.db.get_settings()["verify_unchanged"], "0")
+        self.scanner.start(source_ids=[self.source["id"]], mode="incremental",
+                           intensity="eco", workers=1)
+        status = wait_scan(self.scanner)
+        self.assertEqual(status["skipped"], 3)
+        self.assertEqual(status["indexed"], 0)
+        stored = self.db.query_library(q="First Bass")["items"][0]
+        self.assertEqual(stored["content_hash"], before)
+
+    # ------------------------------------------------------------ bulk writes
+    def test_bulk_labels_use_one_transaction_and_record_the_correction(self) -> None:
+        ids = [item["id"] for item in self.db.query_library(page_size=50)["items"]
+               if item["scan_state"] == "indexed"]
+        self.assertGreaterEqual(len(ids), 3)
+        connections: list[int] = []
+        original = Database._connect
+
+        def counting(handler):
+            connections.append(1)
+            return original(handler)
+
+        with mock.patch.object(Database, "_connect", counting):
+            changed = self.db.bulk_file_labels(ids, "instrument", "Drums")
+        self.assertEqual(changed, len(ids))
+        self.assertEqual(len(connections), 1,
+                         f"a bulk edit opened {len(connections)} connections for {len(ids)} files")
+        for file_id in ids:
+            details = self.db.get_file_details(file_id)
+            self.assertEqual(details["file"]["instrument"], "Drums")
+            self.assertEqual(details["file"]["instrument_source"], "user")
+        with self.db.connection() as con:
+            actions = con.execute(
+                "SELECT action, COUNT(*) AS n FROM file_corrections WHERE dimension='instrument' "
+                "GROUP BY action"
+            ).fetchall()
+        self.assertEqual({row["action"]: row["n"] for row in actions}, {"corrected": len(ids)})
+        # The automatic prediction is untouched, so the label can still be reverted.
+        reverted = self.db.set_file_label(ids[0], "instrument", "", clear=True)
+        self.assertNotEqual(reverted["file"]["instrument"], "Drums")
+        self.assertEqual(reverted["file"]["instrument_source"], "auto")
+
+    def test_a_scan_reads_the_index_through_one_connection_per_run(self) -> None:
+        """The skip check asks about every discovered file.
+
+        Opening a fresh handle per question was measurable: about 1.3 ms per file
+        on the index alone, most of it SQLite open and WAL-header cost, on a scan
+        whose whole purpose is to avoid work.
+        """
+        seen: list[object] = []
+        original = self.db.get_scan_file_record
+
+        def spy(path, *, con=None):
+            seen.append(con)
+            return original(path, con=con)
+
+        self.scanner.start(source_ids=[self.source["id"]], mode="incremental",
+                           intensity="eco", workers=1)
+        self.db.get_scan_file_record = spy
+        try:
+            wait_scan(self.scanner)
+        finally:
+            self.db.get_scan_file_record = original
+        self.assertGreaterEqual(len(seen), 3, "the scan did not consult the index per file")
+        self.assertNotIn(None, seen, "a lookup opened its own connection")
+        self.assertTrue(all(handle is seen[0] for handle in seen),
+                        "the run used more than one read handle")
 
 
 if __name__ == "__main__":

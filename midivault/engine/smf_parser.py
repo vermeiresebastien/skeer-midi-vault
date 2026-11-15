@@ -138,7 +138,7 @@ class _RawTrack:
     instrument_name: str | None = None
     end_tick: int = 0
     channels: dict[int, _ChannelState] = field(default_factory=dict)
-    tempos: list[tuple[int, int, int, float]] = field(default_factory=list)
+    tempos: list[tuple[int, int, int, int, float]] = field(default_factory=list)
     time_signatures: list[tuple[int, int, int, int, int, int]] = field(default_factory=list)
     key_signatures: list[tuple[int, int, int, int]] = field(default_factory=list)
     texts: list[TextEvent] = field(default_factory=list)
@@ -427,7 +427,7 @@ def _handle_meta(raw: _RawTrack, meta_type: int, payload: bytes, tick: int,
             return
         if microseconds < 1000:
             raw.warnings.append("Unusually fast tempo accepted from file")
-        raw.tempos.append((tick, order, microseconds, 60_000_000.0 / microseconds))
+        raw.tempos.append((tick, order, chunk_index, microseconds, 60_000_000.0 / microseconds))
         return
     if meta_type == 0x58:
         if len(payload) < 4:
@@ -460,22 +460,29 @@ def _handle_meta(raw: _RawTrack, meta_type: int, payload: bytes, tick: int,
     del chunk_index
 
 
-def _unique_by_tick(events: list[tuple]) -> list[tuple[int, tuple]]:
-    """Sort by (tick, order), keep the last event at each tick.
+def _unique_by_tick(events: list[tuple], sort_key=None) -> list[tuple[int, tuple]]:
+    """Sort by ``sort_key`` (default ``(tick, order)``), keep the last event per tick.
 
     Event tuples are ``(tick, order, *payload)``; the payload shape differs per
-    meta event type.
+    meta event type. ``sort_key`` lets a caller widen the ordering so a tie at
+    one tick can be settled by something other than file position.
     """
+    key = sort_key or (lambda item: (item[0], item[1]))
     by_tick: dict[int, tuple] = {}
-    for event in sorted(events, key=lambda item: (item[0], item[1])):
+    for event in sorted(events, key=key):
         tick = event[0]
         by_tick[tick] = tuple(event[2:])
     return sorted(by_tick.items())
 
 
-def _build_tempo_map(raw_events: list[tuple[int, int, int, float]], tick_rate: int | None,
+def _build_tempo_map(raw_events: list[tuple[int, int, int, int, float]], tick_rate: int | None,
                      ticks_per_second: float | None) -> tuple[list[TempoEvent], bool]:
-    unique = _unique_by_tick(raw_events)
+    # Two tracks can both state a tempo for the same tick — common when a DAW
+    # writes the map into the conductor track *and* a player/click track. File
+    # position is not authority: the lowest-numbered track is the one sequencers
+    # write the real map into, so it wins the tie, and within one track the
+    # later event wins.
+    unique = _unique_by_tick(raw_events, sort_key=lambda item: (item[0], -item[2], item[1]))
     entries: list[TempoEvent] = []
     embedded = bool(unique)
     last_tick = 0
@@ -484,14 +491,14 @@ def _build_tempo_map(raw_events: list[tuple[int, int, int, float]], tick_rate: i
     current_us = 500_000
     first = True
     if unique and unique[0][0] == 0:
-        tick, (microseconds, bpm) = unique[0]
+        tick, (_chunk, microseconds, bpm) = unique[0]
         current_bpm = bpm
         current_us = microseconds
         entries.append(TempoEvent(0, 0.0, 0.0, bpm, microseconds, embedded=True))
         unique = unique[1:]
     else:
         entries.append(TempoEvent(0, 0.0, 0.0, 120.0, 500_000, embedded=False))
-    for tick, (microseconds, bpm) in unique:
+    for tick, (_chunk, microseconds, bpm) in unique:
         if tick < last_tick:
             tick = last_tick
         if tick == last_tick:
@@ -799,7 +806,7 @@ def parse_smf(data: bytes) -> ParseResult:
         raw_groups = [raws]
 
     for sequence_index, group in enumerate(raw_groups):
-        all_tempos: list[tuple[int, int, int, float]] = []
+        all_tempos: list[tuple[int, int, int, int, float]] = []
         all_time_sigs: list[tuple[int, int, int, int, int, int]] = []
         all_key_sigs: list[tuple[int, int, int, int]] = []
         all_texts: list[TextEvent] = []
@@ -831,7 +838,7 @@ def parse_smf(data: bytes) -> ParseResult:
 
         end_tick = max((raw.end_tick for raw in group), default=0)
         end_tick = max([end_tick] + [n.end_tick for t in tracks for n in t.notes] +
-                       [tick for tick, _o, _u, _b in all_tempos] +
+                       [tick for tick, _o, _c, _u, _b in all_tempos] +
                        [tick for tick, _o, _n, _d, _c, _t in all_time_sigs])
         duration_seconds = _seconds_at_tick(tempos, end_tick, ticks_per_quarter, ticks_per_second)
         duration_beats = _beat_at_tick(end_tick, ticks_per_quarter, tempos, ticks_per_second)

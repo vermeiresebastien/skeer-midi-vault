@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import tracemalloc
 import unittest
 
 from midivault.engine.analytics import analyze
@@ -197,6 +198,47 @@ class ClassifierTests(unittest.TestCase):
         )
         self.assertEqual(len(analysis["tracks"]), 1)
         self.assertIsInstance(analysis["tracks"][0]["pattern_repeat"], float)
+
+    def test_a_stranded_note_cannot_stretch_the_rhythm_grid(self) -> None:
+        """The bar grid follows the notes, not the address space between them.
+
+        An SMF delta addresses ~268M ticks, so a broken export can put one note
+        a million bars after the loop. ``_grid_rhythm`` grew its per-bar list to
+        reach it: measured at 1.1M empty sets (about 230MB) for a ten-note file,
+        and the empty bars then dominated ``pattern_repeat``, reporting a tight
+        loop as almost non-repeating.
+        """
+        def loop(*, stranded: bool) -> dict:
+            track = MidiTrack().track_name("Loop").tempo(0, 120).time_signature(0, 4, 4)
+            for bar in range(8):
+                for step in range(4):
+                    track.note(bar * 4 * 480 + step * 240, 36 + step, 180, 90)
+            if stranded:
+                track.note(0x0FFFFF00, 60, 240, 90)
+                track.end(0x0FFFFF00 + 480)
+            else:
+                track.end(8 * 4 * 480)
+            _p, analysis, _c = classify_bytes(
+                build_smf([track], midi_format=0), "loop.mid", ""
+            )
+            return analysis["tracks"][0]
+
+        tight = loop(stranded=False)
+        self.assertAlmostEqual(tight["pattern_repeat"], 1.0, places=3)
+
+        tracemalloc.start()
+        try:
+            padded = loop(stranded=True)
+            peak_bytes = tracemalloc.get_traced_memory()[1]
+        finally:
+            tracemalloc.stop()
+
+        # The far note must not dilute the measure of the eight bars it is not in.
+        self.assertAlmostEqual(padded["pattern_repeat"], 1.0, places=3)
+        self.assertEqual(padded["grid_occupancy"], tight["grid_occupancy"])
+        # Measured bound on the allocation, not a timing: this is the cost the
+        # unbounded grid put on the worker for a file of ten notes.
+        self.assertLess(peak_bytes, 24 * 1024 * 1024)
 
 
 if __name__ == "__main__":

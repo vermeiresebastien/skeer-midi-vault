@@ -44,17 +44,31 @@ python -m midivault.server --open       # run from source; serves web/dist on 12
 npm --prefix web ci                     # frontend deps only; the Python app has ZERO runtime deps
 npm --prefix web run dev                # Vite :5173, proxies /api -> :8737
 npm --prefix web run build              # tsc --noEmit && vite build — this is also the only typecheck
-python -m unittest discover -s tests    # 79 tests, ~15s; framework is unittest, NOT pytest
+python -m unittest discover -s tests    # 97 tests, ~20s; framework is unittest, NOT pytest
 python scripts/evaluate_classification.py
 node tests/e2e-web.mjs                  # needs playwright-core (in web/node_modules) + CHROME_PATH
 node tests/autoplay-deck.mjs            # drives the real UI: autoplay deck, bounded run, durable selection
 node tests/playback-stability.mjs       # drift/telemetry under a concurrent 1500-file scan
+node tests/midi-output-guard.mjs        # fake requestMIDIAccess: refused send, disconnect, unload release
+node tests/space-activation.mjs         # Space reaches the focused control, not the transport
+node tests/deck-broken-row.mjs          # the deck walks past a row whose details/preview are empty
+node tests/scan-settings.mjs            # Settings → Scanning re-hash guard: PATCH, reload, re-arm
 ```
+
+`tests/midi-output-guard.mjs`, `space-activation.mjs`, `deck-broken-row.mjs` and
+`scan-settings.mjs` need no service: `tests/app-harness.mjs` serves the real
+`web/dist` with every `/api` call answered from fixtures, so the React app under
+test is the shipped one while the user's index stays untouched. The same four were
+each re-run against a detached `git worktree` at HEAD — point `SKEER_ENGINE_TS` at
+the pre-fix `engine.ts`, or `SKEER_DIST` at a pre-fix build, and the checks fail
+there. Keep that property: a fix landing without its check failing on HEAD is not
+verified.
 
 There is **no lint command** — no ruff/black/mypy config, no ESLint config. Do not
 invent one unprompted. Tests isolate in `tempfile` directories; they never touch
-`%LOCALAPPDATA%`. Every harness that writes must authenticate: the three browser
-harnesses share `tests/api-client.mjs`, and `tests/test_packaged_smoke.py` fetches
+`%LOCALAPPDATA%`. Every harness that writes must authenticate: the three
+service-backed browser harnesses share `tests/api-client.mjs`, and
+`tests/test_packaged_smoke.py` fetches
 the token the same way in Python — both call `GET /api/session` and echo
 `X-SKEER-Token` on every write, so a harness that posts without it gets 403, the
 same as a foreign page. `test_packaged_smoke.py` is a standalone script, not a

@@ -22,8 +22,10 @@ os.environ["SKEER_SCAN_EXECUTOR"] = "threads"
 from midivault import db as db_module
 from midivault.db import Database, SchemaError
 from midivault.engine.versions import (
+    CLASSIFIER_VERSION,
     FINGERPRINT_VERSION,
     LEGACY_FINGERPRINT_VERSION,
+    PARSER_VERSION,
     SCHEMA_VERSION,
 )
 from midivault.pipeline import parse_and_classify_file
@@ -302,6 +304,8 @@ class FingerprintVersionTests(unittest.TestCase):
             "note_count": 32,
             "scan_state": "indexed",
             "content_hash": f"hash-{file_id}",
+            "parser_version": PARSER_VERSION,
+            "classifier_version": CLASSIFIER_VERSION,
             "fingerprint_json": json.dumps(payload),
         }
 

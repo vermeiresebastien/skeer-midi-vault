@@ -13,7 +13,7 @@ version it migrates *from*. An index newer than this build is refused rather
 than silently downgraded.
 """
 
-PARSER_VERSION = 1
+PARSER_VERSION = 2
 CLASSIFIER_VERSION = 1
 CLASSIFIER_METHOD = "SKEER transparent rules"
 CLASSIFIER_RULESET = "rules-1"

@@ -38,6 +38,7 @@ export function SettingsDialog({
   const [scanIntensity, setScanIntensity] = useState('balanced');
   const [scanMode, setScanMode] = useState('incremental');
   const [parseWorkers, setParseWorkers] = useState(2);
+  const [verifyUnchanged, setVerifyUnchanged] = useState(true);
   const [saving, setSaving] = useState(false);
   const [rebuildArmed, setRebuildArmed] = useState(false);
   const [rebuilding, setRebuilding] = useState(false);
@@ -47,6 +48,7 @@ export function SettingsDialog({
     setScanIntensity(bootstrap.settings.scan_intensity || 'balanced');
     setScanMode(bootstrap.settings.scan_mode || 'incremental');
     setParseWorkers(Number(bootstrap.settings.parse_workers || 2));
+    setVerifyUnchanged(bootstrap.settings.verify_unchanged !== '0');
     setRebuildArmed(false);
   }, [open, bootstrap]);
 
@@ -61,6 +63,7 @@ export function SettingsDialog({
         scan_intensity: scanIntensity,
         scan_mode: scanMode,
         parse_workers: String(parseWorkers),
+        verify_unchanged: verifyUnchanged ? '1' : '0',
       });
       await onRefresh();
       onNotify('Scan settings saved.', 'success');
@@ -343,6 +346,12 @@ export function SettingsDialog({
                     this value caps the worker pool.
                   </p>
                 </div>
+                <Toggle
+                  label="Re-read files an incremental scan would skip"
+                  description="Compares the stored content hash before trusting an unchanged timestamp, so an editor that rewrote a file in place cannot keep a stale analysis. Turn off only for crates too large to re-hash on every pass."
+                  checked={verifyUnchanged}
+                  onChange={setVerifyUnchanged}
+                />
               </section>
               <section className="settings-section">
                 <div className="settings-section-copy">

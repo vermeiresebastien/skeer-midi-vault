@@ -5,12 +5,13 @@ Version: 1.0.0<br>
 Platform: Windows 10 22H2, AMD Ryzen 9 3900X, 24 logical cores, 63.9 GB RAM
 
 Re-verification: `python -m unittest discover -s tests` was run again on
-2026-11-15 and reported **Ran 79 tests — OK** in ~16 s, after the loopback-boundary
-(`test_http_boundary.py`, 14) and schema-migration (`test_schema_migration.py`, 9)
-suites landed and `test_api.py`, `test_classifier.py`, `test_duplicates.py` grew.
-An earlier re-run on 2026-11-14 reported 55. Everything below is the original
-2026-11-02 session and keeps the numbers that session produced, except the Python
-table, which was refreshed on 2026-11-15.
+2026-11-15 and reported **Ran 97 tests — OK** in ~20 s, after the index-correctness,
+engine and HTTP-framing fixes landed (`test_scanner_db.py` 10 → 19,
+`test_http_boundary.py` 14 → 18, `test_api.py` 10 → 12, `test_parser.py` 18 → 19,
+`test_classifier.py` 10 → 11, `test_duplicates.py` 3 → 4) and four browser
+harnesses were added under `tests/`. An earlier re-run the same day reported 79,
+and one on 2026-11-14 reported 55. Everything before the Python table is the
+original 2026-11-02 session and keeps the numbers that session produced.
 
 Machine-readable results: [`e2e-results.json`](e2e-results.json),
 [`playback-stability.json`](playback-stability.json),
@@ -21,9 +22,13 @@ Machine-readable results: [`e2e-results.json`](e2e-results.json),
 
 | Suite | Result | Time |
 | --- | --- | --- |
-| Python unit/integration (`unittest`) | **79/79 passed** | ~16 s |
+| Python unit/integration (`unittest`) | **97/97 passed** | ~20 s |
 | Browser end-to-end (Playwright + Chrome) | **16/16 checks passed** | full isolated scan + interaction run |
 | Autoplay deck (Playwright + Chrome) | **8/8 checks passed** | auto-advance, bounded run, manual stop, selection survives filtering |
+| Web MIDI output guard (Playwright + Chrome) | **7/7 checks passed** | refused send, reported disconnect, state-change listener, unload release |
+| Keyboard activation (Playwright + Chrome) | **5/5 checks passed** | Space reaches the focused control, still owns the transport elsewhere |
+| Deck past a soundless row (Playwright + Chrome) | **6/6 checks passed** | a failed details call or empty preview does not park the deck |
+| Scan settings round trip (Playwright + Chrome) | **5/5 checks passed** | the incremental re-hash guard is a visible, persisted control |
 | Classification regression | 31/31 family, 31/31 role, 13/13 track family, 11/13 track role | < 1 s |
 | Playback stability while scanning/filtering | **0 late, 0 skipped** scheduled notes; drift 0.989× | 7.6 s audition |
 | Packaged standalone app (Windows) | **passed** health + frozen process-worker scan + quit + zero orphan workers | onedir EXE smoke test |
@@ -37,17 +42,17 @@ Command:
 python -m unittest discover -s tests
 ```
 
-Result: **Ran 79 tests — OK** (2026-11-15).
+Result: **Ran 97 tests — OK** (2026-11-15).
 
 | Module | Tests | What is covered |
 | --- | ---: | --- |
-| `test_parser.py` | 18 | Format 0/1/2, running status, VLQ, tempo map, SMPTE, sustain, overlapping notes, malformed chunks, missing EOT, text events, warnings, safety caps, fixture parsing |
-| `test_classifier.py` | 10 | Family/role rules, confidence caps, misleading-name conflicts, uncertainty, embedded-vs-estimated key, assumed tempo and meter, format-2 per-sequence track labels, genre never high-confidence, unnamed-track channel fallback, silent bars in rhythm analysis |
-| `test_scanner_db.py` | 10 | Full and incremental scans, exclusions, protected folders, junction/symlink skip, corrupt file isolation, pause/resume, cancel, user data preservation, unavailable sources, file modification check |
-| `test_api.py` | 10 | Health/bootstrap, search/details/Range streaming, labels/favorites/notes/tags, collections/bulk/facets, the autoplay setting persists, unknown setting keys are dropped, scan settings, export-without-overwrite, backup download and static host, rebuild preserving user data, validation errors |
-| `test_http_boundary.py` | 14 | Rebound `Host` rejected on reads and on the database backup, missing `Host`, `localhost`/dev-proxy hosts accepted, cross-origin and cross-site `Sec-Fetch-Site` writes rejected, write without a session token rejected, form-encoded and `text/plain` bodies rejected, bodyless write needs only the token, `/api/session` hands the token to a loopback page, reads never need it |
+| `test_parser.py` | 19 | Format 0/1/2, running status, VLQ, tempo map, SMPTE, sustain, overlapping notes, malformed chunks, missing EOT, text events, warnings, safety caps, fixture parsing, a conductor track wins a tempo clash at the same tick |
+| `test_classifier.py` | 11 | Family/role rules, confidence caps, misleading-name conflicts, uncertainty, embedded-vs-estimated key, assumed tempo and meter, format-2 per-sequence track labels, genre never high-confidence, unnamed-track channel fallback, silent bars in rhythm analysis, a stranded note cannot stretch the rhythm grid |
+| `test_scanner_db.py` | 19 | Full and incremental scans, exclusions, protected folders, junction/symlink skip, corrupt file isolation, pause/resume, cancel, user data preservation, unavailable sources, file modification check, a removed source stops ghost rows, orphaned index rows, invalidation scoped to the sources being rescanned, a same-size in-place edit is re-indexed by hash, verification can be turned off, one bulk label edit uses one transaction, a scan reuses one read handle |
+| `test_api.py` | 12 | Health/bootstrap, search/details/Range streaming, labels/favorites/notes/tags, collections/bulk/facets, the autoplay setting persists, unknown setting keys are dropped, scan settings, export-without-overwrite, backup download and static host, rebuild preserves user data and invalidates only the selected sources, a refused rebuild keeps the cache, validation errors |
+| `test_http_boundary.py` | 18 | Rebound `Host` rejected on reads and on the database backup, missing `Host`, `localhost`/dev-proxy hosts accepted, cross-origin and cross-site `Sec-Fetch-Site` writes rejected, write without a session token rejected, form-encoded and `text/plain` bodies rejected, bodyless write needs only the token, `/api/session` hands the token to a loopback page, reads never need it, and four keep-alive framing checks proving a refused request's body is never parsed as the next request |
 | `test_schema_migration.py` | 9 | A v1 index advances to current and keeps every user edit, the old index is backed up before migration, reopening a current index does not back up again, a fresh index is not migrated, a newer index is refused untouched, an unmapped version jump is refused, legacy fingerprints are skipped until reindexed, the pipeline stamps its generation, only the current generation is compared |
-| `test_duplicates.py` | 3 | Exact content duplicates, conservative similar-music grouping, a fingerprint with no generation is never compared |
+| `test_duplicates.py` | 4 | Exact content duplicates, conservative similar-music grouping, a fingerprint with no generation is never compared, a row from another parser or classifier build is not compared |
 | `test_platform.py` | 4 | Protected locations, cloud/reparse flags, optional source heuristics |
 | `test_demo_accuracy.py` | 1 | Generated demo labels still match the current parser/classifier |
 
@@ -57,8 +62,10 @@ Notable safety checks executed:
 - Existing destination files are never overwritten by export; a numbered name is
   used instead.
 - Pause/resume does not lose committed rows; cancel leaves the index consistent.
-- Rebuild invalidates analysis caches but keeps manual role/collection/favorite
-  data and repopulates automatic labels.
+- Rebuild invalidates the analysis caches of the sources it is actually rescanning,
+  and only once the scan has started — a rebuild the scanner refuses leaves the
+  index holding its cached analysis rather than an empty one. Manual
+  role/collection/favorite data is kept and automatic labels repopulate.
 - Backup download is a valid SQLite file and its handle is released after the
   request (Windows file-lock regression test).
 
@@ -127,6 +134,55 @@ here.
 7. A selection survives a filter change.
 8. No browser console or page errors.
 
+## Sound path and interaction harnesses
+
+Four harnesses drive the built interface without a Python service: `app-harness.mjs`
+serves the real `web/dist` and answers every `/api` call from fixtures, so the
+React app under test is the shipped one while the user's index stays untouched.
+Each carries an explicit anti-lazy-fix guard, and every one was re-run against a
+detached `git worktree` at HEAD (with `SKEER_ENGINE_TS` / `SKEER_DIST` pointing at
+the pre-fix sources) to confirm the checks fail there.
+
+```powershell
+node tests/midi-output-guard.mjs   # 6 of 7 fail before the fix
+node tests/space-activation.mjs    # 3 of 5 fail before the fix
+node tests/deck-broken-row.mjs     # 3 of 6 fail before the fix
+node tests/scan-settings.mjs       # 4 of 5 fail before the fix
+```
+
+**`tests/midi-output-guard.mjs` — 7/7.** The engine bundles into headless Chrome
+against a fake `navigator.requestMIDIAccess` whose output can throw and can report
+itself disconnected; every accepted byte is logged so a real navigation can be
+inspected afterwards. On the pre-fix engine this measured 3 note-ons left in
+`midiActive` with no note-off ever landing, 28 unhandled `pageerror`s, no
+`onstatechange` handler on the port or the access object, and 2 notes still held
+when the page went away. Post-fix: the first refused send drops the output, stops
+the transport and empties the bookkeeping; a reported disconnect releases the held
+notes; a disconnect that also refuses writes still clears state; a real page
+unload silences what is held. The guard — a healthy port still receiving all 6
+note-ons and 6 note-offs — passes on both engines, so the failures above are the
+fix and not a broken harness.
+
+**`tests/space-activation.mjs` — 5/5.** The engine's `play`/`pause`/`stop` are
+wrapped in a call counter, so a check says directly "the global shortcut did not
+run" instead of inferring it from transport state. Space on the focused Autoplay
+button, the Loop button and an active file row now activates that control and
+touches nothing else. The body check is the anti-vacuity guard: it must move the
+counter, or the patch is not wired and every other result is meaningless.
+
+**`tests/deck-broken-row.mjs` — 6/6.** One row's details call answers 500 and
+another returns an empty `preview.sequences`. The deck walks past both to the next
+audible row and reports the end of the crate; before the fix it parked at
+`Broken Take.mid` (deck 2/5) with the autoplay arming still armed. The guards:
+with Autoplay off a broken row is spent but NOT stepped past, and a healthy row
+still plays to its own end.
+
+**`tests/scan-settings.mjs` — 5/5.** Settings → Scanning exposes the incremental
+re-hash guard as a switch that is on by default, sends `verify_unchanged:"0"` on
+save without dropping its neighbours, reads the value back from the service after a
+reload, and can be re-armed. The stub merges each PATCH into what it serves, so the
+reload check can only pass if the value really travelled through the API.
+
 ## Playback stability
 
 Command:
@@ -172,6 +228,15 @@ executor.
   point is what the earlier run of this same script did by itself, before the
   harness carried a token — the boundary reaches the packaged app, not just the
   source tree.
+- Re-run 2026-11-15 against the bundle rebuilt for these fixes, which also put the
+  shipped HTTP framing under test rather than only the source: `/api/bootstrap`
+  from the EXE reports **parser generation 2** and **`verify_unchanged: "1"`** on a
+  fresh index, and two hand-written keep-alive sockets show that a body the service
+  refused is drained instead of parsed as the next request —
+  tokenless write **403 → 200** `{"ok":true,"app":…}` on the same connection, and
+  `Content-Type: text/plain` write **415 → 200** with a session token. The frozen
+  `web/dist` asset is byte-identical to the one the browser harnesses just drove
+  (`index-HeMrzova.js`), so those checks apply to what actually ships.
 - Known cosmetic defect, unchanged by this session: at quit the HTTP thread logs
   `OSError: [WinError 10038]` to stderr from `serve_forever`
   ([midivault/server.py:101](../midivault/server.py)) because the listening

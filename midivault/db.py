@@ -87,6 +87,19 @@ class Database:
         finally:
             connection.close()
 
+    @contextmanager
+    def reader(self):
+        """One long-lived read handle for a per-item query loop.
+
+        ``connection()`` opens and closes a handle on every call, which cost a
+        scan about 1.3 ms for each file it had merely discovered.
+        """
+        connection = self._connect()
+        try:
+            yield connection
+        finally:
+            connection.close()
+
     def _stored_schema_version(self) -> int | None:
         """Schema version stamped on an existing index, or None when empty.
 
@@ -207,6 +220,11 @@ class Database:
                 "parse_workers": "2",
                 "theme": "clean",
                 "preview_autoplay": "0",
+                # An incremental scan that only trusts size + mtime will keep a
+                # stale analysis after an in-place edit that preserved both.
+                # Re-hashing the skipped files is the default; the toggle exists
+                # for crates too large to re-read on every pass.
+                "verify_unchanged": "1",
             }
             for key, value in defaults.items():
                 con.execute(
@@ -242,7 +260,7 @@ class Database:
     def update_settings(self, values: dict[str, Any]) -> dict[str, str]:
         allowed = {
             "scan_intensity", "scan_mode", "include_optional_sources",
-            "parse_workers", "theme", "preview_autoplay",
+            "parse_workers", "theme", "preview_autoplay", "verify_unchanged",
         }
         with self.connection(write=True) as con:
             for key, value in values.items():
@@ -352,7 +370,39 @@ class Database:
 
     def delete_source(self, source_id: int) -> None:
         with self.connection(write=True) as con:
+            # ``files.source_id`` is ON DELETE SET NULL, and mark_missing_not_seen
+            # matches on source_id, so without this the rows would stay 'indexed'
+            # against paths no future scan can reach. The rows and their user
+            # data are kept; only the index state is corrected.
+            con.execute(
+                "UPDATE files SET scan_state='missing', is_missing=1, updated_at=? "
+                "WHERE source_id=? AND scan_state='indexed'",
+                (utcnow(), source_id),
+            )
             con.execute("DELETE FROM sources WHERE id=?", (source_id,))
+
+    def orphan_indexed_rows(self) -> list[tuple[int, str]]:
+        """Rows still called indexed whose source row is gone.
+
+        Only reachable in an index written before ``delete_source`` started
+        marking its files, which is why the scan has to check the paths itself.
+        """
+        with self.connection() as con:
+            return [(row["id"], row["path"]) for row in con.execute(
+                "SELECT id,path FROM files WHERE source_id IS NULL AND scan_state='indexed'"
+            ).fetchall()]
+
+    def mark_rows_missing(self, file_ids: Iterable[int]) -> int:
+        ids = [int(file_id) for file_id in file_ids]
+        if not ids:
+            return 0
+        now = utcnow()
+        with self.connection(write=True) as con:
+            con.executemany(
+                "UPDATE files SET scan_state='missing', is_missing=1, updated_at=? WHERE id=?",
+                [(now, file_id) for file_id in ids],
+            )
+        return len(ids)
 
     def set_source_available(self, source_id: int, available: bool) -> None:
         with self.connection(write=True) as con:
@@ -467,14 +517,22 @@ class Database:
         return [dict(row) for row in rows]
 
     # ------------------------------------------------------------- scan files
-    def get_scan_file_record(self, path: str) -> dict[str, Any] | None:
-        with self.connection() as con:
-            row = con.execute(
-                "SELECT id,size,mtime_ns,parser_version,classifier_version,"
-                "fingerprint_version,scan_state,"
-                "content_hash,is_missing FROM files WHERE path=?",
-                (path,),
-            ).fetchone()
+    def get_scan_file_record(self, path: str, *, con: sqlite3.Connection | None = None) -> dict[str, Any] | None:
+        """The fields an incremental scan needs to decide whether to skip a file.
+
+        Pass ``con`` to reuse a read handle; the scan asks for every discovered
+        file and opening one per call was measurable cost.
+        """
+        query = (
+            "SELECT id,size,mtime_ns,parser_version,classifier_version,"
+            "fingerprint_version,scan_state,"
+            "content_hash,is_missing FROM files WHERE path=?"
+        )
+        if con is not None:
+            row = con.execute(query, (path,)).fetchone()
+            return dict(row) if row else None
+        with self.connection() as local:
+            row = local.execute(query, (path,)).fetchone()
         return dict(row) if row else None
 
     def touch_last_seen(self, paths: Iterable[str], scan_id: int) -> None:
@@ -909,7 +967,8 @@ class Database:
             rows = [
                 dict(row) for row in con.execute(
                     "SELECT id,path,filename,content_hash,scan_state,instrument,role,tempo_bpm,"
-                    "duration_seconds,note_count,fingerprint_version,fingerprint_json FROM files "
+                    "duration_seconds,note_count,fingerprint_version,parser_version,"
+                    "classifier_version,fingerprint_json FROM files "
                     "WHERE scan_state='indexed' AND content_hash IS NOT NULL"
                 ).fetchall()
             ]
@@ -1398,38 +1457,43 @@ class Database:
             self._refresh_fts(con, file_id)
             return cursor.rowcount > 0
 
+    def _apply_file_label(self, con: sqlite3.Connection, file_id: int, dimension: str,
+                          value: str, *, clear: bool) -> bool:
+        row = con.execute(
+            "SELECT auto_instrument, auto_role FROM files WHERE id=?", (file_id,)
+        ).fetchone()
+        if not row:
+            return False
+        if clear:
+            con.execute(
+                "DELETE FROM file_corrections WHERE file_id=? AND dimension=?",
+                (file_id, dimension),
+            )
+        else:
+            auto_value = row["auto_instrument"] if dimension == "instrument" else row["auto_role"]
+            action = "accepted" if value == auto_value else "corrected"
+            con.execute(
+                "INSERT INTO file_corrections(file_id,dimension,value,action,created_at) "
+                "VALUES(?,?,?,?,?) ON CONFLICT(file_id,dimension) DO UPDATE SET "
+                "value=excluded.value, action=excluded.action, created_at=excluded.created_at",
+                (file_id, dimension, value, action, utcnow()),
+            )
+            con.execute(
+                "UPDATE predictions SET user_action=? WHERE file_id=? AND sequence_index=-1 "
+                "AND track_index=-1 AND dimension=?",
+                (action, file_id, dimension),
+            )
+        self._apply_file_effective_label(con, file_id)
+        self._refresh_fts(con, file_id)
+        return True
+
     def set_file_label(self, file_id: int, dimension: str, value: str,
                        *, clear: bool = False) -> dict[str, Any] | None:
         if dimension not in ("instrument", "role"):
             raise ValueError("dimension must be instrument or role")
         with self.connection(write=True) as con:
-            row = con.execute(
-                "SELECT auto_instrument, auto_role FROM files WHERE id=?", (file_id,)
-            ).fetchone()
-            if not row:
-                return None
-            if clear:
-                con.execute(
-                    "DELETE FROM file_corrections WHERE file_id=? AND dimension=?",
-                    (file_id, dimension),
-                )
-            else:
-                auto_value = row["auto_instrument"] if dimension == "instrument" else row["auto_role"]
-                action = "accepted" if value == auto_value else "corrected"
-                con.execute(
-                    "INSERT INTO file_corrections(file_id,dimension,value,action,created_at) "
-                    "VALUES(?,?,?,?,?) ON CONFLICT(file_id,dimension) DO UPDATE SET "
-                    "value=excluded.value, action=excluded.action, created_at=excluded.created_at",
-                    (file_id, dimension, value, action, utcnow()),
-                )
-                con.execute(
-                    "UPDATE predictions SET user_action=? WHERE file_id=? AND sequence_index=-1 "
-                    "AND track_index=-1 AND dimension=?",
-                    (action, file_id, dimension),
-                )
-            self._apply_file_effective_label(con, file_id)
-            self._refresh_fts(con, file_id)
-        return self.get_file_details(file_id)
+            found = self._apply_file_label(con, file_id, dimension, value, clear=clear)
+        return self.get_file_details(file_id) if found else None
 
     def set_track_label(self, file_id: int, sequence_index: int, track_index: int,
                         dimension: str, value: str, *, clear: bool = False) -> dict[str, Any] | None:
@@ -1490,10 +1554,19 @@ class Database:
         return self.get_file_details(file_id)
 
     def bulk_file_labels(self, file_ids: Iterable[int], dimension: str, value: str) -> int:
+        """Apply one label across many files in a single write transaction.
+
+        Per-file transactions made this O(n) in connection churn plus a
+        get_file_details() whose result was thrown away; a bulk label edit took
+        ~16 ms per file instead of ~0.1 ms.
+        """
+        if dimension not in ("instrument", "role"):
+            raise ValueError("dimension must be instrument or role")
         count = 0
-        for file_id in file_ids:
-            if self.set_file_label(int(file_id), dimension, value):
-                count += 1
+        with self.connection(write=True) as con:
+            for file_id in file_ids:
+                if self._apply_file_label(con, int(file_id), dimension, value, clear=False):
+                    count += 1
         return count
 
     def bulk_favorite(self, file_ids: Iterable[int], value: bool) -> int:
@@ -1643,11 +1716,26 @@ class Database:
             target.close()
         return str(destination_path)
 
-    def invalidate_index(self) -> None:
+    def invalidate_sources(self, source_ids: Iterable[int]) -> int:
+        """Zero the derived analysis for the sources one scan run owns.
+
+        Scoped deliberately. A global invalidation also drops the version stamp
+        on rows under a source that is disabled or unplugged, and no scan in
+        this run will rewrite them, so the index is left permanently legacy.
+        """
+        ids = [int(value) for value in source_ids]
+        if not ids:
+            return 0
+        placeholders = ",".join("?" * len(ids))
         with self.connection(write=True) as con:
-            con.execute("UPDATE files SET parser_version=0, classifier_version=0, "
-                        "fingerprint_version=0")
-            con.execute("UPDATE tracks SET auto_instrument='Unknown', auto_role='Unknown'")
+            cursor = con.execute(
+                "UPDATE files SET parser_version=0, classifier_version=0, "
+                f"fingerprint_version=0 WHERE source_id IN ({placeholders})", ids)
+            con.execute(
+                "UPDATE tracks SET auto_instrument='Unknown', auto_role='Unknown' "
+                "WHERE file_id IN (SELECT id FROM files WHERE source_id IN ("
+                f"{placeholders}))", ids)
+            return cursor.rowcount
 
     def clear_scan_issues(self) -> None:
         with self.connection(write=True) as con:

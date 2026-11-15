@@ -15,7 +15,7 @@ os.environ["SKEER_SCAN_EXECUTOR"] = "threads"
 
 from midivault.api import create_server
 from midivault.db import Database
-from midivault.engine.versions import FINGERPRINT_VERSION, SCHEMA_VERSION
+from midivault.engine.versions import FINGERPRINT_VERSION, PARSER_VERSION, SCHEMA_VERSION
 from midivault.scanner import ScanManager
 from tests.midi_builder import MidiTrack, build_smf
 
@@ -100,11 +100,46 @@ class ApiTests(unittest.TestCase):
         assert isinstance(payload, dict)
         return payload
 
+    def test_a_refused_rebuild_leaves_the_index_intact(self) -> None:
+        """The route used to clear the cache and only then try to start a scan.
+
+        A rebuild with nothing selected answered 409 and had already zeroed every
+        parser version, fingerprint and automatic label in the index — and because
+        a full scan had run moments before, no later incremental pass would touch
+        those files again. The library kept serving rows whose labels had been
+        reset to Unknown with nothing queued to restore them.
+        """
+        status, payload, _headers = self._request(
+            "/rebuild", method="POST", payload={"source_ids": [9999]})
+        self.assertEqual(status, 409)
+        self.assertIn("error", payload)
+        item = self._get_library()["items"][0]
+        self.assertEqual(item["parser_version"], PARSER_VERSION)
+        with self.db.connection() as con:
+            unknown = con.execute(
+                "SELECT COUNT(*) AS n FROM tracks WHERE auto_instrument='Unknown'"
+            ).fetchone()["n"]
+            cleared = con.execute(
+                "SELECT COUNT(*) AS n FROM files WHERE parser_version=0"
+            ).fetchone()["n"]
+        self.assertEqual((unknown, cleared), (0, 0), "a refused rebuild mutated the index")
+
+    def test_rebuild_invalidates_and_reindexes_in_one_call(self) -> None:
+        status, payload, _headers = self._request(
+            "/rebuild", method="POST", payload={"source_ids": [self.source["id"]]})
+        self.assertEqual(status, 202, payload)
+        self.assertTrue(payload["scan"]["active"])
+        self._wait_scan()
+        self.assertEqual(self.db.stats()["indexed"], 1)
+        item = self._get_library()["items"][0]
+        self.assertEqual(item["parser_version"], PARSER_VERSION)
+        self.assertNotEqual(item["instrument"], "Unknown")
+
     def test_health_and_bootstrap(self) -> None:
         status, health, _ = self._request("/health")
         self.assertEqual(status, 200)
         self.assertTrue(health["ok"])
-        self.assertEqual(health["versions"]["parser"], 1)
+        self.assertEqual(health["versions"]["parser"], PARSER_VERSION)
         self.assertEqual(health["versions"]["schema"], SCHEMA_VERSION)
         # The interface must be able to see which fingerprint generation the
         # index is speaking, and whether anything is still waiting on a re-scan.

@@ -6,7 +6,6 @@ touch the UI, or modify source files. It returns a fully-serialisable payload.
 from __future__ import annotations
 
 import gzip
-import hashlib
 import json
 import os
 import time
@@ -23,6 +22,7 @@ from .engine.versions import (
     MAX_FILE_BYTES,
     PARSER_VERSION,
 )
+from .hashing import sha256_bytes
 
 
 def _fingerprint(parse_result, analysis: dict[str, Any]) -> dict[str, Any] | None:
@@ -122,7 +122,7 @@ def parse_and_classify_file(job: dict[str, Any]) -> dict[str, Any]:
                 data = handle.read()
         except OSError as exc:
             return {"ok": False, "path": path, "error": f"Cannot read file: {exc}", "code": "unreadable"}
-        content_hash = hashlib.sha256(data).hexdigest()
+        content_hash = sha256_bytes(data)
         try:
             parse_result = parse_smf(data)
         except MidiParseError as exc:
