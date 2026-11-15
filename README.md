@@ -285,7 +285,7 @@ the optional benchmark script to sample process-tree memory.
 | Python unit/integration tests | **79/79** (now includes schema migration and the loopback boundary) | [`docs/test-report.md`](docs/test-report.md) |
 | Browser end-to-end checks | **16/16** (now includes piano-roll drag and scrub) | [`docs/e2e-results.json`](docs/e2e-results.json) |
 | Autoplay deck checks | **8/8** — auto-advance, bounded run, manual stop, selection survives filtering | [`tests/autoplay-deck.mjs`](tests/autoplay-deck.mjs) |
-| Standalone packaged app | **passed** health, frozen process-worker scan, quit, zero orphan workers | [`tests/test_packaged_smoke.py`](tests/test_packaged_smoke.py) |
+| Standalone packaged app | **passed** health, session token enforced (`403` without it), frozen process-worker scan, quit, zero orphan workers | [`tests/test_packaged_smoke.py`](tests/test_packaged_smoke.py) |
 | Classification regression | file 31/31 family, 31/31 role; track 13/13 family, 11/13 role | [`docs/classification-evaluation.md`](docs/classification-evaluation.md) |
 | Scan/search benchmark | 1,000 files: **83 files/s** full, **255 files/s** incremental; peak tree RSS **88.2 MB**; search p50 **~13.5 ms** | [`docs/benchmark-results.json`](docs/benchmark-results.json) |
 | Playback stability | source-time drift **0.989×** over 7.6 s while scanning and filtering; 0 late/0 skipped notes | [`docs/playback-stability.json`](docs/playback-stability.json) |

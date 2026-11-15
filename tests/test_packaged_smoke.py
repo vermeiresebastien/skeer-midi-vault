@@ -29,13 +29,30 @@ def free_port() -> int:
         return int(sock.getsockname()[1])
 
 
+_session: dict[str, object] = {}
+
+
+def session_token(base: str) -> str:
+    """The token the frozen service hands this client, fetched like the page does.
+
+    Every write to the packaged service requires it, so a harness that posts
+    without it is rejected for the same reason a foreign page is.
+    """
+    if not _session:
+        _session.update(api(base, "/session"))
+    return str(_session.get("token") or "")
+
+
 def api(base: str, path: str, method: str = "GET", payload: dict | None = None) -> object:
     body = json.dumps(payload).encode("utf-8") if payload is not None else None
+    headers = {"Content-Type": "application/json"}
+    if method not in ("GET", "HEAD"):
+        headers["X-SKEER-Token"] = session_token(base)
     request = urllib.request.Request(
         f"{base}/api{path}",
         data=body,
         method=method,
-        headers={"Content-Type": "application/json"},
+        headers=headers,
     )
     with urllib.request.urlopen(request, timeout=5) as response:
         return json.loads(response.read().decode("utf-8"))
@@ -78,6 +95,15 @@ def main() -> int:
             print("FAIL: packaged service did not become healthy")
             return 2
         print("health", health.get("app"), health.get("version"))
+
+        session = api(base, "/session")
+        print("session protected:", session.get("protected"))
+        if not session.get("protected"):
+            print("FAIL: packaged service accepts writes without a session token")
+            return 3
+        if not str(session.get("token") or ""):
+            print("FAIL: packaged service reports itself protected but hands out no token")
+            return 3
 
         api(base, "/bootstrap")
         source = api(base, "/sources", "POST", {

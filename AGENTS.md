@@ -53,9 +53,13 @@ node tests/playback-stability.mjs       # drift/telemetry under a concurrent 150
 
 There is **no lint command** — no ruff/black/mypy config, no ESLint config. Do not
 invent one unprompted. Tests isolate in `tempfile` directories; they never touch
-`%LOCALAPPDATA%`. The three browser harnesses share `tests/api-client.mjs`, which
-fetches `GET /api/session` and echoes `X-SKEER-Token` on every write — a harness
-that posts without it gets 403, the same as a foreign page. SQLite suites open their temp dir with
+`%LOCALAPPDATA%`. Every harness that writes must authenticate: the three browser
+harnesses share `tests/api-client.mjs`, and `tests/test_packaged_smoke.py` fetches
+the token the same way in Python — both call `GET /api/session` and echo
+`X-SKEER-Token` on every write, so a harness that posts without it gets 403, the
+same as a foreign page. `test_packaged_smoke.py` is a standalone script, not a
+`unittest` module: it collects zero tests, so `python -m unittest discover -s tests`
+never runs it. Run it by hand after any packaging or boundary change. SQLite suites open their temp dir with
 `ignore_cleanup_errors=True`: Windows can hold a just-closed WAL file for a beat
 and fail `tearDown` on a run where every assertion passed — ~1 suite in 6 before
 that, and the flake is in the harness, not the code.

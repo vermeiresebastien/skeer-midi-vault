@@ -165,11 +165,27 @@ executor.
 - `/api/app/quit` exited the process with code 0 and removed `runtime.json`.
 - **No orphan `--multiprocessing-fork` workers** survived app exit.
 - The portable ZIP was extracted and the same smoke test passed.
+- Re-run 2026-11-15 against the rebuilt bundle, with the session boundary now in
+  the frozen build: `GET /api/session` reports **`protected: true`**, the harness
+  authenticates its writes the way the page does, and a tokenless
+  `POST /api/sources` is answered with **403** by the shipped EXE. That last
+  point is what the earlier run of this same script did by itself, before the
+  harness carried a token — the boundary reaches the packaged app, not just the
+  source tree.
+- Known cosmetic defect, unchanged by this session: at quit the HTTP thread logs
+  `OSError: [WinError 10038]` to stderr from `serve_forever`
+  ([midivault/server.py:101](../midivault/server.py)) because the listening
+  socket closes under the selector. The process still exits 0 with no orphans.
 
 ## Installer
 
-`packaging/build_installer.ps1` builds `SKEER-MIDI-VAULT-Setup-1.0.0.exe`
-(Inno Setup, 21.9 MB) and the portable ZIP (29.0 MB) with SHA-256 checksums.
+`packaging/build_installer.ps1` builds `SKEER-MIDI-VAULT-Setup-1.0.0.exe` (Inno Setup)
+and the portable ZIP into `launch/` with SHA-256 checksums. Rebuilt 2026-11-15 after
+the boundary, migration and deck work: Setup 23,361,854 bytes (22.3 MiB,
+`c2afd2a0f6f932eb…`), portable ZIP 31,303,849 bytes (29.9 MiB, `572086aa04723f26…`).
+Both hashes were recomputed independently against `launch/SHA256SUMS.txt`, and the
+interface payload inside the bundle is byte-identical to `web/dist` — including the
+new deck code — so what was verified is what ships.
 
 A full interactive install → shortcuts → uninstall cycle could **not** be completed
 inside this sandboxed build session: the setup child process is denied writes to
