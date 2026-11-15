@@ -366,7 +366,7 @@ path on a fixed port; one stops the index from lying to itself; one turns a file
 into something a producer can actually ear-scan a pack with.
 
 **Status 2026-11-15:** those three are built and verified, along with the selection-preserving
-half of 8. 1 and 2 are covered by `tests/test_http_boundary.py` and `tests/test_schema_migration.py`
-(both red against the pre-fix tree); 10 and 8 by `tests/autoplay-deck.mjs` in a real browser (red
-against `b424bd4`). Nothing here is committed yet, so treat `git log` as the authority on whether
-the working tree still leads the branch.
+half of 8, and committed as `67ff177`. 1 and 2 are covered by `tests/test_http_boundary.py` and
+`tests/test_schema_migration.py` (both red against the pre-fix tree); 10 and 8 by
+`tests/autoplay-deck.mjs` in a real browser (red against `b424bd4`). Nothing is pushed, so
+`origin/master` still sits at `b424bd4`.
