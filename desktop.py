@@ -19,6 +19,7 @@ import json
 import logging
 import multiprocessing
 import os
+import secrets
 import socket
 import sys
 import threading
@@ -222,6 +223,9 @@ def run(args: argparse.Namespace) -> int:
                         "verbose": False,
                         "desktop_mode": True,
                         "quit_callback": request_quit,
+                        # Per-session secret; the web layer reads it back from
+                        # GET /api/session and echoes it on every write.
+                        "session_token": secrets.token_urlsafe(32),
                     },
                 )
                 break

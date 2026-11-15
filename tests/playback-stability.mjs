@@ -12,6 +12,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '../web/node_modules/playwright-core/index.mjs';
 import { findBrowser } from './browser-path.mjs';
+import { createApiClient } from './api-client.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'skeer-playback-'));
@@ -46,14 +47,7 @@ const server = spawn('python', ['-m', 'midivault.server', '--port', String(port)
 });
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function api(pathname, init = {}) {
-  const response = await fetch(`${base}/api${pathname}`, {
-    ...init,
-    headers: { 'Content-Type': 'application/json', ...(init.headers || {}) },
-  });
-  if (!response.ok) throw new Error(`API ${pathname}: ${response.status} ${await response.text()}`);
-  return response.json();
-}
+const api = createApiClient(base);
 
 async function waitForHealth() {
   for (let attempt = 0; attempt < 120; attempt += 1) {

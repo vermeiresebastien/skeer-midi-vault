@@ -1368,6 +1368,18 @@
   letter-spacing: -0.02em;
 }
 
+/* Deck position: how far through the list the transport has walked. */
+.transport-deck {
+  min-width: 52px;
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  text-align: center;
+  white-space: nowrap;
+}
+
 .transport-time .muted {
   font-size: 9.5px;
   color: var(--muted-light);

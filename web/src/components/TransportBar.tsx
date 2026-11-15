@@ -5,6 +5,8 @@ import type { ScanStatus } from '../types';
 import { formatBpm, formatTime } from '../lib/format';
 import { IconButton, Knob, Select } from './Common';
 import {
+  ChevronLeft,
+  ChevronRight,
   LoopIcon,
   PauseIcon,
   PlayIcon,
@@ -23,6 +25,9 @@ export function TransportBar({
   autoplay,
   autoplayBusy,
   onToggleAutoplay,
+  deckIndex,
+  deckCount,
+  onStepDeck,
 }: {
   engine: PreviewEngine;
   scan: ScanStatus;
@@ -34,6 +39,9 @@ export function TransportBar({
   autoplay: boolean;
   autoplayBusy: boolean;
   onToggleAutoplay: () => void;
+  deckIndex: number;
+  deckCount: number;
+  onStepDeck: (delta: number) => void;
 }) {
   const snapshot = useEngineSnapshot(engine);
   const [seeking, setSeeking] = useState(false);
@@ -44,6 +52,8 @@ export function TransportBar({
   const scanning = scan.active || scan.state === 'cancelling';
   const paused = snapshot.paused && !snapshot.playing;
   const scanFailures = scan.failed || 0;
+  const deckMoves = deckCount > 1;
+  const deckLabel = deckIndex >= 0 ? `${deckIndex + 1} / ${deckCount}` : 'off list';
 
   const togglePlay = async () => {
     if (snapshot.playing) engine.pause();
@@ -96,6 +106,14 @@ export function TransportBar({
   return (
     <footer className="transport-bar">
       <div className="transport-left">
+        <IconButton
+          label="Previous file in the list"
+          onClick={() => onStepDeck(-1)}
+          disabled={!deckMoves || deckIndex <= 0}
+          className="transport-step transport-step-prev"
+        >
+          <ChevronLeft size={16} />
+        </IconButton>
         <button
           type="button"
           className={`transport-play ${snapshot.playing ? 'is-playing' : ''}`}
@@ -106,6 +124,14 @@ export function TransportBar({
         >
           {snapshot.playing ? <PauseIcon size={18} /> : <PlayIcon size={18} />}
         </button>
+        <IconButton
+          label="Next file in the list"
+          onClick={() => onStepDeck(1)}
+          disabled={!deckMoves || deckIndex < 0 || deckIndex >= deckCount - 1}
+          className="transport-secondary transport-step"
+        >
+          <ChevronRight size={16} />
+        </IconButton>
         <IconButton
           label="Stop"
           onClick={() => engine.stop()}
@@ -125,7 +151,7 @@ export function TransportBar({
         </IconButton>
         <IconButton
           label={autoplay
-            ? 'Autoplay on: clicking another file previews it'
+            ? 'Autoplay on: each preview plays on to the next file in the list'
             : 'Autoplay off: previews only start when you press play'}
           onClick={onToggleAutoplay}
           active={autoplay}
@@ -135,6 +161,16 @@ export function TransportBar({
         >
           Auto
         </IconButton>
+        {deckMoves ? (
+          <div
+            className="transport-deck mono"
+            title={autoplay
+              ? 'Where this list is up to. Autoplay stops when it reaches the end.'
+              : 'Files in this list. Turn on Autoplay to play straight through it.'}
+          >
+            {deckLabel}
+          </div>
+        ) : null}
         <div className="transport-time mono">
           <span>{formatTime(snapshot.sourceTime)}</span>
           <span className="time-divider">/</span>

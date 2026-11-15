@@ -4,6 +4,11 @@ Exact duplicate identity is the SHA-256 of the whole file. Similarity is a
 clearly separate, lower-confidence signal computed from a compact musical
 fingerprint. Similar files are never presented as byte-identical copies and are
 never deleted.
+
+Similarity only ever compares fingerprints of the current generation: a vector
+from an older ``fv`` generation is dropped from the candidate set rather than
+scored, so a fingerprint-format change can never produce a plausible-looking
+wrong answer.
 """
 from __future__ import annotations
 
@@ -11,6 +16,8 @@ import json
 import math
 from collections import defaultdict
 from typing import Any, Iterable
+
+from .versions import FINGERPRINT_VERSION, LEGACY_FINGERPRINT_VERSION
 
 
 def _cosine(a: list[float], b: list[float]) -> float:
@@ -42,6 +49,22 @@ def _fingerprint(file: dict[str, Any]) -> dict[str, Any] | None:
         return parsed if isinstance(parsed, dict) else None
     except (TypeError, ValueError):
         return None
+
+
+def fingerprint_generation(file: dict[str, Any]) -> int:
+    """Generation stamp of a file's stored fingerprint.
+
+    ``LEGACY_FINGERPRINT_VERSION`` is returned for fingerprints written before
+    versioning existed (no ``fv``) as well as for files with no fingerprint at
+    all; neither is comparable.
+    """
+    fingerprint = _fingerprint(file)
+    if not fingerprint:
+        return LEGACY_FINGERPRINT_VERSION
+    try:
+        return int(fingerprint.get("fv") or LEGACY_FINGERPRINT_VERSION)
+    except (TypeError, ValueError):
+        return LEGACY_FINGERPRINT_VERSION
 
 
 def _similarity(a: dict[str, Any], b: dict[str, Any], fa: dict[str, Any],
@@ -96,13 +119,18 @@ def _similarity(a: dict[str, Any], b: dict[str, Any], fa: dict[str, Any],
 def similar_groups(files: Iterable[dict[str, Any]],
                    excluded_ids: set[int] | None = None,
                    threshold: float = 0.955,
-                   bucket_limit: int = 240) -> list[list[dict[str, Any]]]:
+                   bucket_limit: int = 240,
+                   current_version: int = FINGERPRINT_VERSION) -> list[list[dict[str, Any]]]:
     """Group musically similar files within practical candidate buckets.
 
     This is an intentionally conservative, O(bucket²) comparison over
     role/instrument/tempo buckets. It is a practical similarity signal, not an
     identity claim. Very large same-role/same-tempo buckets are capped, which is
     documented as a scalability limitation.
+
+    Files whose fingerprint is not generation ``current_version`` are excluded
+    outright, so a mixed-generation index under-reports instead of inventing
+    matches.
     """
     excluded = excluded_ids or set()
     candidates: list[dict[str, Any]] = []
@@ -115,6 +143,8 @@ def similar_groups(files: Iterable[dict[str, Any]],
             continue
         fingerprint = _fingerprint(file)
         if not fingerprint:
+            continue
+        if fingerprint_generation(file) != current_version:
             continue
         tempo = float(file.get("tempo_bpm") or 0)
         if tempo <= 0:

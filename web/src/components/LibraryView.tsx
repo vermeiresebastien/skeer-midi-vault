@@ -1,4 +1,4 @@
-import { useMemo, type DragEvent } from 'react';
+import { useEffect, useMemo, useRef, type DragEvent } from 'react';
 import type {
   Collection,
   Facets,
@@ -82,6 +82,13 @@ export function LibraryView({
   const allSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
   const activeFilterCount = countActiveFilters(filters);
   const activeChips = buildActiveChips(filters, facets, collections);
+  // Autoplay can walk the list faster than the eye, so the row that is actually
+  // sounding stays in view. "nearest" means a row already on screen does not
+  // move at all, which keeps this from fighting a manual scroll.
+  const activeRow = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    activeRow.current?.scrollIntoView({ block: 'nearest' });
+  }, [selectedId]);
 
   const startDrag = (event: DragEvent<HTMLElement>, item: LibraryItem) => {
     const url = new URL(rawFileUrl(item.id), window.location.href).toString();
@@ -308,6 +315,7 @@ export function LibraryView({
             return (
               <div
                 key={item.id}
+                ref={active ? activeRow : undefined}
                 role="option"
                 aria-selected={active}
                 tabIndex={0}

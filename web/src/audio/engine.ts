@@ -118,6 +118,7 @@ export class PreviewEngine {
   private noiseBuffer: AudioBuffer | null = null;
   private sequence: EngineSequence | null = null;
   private listeners = new Set<() => void>();
+  private endListeners = new Set<() => void>();
   private snapshot: EngineSnapshot;
   private muted = new Set<string>();
   private solo = new Set<string>();
@@ -166,6 +167,18 @@ export class PreviewEngine {
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  };
+
+  /**
+   * Notified only when a pass runs out on its own. Pause, stop and seek all
+   * land on `playing: false` as well, so the snapshot alone cannot tell the
+   * autoplay deck "the clip finished" apart from "the user took the transport
+   * off" — and advancing on the second reading would be the whole feature
+   * ignoring every manual stop.
+   */
+  subscribeEnd = (listener: () => void): (() => void) => {
+    this.endListeners.add(listener);
+    return () => this.endListeners.delete(listener);
   };
 
   getSnapshot = (): EngineSnapshot => this.snapshot;
@@ -646,6 +659,13 @@ export class PreviewEngine {
       this.schedulerTimer = null;
     }
     this.emit(true);
+    for (const listener of this.endListeners) {
+      try {
+        listener();
+      } catch (error) {
+        console.error('SKEER MIDI VAULT end listener failed', error);
+      }
+    }
   }
 
   private ensureAudibleTrack(trackKey: string): EngineTrack | null {

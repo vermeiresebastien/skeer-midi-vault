@@ -5,9 +5,12 @@ Version: 1.0.0<br>
 Platform: Windows 10 22H2, AMD Ryzen 9 3900X, 24 logical cores, 63.9 GB RAM
 
 Re-verification: `python -m unittest discover -s tests` was run again on
-2026-11-14 and reported **Ran 55 tests — OK** in ~12 s (`test_api.py` and
-`test_classifier.py` have grown since). Everything below is the original
-2026-11-02 session and keeps the numbers that session produced.
+2026-11-15 and reported **Ran 79 tests — OK** in ~16 s, after the loopback-boundary
+(`test_http_boundary.py`, 14) and schema-migration (`test_schema_migration.py`, 9)
+suites landed and `test_api.py`, `test_classifier.py`, `test_duplicates.py` grew.
+An earlier re-run on 2026-11-14 reported 55. Everything below is the original
+2026-11-02 session and keeps the numbers that session produced, except the Python
+table, which was refreshed on 2026-11-15.
 
 Machine-readable results: [`e2e-results.json`](e2e-results.json),
 [`playback-stability.json`](playback-stability.json),
@@ -18,8 +21,9 @@ Machine-readable results: [`e2e-results.json`](e2e-results.json),
 
 | Suite | Result | Time |
 | --- | --- | --- |
-| Python unit/integration (`unittest`) | **51/51 passed** | ~11 s |
+| Python unit/integration (`unittest`) | **79/79 passed** | ~16 s |
 | Browser end-to-end (Playwright + Chrome) | **16/16 checks passed** | full isolated scan + interaction run |
+| Autoplay deck (Playwright + Chrome) | **8/8 checks passed** | auto-advance, bounded run, manual stop, selection survives filtering |
 | Classification regression | 31/31 family, 31/31 role, 13/13 track family, 11/13 track role | < 1 s |
 | Playback stability while scanning/filtering | **0 late, 0 skipped** scheduled notes; drift 0.989× | 7.6 s audition |
 | Packaged standalone app (Windows) | **passed** health + frozen process-worker scan + quit + zero orphan workers | onedir EXE smoke test |
@@ -33,15 +37,17 @@ Command:
 python -m unittest discover -s tests
 ```
 
-Result: **Ran 51 tests — OK**.
+Result: **Ran 79 tests — OK** (2026-11-15).
 
 | Module | Tests | What is covered |
 | --- | ---: | --- |
 | `test_parser.py` | 18 | Format 0/1/2, running status, VLQ, tempo map, SMPTE, sustain, overlapping notes, malformed chunks, missing EOT, text events, warnings, safety caps, fixture parsing |
-| `test_classifier.py` | 8 | Family/role rules, confidence caps, conflicts, uncertainty, filename-vs-acoustic evidence, format-2 primary selection, style tags |
+| `test_classifier.py` | 10 | Family/role rules, confidence caps, misleading-name conflicts, uncertainty, embedded-vs-estimated key, assumed tempo and meter, format-2 per-sequence track labels, genre never high-confidence, unnamed-track channel fallback, silent bars in rhythm analysis |
 | `test_scanner_db.py` | 10 | Full and incremental scans, exclusions, protected folders, junction/symlink skip, corrupt file isolation, pause/resume, cancel, user data preservation, unavailable sources, file modification check |
-| `test_api.py` | 8 | Health/bootstrap, search/details/Range streaming, labels/favorites/notes/tags, collections/bulk/facets, scan settings, export-without-overwrite, backup download, rebuild preserving user data, validation errors |
-| `test_duplicates.py` | 2 | Exact content duplicates and conservative similar-music grouping |
+| `test_api.py` | 10 | Health/bootstrap, search/details/Range streaming, labels/favorites/notes/tags, collections/bulk/facets, the autoplay setting persists, unknown setting keys are dropped, scan settings, export-without-overwrite, backup download and static host, rebuild preserving user data, validation errors |
+| `test_http_boundary.py` | 14 | Rebound `Host` rejected on reads and on the database backup, missing `Host`, `localhost`/dev-proxy hosts accepted, cross-origin and cross-site `Sec-Fetch-Site` writes rejected, write without a session token rejected, form-encoded and `text/plain` bodies rejected, bodyless write needs only the token, `/api/session` hands the token to a loopback page, reads never need it |
+| `test_schema_migration.py` | 9 | A v1 index advances to current and keeps every user edit, the old index is backed up before migration, reopening a current index does not back up again, a fresh index is not migrated, a newer index is refused untouched, an unmapped version jump is refused, legacy fingerprints are skipped until reindexed, the pipeline stamps its generation, only the current generation is compared |
+| `test_duplicates.py` | 3 | Exact content duplicates, conservative similar-music grouping, a fingerprint with no generation is never compared |
 | `test_platform.py` | 4 | Protected locations, cloud/reparse flags, optional source heuristics |
 | `test_demo_accuracy.py` | 1 | Generated demo labels still match the current parser/classifier |
 
@@ -97,6 +103,29 @@ Screenshots written by this suite:
 - `docs/screenshots/scan-computer.png`
 - `docs/screenshots/filters.png`
 - `docs/screenshots/format-2-sequences.png`
+
+## Autoplay deck
+
+Command (same isolated-service pattern; also exercises every write through the
+session token, so it doubles as live proof of the loopback boundary):
+
+```powershell
+node tests/autoplay-deck.mjs
+```
+
+Result: **8/8 checkpoints passed**, no browser console/page errors. Verified
+against HEAD as a negative control: "autoplay walks to the next file when a
+preview ends" and "a selection survives a filter change" both fail there and pass
+here.
+
+1. The transport reports its position in the list on screen.
+2. Autoplay walks to the next file when a preview ends by itself.
+3. The deck is bounded and says so at the end of the list — it does not wrap.
+4. Next and previous move the deck without waiting for an end.
+5. A manual stop ends the deck instead of handing off.
+6. Autoplay off leaves a finished preview where it is.
+7. A selection survives a filter change.
+8. No browser console or page errors.
 
 ## Playback stability
 

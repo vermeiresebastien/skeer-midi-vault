@@ -118,6 +118,18 @@ general-purpose classification accuracy.
   hardware's patch for program 24 is not this app's `pluck`, and a kit still
   depends on the receiving device mapping channel 10 to percussion.
 
+- **The autoplay deck is bounded by what the list shows.** With Autoplay on, a
+  preview that ends by itself opens the next row — your selection if the open file
+  is part of a multi-selection, otherwise the page of results on screen. It stops
+  at the end of that list instead of fetching the next page, so a 400-file pack is
+  ear-scanned a page at a time. Pause, Stop or a seek ends the run as well: only a
+  clip that plays out advances, and a clip you interrupted is not silently skipped.
+  Stepping with the transport's previous/next buttons works with Autoplay off, but
+  only moves the selection — it does not start playing.
+- A file that has nothing to hear (no notes, or a zero-length sequence) is stepped
+  over rather than left to stall the deck; a file that failed to parse is not in
+  the list to begin with.
+
 ## Interface and accessibility
 
 - The canvas piano roll is mouse/touch driven; it is not fully keyboard-navigable
@@ -135,10 +147,20 @@ general-purpose classification accuracy.
 - The service binds to loopback only and has no account system. It has **no
   authentication**, so any process or user that can reach the loopback port on a
   shared machine can query the local index while the app is running. Do not run it
-  on a shared untrusted machine if that matters.
+  on a shared untrusted machine if that matters. Requests whose `Host` is not a
+  loopback name are refused, cross-site writes are rejected, and writes from the
+  interface carry a per-process session token — that closes a webpage reaching
+  this port (DNS rebinding), not another local process. See
+  `docs/architecture.md`, "The loopback boundary".
 - All data is in one SQLite database. Backups are downloaded from the UI; there is
   no in-app restore screen and no cloud sync. To restore, quit the app and replace
-  `midivault.sqlite3` with a downloaded backup.
+  `midivault.sqlite3` with a downloaded backup. A schema migration writes one more
+  copy automatically, `midivault-index-v<from>-before-migration-<utc>.sqlite3`,
+  beside the index before it changes anything; nothing deletes or restores them.
+- An index built before fingerprints were versioned needs one re-scan before
+  similar-music grouping speaks again. Until then the Duplicates view
+  under-reports on purpose: those vectors carry no generation and are never
+  compared against current ones.
 - "Rebuild index" preserves user data but has no progress rollback: if a source is
   offline during the rebuild, its records remain as last indexed/missing
   depending on source availability.

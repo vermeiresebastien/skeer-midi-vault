@@ -12,6 +12,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '../web/node_modules/playwright-core/index.mjs';
 import { findBrowser } from './browser-path.mjs';
+import { createApiClient } from './api-client.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const runId = new Date().toISOString().replace(/[:.]/g, '-');
@@ -44,17 +45,7 @@ const results = [];
 let browser;
 let context;
 
-async function api(pathname, init = {}) {
-  const response = await fetch(`${base}/api${pathname}`, {
-    ...init,
-    headers: { 'Content-Type': 'application/json', ...(init.headers || {}) },
-  });
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`API ${pathname} -> ${response.status}: ${text}`);
-  }
-  return response.json();
-}
+const api = createApiClient(base);
 
 async function waitForHealth() {
   for (let attempt = 0; attempt < 100; attempt += 1) {
@@ -306,7 +297,7 @@ try {
     await page.locator('.transport-play').click();
     await page.waitForTimeout(250);
     assert.ok(parseClock(await page.locator('.transport-time').innerText()) > 0.1);
-    await page.locator('.transport-secondary').first().click();
+    await page.locator('.icon-btn[aria-label="Stop"]').click();
     await page.waitForTimeout(250);
   });
 

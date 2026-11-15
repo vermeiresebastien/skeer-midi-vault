@@ -27,6 +27,7 @@ from .engine.versions import (
     CLASSIFIER_METHOD,
     CLASSIFIER_RULESET,
     CLASSIFIER_VERSION,
+    FINGERPRINT_VERSION,
     PARSER_VERSION,
     SCHEMA_VERSION,
     SUPPORTED_EXTENSIONS,
@@ -42,6 +43,17 @@ class ApiError(Exception):
         self.message = message
 
 
+# The service binds loopback only, but a browser will happily send a request to
+# 127.0.0.1 from a page whose DNS record was rebound to it. Checking the ``Host``
+# header is the only defence that survives that, because after the flip the
+# attacker's page is same-origin and no CORS rule or ``Origin`` check applies.
+# Any port is accepted so the Vite dev proxy (which forwards the browser's
+# ``Host: 127.0.0.1:5173``) keeps working.
+LOOPBACK_HOST_NAMES = frozenset({"127.0.0.1", "localhost", "::1"})
+UNSAFE_METHODS = frozenset({"POST", "PATCH", "PUT", "DELETE"})
+TOKEN_HEADER = "X-SKEER-Token"
+
+
 class AppContext:
     def __init__(self, db: Database, scanner: ScanManager, data_dir: Path,
                  web_dir: Path, config: dict[str, Any]):
@@ -50,6 +62,9 @@ class AppContext:
         self.data_dir = data_dir
         self.web_dir = web_dir
         self.config = config
+        # Empty means the caller opted out of session tokens (tests, scripting).
+        # When set, every unsafe method must echo it back in ``TOKEN_HEADER``.
+        self.session_token = str(config.get("session_token") or "")
         self.started_at = time.time()
 
 
@@ -75,7 +90,7 @@ class MidiVaultHandler(BaseHTTPRequestHandler):
 
     # --------------------------------------------------------------- HTTP verbs
     def do_OPTIONS(self) -> None:  # noqa: N802
-        self._send_empty(HTTPStatus.NO_CONTENT)
+        self._dispatch("OPTIONS")
 
     def do_GET(self) -> None:  # noqa: N802
         self._dispatch("GET")
@@ -102,6 +117,32 @@ class MidiVaultHandler(BaseHTTPRequestHandler):
         if parsed.scheme in ("http", "https") and parsed.hostname in ("127.0.0.1", "localhost"):
             return origin
         return None
+
+    def _host_is_allowed(self) -> bool:
+        """True when the request addressed this service by a loopback name.
+
+        A rebinding attack reaches the port with ``Host: attacker.tld``; the
+        real app always carries ``127.0.0.1`` or ``localhost``. Port is ignored
+        so the Vite dev proxy still works.
+        """
+        host = self.headers.get("Host", "")
+        if not host:
+            return False
+        # A leading "//" makes urlparse treat the value as a netloc, which
+        # handles bracketed IPv6 literals and ports without hand-parsing.
+        return urlparse(f"//{host}").hostname in LOOPBACK_HOST_NAMES
+
+    def _check_write_guard(self) -> None:
+        """Reject any state-changing request that a remote page could forge."""
+        sec_fetch_site = (self.headers.get("Sec-Fetch-Site") or "").strip().lower()
+        if sec_fetch_site and sec_fetch_site not in ("same-origin", "same-site", "none"):
+            raise ApiError("Cross-site requests are not accepted.", 403)
+        origin = self.headers.get("Origin", "")
+        if origin and urlparse(origin).hostname not in LOOPBACK_HOST_NAMES:
+            raise ApiError("Cross-origin writes are not accepted.", 403)
+        token = self.context.session_token
+        if token and self.headers.get(TOKEN_HEADER, "") != token:
+            raise ApiError("Missing or invalid session token.", 403)
 
     def _common_headers(self) -> None:
         origin = self._cors_origin()
@@ -143,6 +184,12 @@ class MidiVaultHandler(BaseHTTPRequestHandler):
         raw = self.rfile.read(length) if length else b""
         if not raw:
             return {}
+        # A browser sends a form or a plain-text fetch without a preflight, so a
+        # lax content type here is what turns "read the library" into "run any
+        # POST". The app always sends application/json.
+        content_type = (self.headers.get("Content-Type") or "").split(";", 1)[0].strip().lower()
+        if content_type != "application/json":
+            raise ApiError("Request body must be JSON (Content-Type: application/json).", 415)
         try:
             payload = json.loads(raw.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError):
@@ -152,8 +199,16 @@ class MidiVaultHandler(BaseHTTPRequestHandler):
         return payload
 
     def _dispatch(self, method: str) -> None:
+        if not self._host_is_allowed():
+            self.send_json({"error": "This service only answers on its loopback address."}, 403)
+            return
+        if method == "OPTIONS":
+            self._send_empty(HTTPStatus.NO_CONTENT)
+            return
         parsed = urlparse(self.path)
         try:
+            if method in UNSAFE_METHODS:
+                self._check_write_guard()
             if parsed.path.startswith("/api/"):
                 self._handle_api(method, parsed.path, parse_qs(parsed.query))
             elif method == "GET":
@@ -182,6 +237,12 @@ class MidiVaultHandler(BaseHTTPRequestHandler):
 
         if method == "GET" and route == "health":
             self.send_json(self._health())
+            return
+        if method == "GET" and route == "session":
+            # Handing out the token over a GET is only safe because the Host
+            # check above already rejected any request that arrived under a
+            # foreign hostname, which is the rebinding case this defends.
+            self.send_json({"token": ctx.session_token, "protected": bool(ctx.session_token)})
             return
         if method == "GET" and route == "bootstrap":
             self.send_json(self._bootstrap())
@@ -494,6 +555,18 @@ class MidiVaultHandler(BaseHTTPRequestHandler):
         raise ApiError("API route not found", 404)
 
     # ------------------------------------------------------------------ payloads
+    def _versions(self) -> dict[str, Any]:
+        ctx = self.context
+        return {
+            "parser": PARSER_VERSION,
+            "classifier": CLASSIFIER_VERSION,
+            "schema": getattr(ctx.db, "schema_version", SCHEMA_VERSION),
+            "schema_supported": SCHEMA_VERSION,
+            "fingerprint": FINGERPRINT_VERSION,
+            "classifier_method": CLASSIFIER_METHOD,
+            "ruleset": CLASSIFIER_RULESET,
+        }
+
     def _health(self) -> dict[str, Any]:
         ctx = self.context
         return {
@@ -502,13 +575,7 @@ class MidiVaultHandler(BaseHTTPRequestHandler):
             "version": __version__,
             "uptime_seconds": round(time.time() - ctx.started_at, 1),
             "privacy": "local-only; no MIDI file, path or library content leaves this machine",
-            "versions": {
-                "parser": PARSER_VERSION,
-                "classifier": CLASSIFIER_VERSION,
-                "schema": SCHEMA_VERSION,
-                "classifier_method": CLASSIFIER_METHOD,
-                "ruleset": CLASSIFIER_RULESET,
-            },
+            "versions": self._versions(),
             "supported_extensions": sorted(SUPPORTED_EXTENSIONS),
             "supported_formats": [0, 1, 2],
             "db": ctx.db.db_health(),
@@ -532,13 +599,7 @@ class MidiVaultHandler(BaseHTTPRequestHandler):
                 "mode": bool(ctx.config.get("desktop_mode")),
                 "can_quit": callable(ctx.config.get("quit_callback")),
             },
-            "versions": {
-                "parser": PARSER_VERSION,
-                "classifier": CLASSIFIER_VERSION,
-                "schema": SCHEMA_VERSION,
-                "classifier_method": CLASSIFIER_METHOD,
-                "ruleset": CLASSIFIER_RULESET,
-            },
+            "versions": self._versions(),
             "supported_extensions": sorted(SUPPORTED_EXTENSIONS),
             "sources": sources,
             "drives": drives,
@@ -553,6 +614,12 @@ class MidiVaultHandler(BaseHTTPRequestHandler):
                 "path": ctx.db.db_path,
                 "fts_enabled": ctx.db.fts_enabled,
                 "size_bytes": ctx.db.path.stat().st_size if ctx.db.path.exists() else 0,
+                "schema_version": ctx.db.schema_version,
+                "fingerprint_version": FINGERPRINT_VERSION,
+                # Similarity only compares same-generation vectors, so the
+                # interface can say how much of the index it cannot yet judge.
+                "fingerprint_coverage": ctx.db.fingerprint_coverage(),
+                "last_migration": ctx.db.last_migration,
             },
         }
 

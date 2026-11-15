@@ -455,6 +455,46 @@ export default function App() {
     };
   }, [details, selectedSequence, soundPreferences]);
 
+  // ---------------------------------------------------------------- autoplay deck
+  // The bounded list the transport walks when a preview ends by itself. It
+  // rides the selection when the open file is part of a multi-selection — that
+  // is the crate you asked to hear — and otherwise the rows the current filter
+  // shows. It stops at the end instead of wrapping: an ear-scan that loops back
+  // to the first file is a machine gun, not a review.
+  const deckQueue = useMemo<number[]>(() => {
+    const rows = (library?.items ?? []).map((item) => item.id);
+    if (selectedIds.size > 1 && selectedFileId !== null && selectedIds.has(selectedFileId)) {
+      const onList = rows.filter((id) => selectedIds.has(id));
+      const offList = [...selectedIds]
+        .filter((id) => !rows.includes(id))
+        .sort((a, b) => a - b);
+      return [...onList, ...offList];
+    }
+    return rows;
+  }, [library, selectedIds, selectedFileId]);
+
+  const deckIndex = selectedFileId === null ? -1 : deckQueue.indexOf(selectedFileId);
+
+  const stepDeck = useCallback((delta: number) => {
+    const target = deckIndex + delta;
+    if (target < 0 || target >= deckQueue.length) return;
+    openFile(deckQueue[target]);
+  }, [deckIndex, deckQueue, openFile]);
+
+  useEffect(() => {
+    // The autoplay setting is the deck's switch: a clip the user stopped,
+    // paused or seeked away from never reaches this, and a manual play with
+    // autoplay off stays a one-off preview.
+    if (!autoplay) return undefined;
+    return engine.subscribeEnd(() => {
+      const target = deckIndex + 1;
+      if (target < deckQueue.length) openFile(deckQueue[target]);
+      else if (deckQueue.length > 1) {
+        notify(`End of the list · played through ${deckQueue.length} previews.`, 'info');
+      }
+    });
+  }, [autoplay, engine, deckQueue, deckIndex, openFile, notify]);
+
   useEffect(() => {
     if (!soundLayer) {
       engine.setSequence(null);
@@ -487,8 +527,15 @@ export default function App() {
     // setSequence releases every voice of the previous file before the new
     // one is installed, so autoplay cannot stack notes across two files.
     engine.setSequence(engineSequence);
-    if (autoplayNow) void engine.play();
-  }, [soundLayer, engine, autoplay]);
+    if (!autoplayNow) return;
+    if (engineSequence.notes.length === 0 || !(engineSequence.duration > 0)) {
+      // A clip with nothing to hear still has to be gotten past, or one empty
+      // or unreadable file stalls the whole deck on the row that broke it.
+      stepDeck(1);
+      return;
+    }
+    void engine.play();
+  }, [soundLayer, engine, autoplay, stepDeck]);
 
   useEffect(() => {
     engine.setTrackFilter(mutedTracks, soloTracks);
@@ -539,7 +586,9 @@ export default function App() {
   }, [engine]);
 
   const patchFilters = (patch: Partial<LibraryFilters>) => {
-    setSelectedIds(new Set());
+    // Selection deliberately survives a filter change: it is how you build a
+    // crate across several passes, and the deck plays it. Clear it with the
+    // explicit control in the library header.
     setFilters((current) => ({ ...current, ...patch }));
   };
 
@@ -1019,6 +1068,9 @@ export default function App() {
           autoplay={autoplay}
           autoplayBusy={autoplayBusy}
           onToggleAutoplay={() => void toggleAutoplay()}
+          deckIndex={deckIndex}
+          deckCount={deckQueue.length}
+          onStepDeck={stepDeck}
           onOpenScan={() => setScanOpen(true)}
           onPauseScan={() => void pauseScan()}
           onResumeScan={() => void resumeScan()}

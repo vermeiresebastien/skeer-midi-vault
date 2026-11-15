@@ -143,6 +143,10 @@
     display: none;
   }
 
+  .transport-deck {
+    display: none;
+  }
+
   .scan-status {
     width: 220px;
     flex-basis: 220px;

@@ -376,7 +376,34 @@ export function SettingsDialog({
                   <div><span>Size</span><strong className="mono">{formatBytesStatic(bootstrap?.db.size_bytes)}</strong></div>
                   <div><span>Search index</span><strong>{bootstrap?.db.fts_enabled ? 'FTS5 enabled' : 'Fallback search'}</strong></div>
                   <div><span>Schema</span><strong className="mono">v{bootstrap?.versions.schema ?? '—'}</strong></div>
+                  <div><span>Fingerprint</span><strong className="mono">v{bootstrap?.versions.fingerprint ?? '—'}</strong></div>
+                  <div>
+                    <span>Similarity coverage</span>
+                    <strong className="mono">
+                      {(() => {
+                        const coverage = bootstrap?.db.fingerprint_coverage;
+                        if (!coverage || !coverage.indexed) return '—';
+                        return `${coverage.current} of ${coverage.indexed} file(s)`;
+                      })()}
+                    </strong>
+                  </div>
                 </div>
+                {(bootstrap?.db.fingerprint_coverage?.legacy ?? 0) > 0 ? (
+                  <InlineNotice tone="warning">
+                    {bootstrap?.db.fingerprint_coverage?.legacy} file(s) were fingerprinted by an
+                    older build. Similar-music grouping will not compare them against current
+                    files, so it reports fewer groups until the next scan updates them. Exact
+                    duplicates and everything else are unaffected.
+                  </InlineNotice>
+                ) : null}
+                {bootstrap?.db.last_migration ? (
+                  <p className="setting-hint">
+                    Schema upgraded from v{bootstrap.db.last_migration.from} to
+                    v{bootstrap.db.last_migration.to}. The previous index was copied to{' '}
+                    <code className="mono">{bootstrap.db.last_migration.backup}</code> first —
+                    quit the app and replace the database file to restore it.
+                  </p>
+                ) : null}
                 <div className="settings-actions-row">
                   <a className="btn btn-secondary btn-md" href={backupUrl} download>
                     <span className="btn-icon"><ExportIcon size={14} /></span>
@@ -428,8 +455,7 @@ export function SettingsDialog({
                   <Button
                     onClick={async () => {
                       try {
-                        const response = await fetch('/api/maintenance/clear-issues', { method: 'POST' });
-                        if (!response.ok) throw new Error('Could not clear scan issues');
+                        await api.clearScanIssues();
                         onNotify('Scan issue list cleared.', 'success');
                       } catch (error) {
                         onNotify(error instanceof Error ? error.message : 'Could not clear issues.', 'error');
@@ -487,6 +513,7 @@ export function SettingsDialog({
               <div className="about-grid">
                 <div><span>Parser</span><strong className="mono">v{bootstrap?.versions.parser ?? '—'}</strong></div>
                 <div><span>Classifier</span><strong className="mono">v{bootstrap?.versions.classifier ?? '—'}</strong></div>
+                <div><span>Fingerprint</span><strong className="mono">v{bootstrap?.versions.fingerprint ?? '—'}</strong></div>
                 <div><span>Method</span><strong>{bootstrap?.versions.classifier_method || 'SKEER rules'}</strong></div>
                 <div><span>Ruleset</span><strong className="mono">{bootstrap?.versions.ruleset || '—'}</strong></div>
                 <div><span>Supported</span><strong className="mono">{(bootstrap?.supported_extensions || []).join(' ')}</strong></div>

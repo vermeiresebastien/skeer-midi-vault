@@ -42,7 +42,8 @@ def wait_scan(scanner: ScanManager, timeout: float = 30.0) -> dict:
 
 class ScannerDatabaseTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.temp = tempfile.TemporaryDirectory(prefix="midivault-test-")
+        # Windows can hold a just-written WAL file one beat too long; that must not read as a test failure.
+        self.temp = tempfile.TemporaryDirectory(prefix="midivault-test-", ignore_cleanup_errors=True)
         self.root = Path(self.temp.name)
         self.library = self.root / "music"
         self.library.mkdir()

@@ -44,14 +44,21 @@ python -m midivault.server --open       # run from source; serves web/dist on 12
 npm --prefix web ci                     # frontend deps only; the Python app has ZERO runtime deps
 npm --prefix web run dev                # Vite :5173, proxies /api -> :8737
 npm --prefix web run build              # tsc --noEmit && vite build — this is also the only typecheck
-python -m unittest discover -s tests    # 55 tests, ~12s; framework is unittest, NOT pytest
+python -m unittest discover -s tests    # 79 tests, ~15s; framework is unittest, NOT pytest
 python scripts/evaluate_classification.py
 node tests/e2e-web.mjs                  # needs playwright-core (in web/node_modules) + CHROME_PATH
+node tests/autoplay-deck.mjs            # drives the real UI: autoplay deck, bounded run, durable selection
+node tests/playback-stability.mjs       # drift/telemetry under a concurrent 1500-file scan
 ```
 
 There is **no lint command** — no ruff/black/mypy config, no ESLint config. Do not
 invent one unprompted. Tests isolate in `tempfile` directories; they never touch
-`%LOCALAPPDATA%`.
+`%LOCALAPPDATA%`. The three browser harnesses share `tests/api-client.mjs`, which
+fetches `GET /api/session` and echoes `X-SKEER-Token` on every write — a harness
+that posts without it gets 403, the same as a foreign page. SQLite suites open their temp dir with
+`ignore_cleanup_errors=True`: Windows can hold a just-closed WAL file for a beat
+and fail `tearDown` on a run where every assertion passed — ~1 suite in 6 before
+that, and the flake is in the harness, not the code.
 
 ## Non-negotiables
 
@@ -64,11 +71,22 @@ invent one unprompted. Tests isolate in `tempfile` directories; they never touch
   and collections live in their own tables and must not be overwritten by a rescan,
   classifier bump or index rebuild.
 - **Cache invalidation is versioned:** bump `PARSER_VERSION` / `CLASSIFIER_VERSION`
-  in [midivault/engine/versions.py](midivault/engine/versions.py) when parse output
-  semantics or classification rules change.
-- **Loopback-only:** [midivault/server.py:50](midivault/server.py) refuses to bind
-  outside `127.0.0.1`/`localhost`/`::1`; CORS echoes only loopback origins
-  ([midivault/api.py:97](midivault/api.py)). No telemetry, accounts or cloud calls.
+  / `FINGERPRINT_VERSION` in [midivault/engine/versions.py](midivault/engine/versions.py)
+  when parse output semantics, classification rules, or the similarity vector change.
+  A fingerprint from another generation is skipped by similarity, never compared.
+- **Schema changes migrate:** bump `SCHEMA_VERSION` and add the step to `MIGRATIONS`
+  in [midivault/db.py](midivault/db.py) (keyed by the version it comes *from*).
+  Opening an index runs the version-gated steps, backs the old index up first, and
+  refuses a newer index rather than downgrading it — see `tests/test_schema_migration.py`.
+  Anything that needs the finished column set goes in `POST_SCHEMA_SQL`, not `SCHEMA_SQL`.
+- **Loopback-only:** `midivault/server.py` refuses to bind outside
+  `127.0.0.1`/`localhost`/`::1`; CORS echoes only loopback origins. On top of that,
+  every request is rejected unless its `Host` names loopback (`_host_is_allowed`,
+  which is what defeats DNS rebinding), writes need the session token
+  (`X-SKEER-Token`, issued by `GET /api/session`, enforced when a launcher passes
+  `session_token`), and a JSON body must actually be `application/json`. Do not
+  loosen these in `api.py` — `tests/test_http_boundary.py` simulates the attacks.
+  No telemetry, accounts or cloud calls.
 - **Honesty in labels:** accuracy claims are regression results on self-authored
   synthetic fixtures, never claims about real-world MIDI. Genre stays a low-confidence
   hint. See [docs/limitations.md](docs/limitations.md).

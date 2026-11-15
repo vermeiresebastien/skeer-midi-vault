@@ -18,7 +18,12 @@ from typing import Any, Iterable, Iterator
 
 from . import platform as winplatform
 from .db import Database
-from .engine.versions import CLASSIFIER_VERSION, PARSER_VERSION, SUPPORTED_EXTENSIONS
+from .engine.versions import (
+    CLASSIFIER_VERSION,
+    FINGERPRINT_VERSION,
+    PARSER_VERSION,
+    SUPPORTED_EXTENSIONS,
+)
 from .pipeline import parse_and_classify_file
 
 INTENSITY = {
@@ -139,7 +144,8 @@ class ScanManager:
             run_id = self.db.create_scan_run(
                 mode, [source["id"] for source in sources],
                 {"intensity": intensity, "workers": worker_count,
-                 "parser_version": PARSER_VERSION, "classifier_version": CLASSIFIER_VERSION},
+                 "parser_version": PARSER_VERSION, "classifier_version": CLASSIFIER_VERSION,
+                 "fingerprint_version": FINGERPRINT_VERSION},
             )
             now = time.monotonic()
             self._paused = False
@@ -320,6 +326,9 @@ class ScanManager:
                         and record.get("mtime_ns") == file_info["mtime_ns"]
                         and record.get("parser_version") == PARSER_VERSION
                         and record.get("classifier_version") == CLASSIFIER_VERSION
+                        # A legacy fingerprint is not comparable, so the file is
+                        # re-indexed once rather than silently skipped forever.
+                        and record.get("fingerprint_version") == FINGERPRINT_VERSION
                     )
                     if untouched:
                         pending_skips.append(file_info["path"])

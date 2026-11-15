@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import multiprocessing
 import os
+import secrets
 import sys
 import threading
 import time
@@ -11,7 +12,7 @@ import webbrowser
 from pathlib import Path
 
 from .api import create_server
-from .db import Database
+from .db import Database, SchemaError
 from .platform import discover_drives
 from .scanner import ScanManager
 
@@ -53,7 +54,13 @@ def main(argv: list[str] | None = None) -> int:
 
     data_dir = Path(args.data_dir).expanduser().resolve()
     data_dir.mkdir(parents=True, exist_ok=True)
-    db = Database(data_dir / "midivault.sqlite3")
+    try:
+        db = Database(data_dir / "midivault.sqlite3")
+    except SchemaError as exc:
+        # Fail closed, in plain language: an index this build does not
+        # understand is never opened, and never rewritten on the way out.
+        print(f"MIDI Vault did not open its index.\n\n{exc}", file=sys.stderr)
+        return 2
     scanner = ScanManager(db, data_dir)
     try:
         drives = discover_drives()
@@ -66,7 +73,13 @@ def main(argv: list[str] | None = None) -> int:
     try:
         server = create_server(
             args.host, args.port, db, scanner, data_dir, web_dir,
-            config={"verbose": args.verbose},
+            config={
+                "verbose": args.verbose,
+                # The browser picks this up from GET /api/session and echoes it
+                # on every write, so a page that is not the app cannot mutate
+                # the index even if it reaches the port.
+                "session_token": secrets.token_urlsafe(32),
+            },
         )
     except OSError as exc:
         print(f"Could not start MIDI Vault on {args.host}:{args.port}: {exc}", file=sys.stderr)

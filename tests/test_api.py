@@ -15,6 +15,7 @@ os.environ["SKEER_SCAN_EXECUTOR"] = "threads"
 
 from midivault.api import create_server
 from midivault.db import Database
+from midivault.engine.versions import FINGERPRINT_VERSION, SCHEMA_VERSION
 from midivault.scanner import ScanManager
 from tests.midi_builder import MidiTrack, build_smf
 
@@ -30,7 +31,8 @@ def show(midi_format: int = 0) -> bytes:
 
 class ApiTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.temp = tempfile.TemporaryDirectory(prefix="midivault-api-")
+        # Windows can hold a just-written WAL file one beat too long; that must not read as a test failure.
+        self.temp = tempfile.TemporaryDirectory(prefix="midivault-api-", ignore_cleanup_errors=True)
         root = Path(self.temp.name)
         self.library = root / "library"
         self.library.mkdir()
@@ -103,6 +105,13 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertTrue(health["ok"])
         self.assertEqual(health["versions"]["parser"], 1)
+        self.assertEqual(health["versions"]["schema"], SCHEMA_VERSION)
+        # The interface must be able to see which fingerprint generation the
+        # index is speaking, and whether anything is still waiting on a re-scan.
+        self.assertEqual(health["versions"]["fingerprint"], FINGERPRINT_VERSION)
+        coverage = health["db"]["fingerprint_coverage"]
+        self.assertEqual(coverage["legacy"], 0)
+        self.assertGreaterEqual(coverage["current"], 1)
         self.assertIn("local-only", health["privacy"])
         status, bootstrap, _ = self._request("/bootstrap")
         self.assertEqual(status, 200)

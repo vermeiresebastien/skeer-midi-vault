@@ -23,16 +23,41 @@ export class ApiRequestError extends Error {
   }
 }
 
+const UNSAFE_METHODS = new Set(['POST', 'PATCH', 'PUT', 'DELETE']);
+
+let sessionTokenPromise: Promise<string> | null = null;
+
+/**
+ * The service mints a per-session secret and requires it on every write, so a
+ * page that is not this app cannot mutate the index even if it reaches the
+ * port. Resolves to an empty string when the server is not protecting writes.
+ */
+function sessionToken(): Promise<string> {
+  if (!sessionTokenPromise) {
+    sessionTokenPromise = fetch(`${BASE}/session`)
+      .then((response) => (response.ok ? response.json() : { token: '' }))
+      .then((payload: unknown) => {
+        const token = (payload as { token?: unknown } | null)?.token;
+        return typeof token === 'string' ? token : '';
+      })
+      .catch(() => '');
+  }
+  return sessionTokenPromise;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const method = (init?.method || 'GET').toUpperCase();
+  const headers: Record<string, string> = {
+    ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+    ...((init?.headers as Record<string, string> | undefined) || {}),
+  };
+  if (UNSAFE_METHODS.has(method)) {
+    const token = await sessionToken();
+    if (token) headers['X-SKEER-Token'] = token;
+  }
   let response: Response;
   try {
-    response = await fetch(`${BASE}${path}`, {
-      ...init,
-      headers: {
-        ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
-        ...(init?.headers || {}),
-      },
-    });
+    response = await fetch(`${BASE}${path}`, { ...init, method, headers });
   } catch (error) {
     throw new ApiRequestError(
       error instanceof Error
@@ -102,6 +127,8 @@ export function filtersToQuery(filters: LibraryFilters): string {
 export const api = {
   bootstrap: () => request<Bootstrap>('/bootstrap'),
   health: () => request<Record<string, unknown>>('/health'),
+  clearScanIssues: () =>
+    request<{ ok: true }>('/maintenance/clear-issues', { method: 'POST' }),
   drives: () => request<{ drives: Drive[]; sources: Bootstrap['sources'] }>('/drives'),
   library: (filters: LibraryFilters) =>
     request<LibraryResponse>(`/library?${filtersToQuery(filters)}`),

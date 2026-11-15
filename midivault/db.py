@@ -17,7 +17,12 @@ from pathlib import Path
 from typing import Any, Iterable, Sequence
 
 from .engine.duplicates import exact_groups, similar_groups
-from .engine.versions import CLASSIFIER_METHOD, SCHEMA_VERSION
+from .engine.versions import (
+    CLASSIFIER_METHOD,
+    FINGERPRINT_VERSION,
+    LEGACY_FINGERPRINT_VERSION,
+    SCHEMA_VERSION,
+)
 
 JSON_FIELDS = {
     "style_tags", "embedded_text_json", "conflicts_json", "uncertainty_json",
@@ -46,12 +51,19 @@ def _decode_json(value: str | None, default: Any) -> Any:
         return default
 
 
+class SchemaError(RuntimeError):
+    """The index on disk cannot be opened by this build without risking data."""
+
+
 class Database:
     def __init__(self, path: str | os.PathLike):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.db_path = str(self.path)
         self.fts_enabled = False
+        self.schema_version = SCHEMA_VERSION
+        self.last_migration: dict[str, Any] | None = None
+        self._prepare_schema()
         self._initialise()
 
     # ------------------------------------------------------------------ core
@@ -75,6 +87,84 @@ class Database:
         finally:
             connection.close()
 
+    def _stored_schema_version(self) -> int | None:
+        """Schema version stamped on an existing index, or None when empty.
+
+        Read-only on purpose: it runs before anything is written, so an index
+        this build does not understand is refused without being touched.
+        ``meta.schema_version`` wins over ``PRAGMA user_version``; an index from
+        before either was maintained is schema 1, the only layout that existed.
+        """
+        if not self.path.exists():
+            return None
+        connection = self._connect()
+        try:
+            connection.execute("PRAGMA query_only=ON")
+            tables = {
+                row["name"]
+                for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            }
+            if "files" not in tables:
+                return None
+            stored = 0
+            if "meta" in tables:
+                row = connection.execute(
+                    "SELECT value FROM meta WHERE key='schema_version'"
+                ).fetchone()
+                if row is not None:
+                    try:
+                        stored = int(str(row["value"]).strip())
+                    except (TypeError, ValueError):
+                        stored = 0
+            pragma = connection.execute("PRAGMA user_version").fetchone()[0]
+            try:
+                pragma = int(pragma or 0)
+            except (TypeError, ValueError):
+                pragma = 0
+            return stored or pragma or 1
+        finally:
+            connection.close()
+
+    def _prepare_schema(self) -> None:
+        """Compare the index against this build, back up, then allow migration.
+
+        Newer-than-this is fatal and fail-closed: silently downgrading an index
+        loses columns, and a half-read index is worse than a refused start.
+        """
+        stored = self._stored_schema_version()
+        if stored is None or stored == SCHEMA_VERSION:
+            return
+        if stored > SCHEMA_VERSION:
+            raise SchemaError(
+                f"This index was written by a newer version of MIDI Vault (schema {stored}). "
+                f"This build understands schema {SCHEMA_VERSION} and will not open it, because "
+                "opening a newer index can drop data on the way out. Update MIDI Vault — "
+                "nothing in the index has been changed."
+            )
+        missing = [version for version in range(stored, SCHEMA_VERSION) if version not in MIGRATIONS]
+        if missing:
+            raise SchemaError(
+                f"There is no tested migration from schema {stored} to "
+                f"{SCHEMA_VERSION} (missing {', '.join(str(v) for v in missing)}). "
+                "The index has been left untouched."
+            )
+        self.last_migration = {
+            "from": stored,
+            "to": SCHEMA_VERSION,
+            "backup": self._backup_before_migration(stored),
+            "at": utcnow(),
+        }
+
+    def _backup_before_migration(self, stored: int) -> str:
+        """Keep a restorable copy of the index exactly as it was found."""
+        base = f"midivault-index-v{stored}-before-migration"
+        destination = self.path.parent / f"{base}-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%SZ')}.sqlite3"
+        suffix = 1
+        while destination.exists():
+            destination = destination.with_name(f"{destination.stem}-{suffix}.sqlite3")
+            suffix += 1
+        return self.backup_to(destination)
+
     def _initialise(self) -> None:
         with self.connection(write=True) as con:
             con.execute("PRAGMA journal_mode=WAL")
@@ -90,9 +180,21 @@ class Database:
                 self.fts_enabled = True
             except sqlite3.OperationalError:
                 self.fts_enabled = False
-            current = con.execute("PRAGMA user_version").fetchone()[0]
-            if not current:
-                con.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
+            if self.last_migration:
+                for version in range(self.last_migration["from"], self.last_migration["to"]):
+                    MIGRATIONS[version](con)
+                con.execute(
+                    "INSERT INTO meta(key, value) VALUES('last_migration', ?) "
+                    "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                    (_json(self.last_migration),),
+                )
+            # Runs after the migrations: an index on a column a migration adds
+            # cannot be created before the migration has added it.
+            con.executescript(POST_SCHEMA_SQL)
+            # Both stamps always follow the code, never only a fresh database:
+            # an index that was written back as-is still records that it has
+            # been checked by this build.
+            con.execute(f"PRAGMA user_version={int(SCHEMA_VERSION)}")
             con.execute(
                 "INSERT INTO meta(key, value) VALUES('schema_version', ?) "
                 "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
@@ -368,7 +470,8 @@ class Database:
     def get_scan_file_record(self, path: str) -> dict[str, Any] | None:
         with self.connection() as con:
             row = con.execute(
-                "SELECT id,size,mtime_ns,parser_version,classifier_version,scan_state,"
+                "SELECT id,size,mtime_ns,parser_version,classifier_version,"
+                "fingerprint_version,scan_state,"
                 "content_hash,is_missing FROM files WHERE path=?",
                 (path,),
             ).fetchone()
@@ -470,6 +573,7 @@ class Database:
             "uncertainty_json": _json(payload.get("uncertainty_notes") or []),
             "warnings_json": _json(payload.get("warnings") or []),
             "embedded_text_json": _json(payload.get("embedded_text") or []),
+            "fingerprint_version": int(payload.get("fingerprint_version") or LEGACY_FINGERPRINT_VERSION),
             "fingerprint_json": payload.get("fingerprint_json"),
             "cache_blob": payload.get("cache_blob"),
             "indexed_at": now,
@@ -805,13 +909,19 @@ class Database:
             rows = [
                 dict(row) for row in con.execute(
                     "SELECT id,path,filename,content_hash,scan_state,instrument,role,tempo_bpm,"
-                    "duration_seconds,note_count,fingerprint_json FROM files "
+                    "duration_seconds,note_count,fingerprint_version,fingerprint_json FROM files "
                     "WHERE scan_state='indexed' AND content_hash IS NOT NULL"
                 ).fetchall()
             ]
         exact = exact_groups(rows)
         exact_ids = {file["id"] for group in exact for file in group}
         similar = similar_groups(rows, excluded_ids=exact_ids)
+        stale = sum(
+            1 for row in rows
+            if row.get("fingerprint_json")
+            and int(row.get("fingerprint_version") or LEGACY_FINGERPRINT_VERSION)
+            != FINGERPRINT_VERSION
+        )
         now = utcnow()
         with self.connection(write=True) as con:
             con.execute("DELETE FROM duplicate_groups")
@@ -857,6 +967,7 @@ class Database:
             "exact_files": sum(len(group) for group in exact),
             "similar_groups": len(similar),
             "similar_files": sum(len(group) for group in similar),
+            "stale_fingerprints": stale,
         }
 
     # --------------------------------------------------------------- library
@@ -1534,22 +1645,77 @@ class Database:
 
     def invalidate_index(self) -> None:
         with self.connection(write=True) as con:
-            con.execute("UPDATE files SET parser_version=0, classifier_version=0")
+            con.execute("UPDATE files SET parser_version=0, classifier_version=0, "
+                        "fingerprint_version=0")
             con.execute("UPDATE tracks SET auto_instrument='Unknown', auto_role='Unknown'")
 
     def clear_scan_issues(self) -> None:
         with self.connection(write=True) as con:
             con.execute("DELETE FROM scan_issues")
 
+    def fingerprint_coverage(self) -> dict[str, int]:
+        """How much of the index can similarity actually speak about.
+
+        ``legacy`` counts files whose fingerprint predates the current
+        generation. Those files are skipped by the comparison, so this is the
+        number of files a re-scan still owes — not a bug count.
+        """
+        with self.connection() as con:
+            row = con.execute(
+                "SELECT "
+                "SUM(CASE WHEN fingerprint_version=? THEN 1 ELSE 0 END) AS current,"
+                "SUM(CASE WHEN COALESCE(fingerprint_version,?)<>? THEN 1 ELSE 0 END) AS legacy,"
+                "COUNT(*) AS total FROM files WHERE scan_state='indexed'",
+                (FINGERPRINT_VERSION, LEGACY_FINGERPRINT_VERSION, FINGERPRINT_VERSION),
+            ).fetchone()
+        return {
+            "current": int(row["current"] or 0) if row else 0,
+            "legacy": int(row["legacy"] or 0) if row else 0,
+            "indexed": int(row["total"] or 0) if row else 0,
+        }
+
     def db_health(self) -> dict[str, Any]:
         with self.connection() as con:
             integrity = con.execute("PRAGMA integrity_check").fetchone()[0]
             fk = con.execute("PRAGMA foreign_key_check").fetchall()
+        with self.connection() as con:
+            migration = con.execute("SELECT value FROM meta WHERE key='last_migration'").fetchone()
         return {
             "integrity": integrity,
             "foreign_key_issues": len(fk),
             "fts_enabled": self.fts_enabled,
+            "schema_version": self.schema_version,
+            "fingerprint_version": FINGERPRINT_VERSION,
+            "fingerprint_coverage": self.fingerprint_coverage(),
+            "last_migration": _decode_json(migration["value"] if migration else None, None),
         }
+
+
+def _migrate_schema_1_to_2(con: sqlite3.Connection) -> None:
+    """Add ``files.fingerprint_version`` and mark every existing row legacy.
+
+    Fingerprint vectors written before versioning carry no ``fv``, so they
+    cannot be compared against current ones. Each pre-existing row is stamped
+    ``LEGACY_FINGERPRINT_VERSION``: similarity refuses it, and the next scan
+    re-indexes it once. That one-time pass is the point — a silently mixed
+    index would under- or over-report duplicates with no way to tell.
+    """
+    columns = {row["name"] for row in con.execute("PRAGMA table_info(files)").fetchall()}
+    if "fingerprint_version" not in columns:
+        con.execute("ALTER TABLE files ADD COLUMN fingerprint_version INTEGER")
+    con.execute(
+        "UPDATE files SET fingerprint_version=? WHERE fingerprint_version IS NULL",
+        (LEGACY_FINGERPRINT_VERSION,),
+    )
+
+
+MIGRATIONS: dict[int, Any] = {1: _migrate_schema_1_to_2}
+
+# Statements that need the *final* column set, so they run after migrations:
+# an index naming a column a migration adds would otherwise fail on upgrade.
+POST_SCHEMA_SQL = """
+CREATE INDEX IF NOT EXISTS idx_files_fingerprint_version ON files(fingerprint_version);
+"""
 
 
 SCHEMA_SQL = """
@@ -1675,6 +1841,7 @@ CREATE TABLE IF NOT EXISTS files (
     warnings_json TEXT,
     embedded_text_json TEXT,
     fingerprint_json TEXT,
+    fingerprint_version INTEGER,
     favorite INTEGER NOT NULL DEFAULT 0,
     user_notes TEXT NOT NULL DEFAULT '',
     search_blob TEXT,

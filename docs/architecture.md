@@ -95,6 +95,38 @@ Why not Electron/Tauri:
   for this first version. `start.bat`/`start.ps1` are the complete install step.
 - SQLite gives durable single-file backup and recovery for free.
 
+### The loopback boundary
+
+Binding to `127.0.0.1` alone is not a boundary: a page on the internet can
+resolve its own hostname to `127.0.0.1` (DNS rebinding) and then read the
+library as if it were its own origin, because a plain `fetch` with no
+`Content-Type` is a *simple* request that needs no preflight and is therefore
+never blocked by CORS. MIDI Vault has no account and no token to steal, so what
+an attacker could reach is the file list, folder structure, notes, tags, and the
+raw bytes of any MIDI file. Four guards close that, all in `api.py`:
+
+1. **`Host` allowlist** — every request, read or write, is answered only when
+   its `Host` names loopback. This is the guard that defeats rebinding; any
+   other name gets `403` before routing.
+2. **Origin and `Sec-Fetch-Site` on writes** — a cross-site `Origin`, or a
+   `Sec-Fetch-Site` that is neither `same-origin`, `same-site` nor `none`, is
+   refused. Browsers set these and pages cannot clear them.
+3. **Session token** — the launcher generates one per process and
+   `web/src/api.ts` reads it from `GET /api/session` and echoes it in
+   `X-SKEER-Token` on `POST`/`PATCH`/`PUT`/`DELETE`. A page on another origin
+   can neither read that response nor send that header without a preflight that
+   CORS already rejects. It is opt-in through `config`, so the plain
+   `python -m midivault.server` development flow stays token-free.
+4. **`application/json` required** — the cross-origin simple-request path dies
+   here too: form or text bodies are `415`, and `simple_multipart` cannot set
+   `Content-Type: application/json`.
+
+Verified by `tests/test_http_boundary.py`, which forges the `Host`, the `Origin`
+and `Sec-Fetch-Site` headers directly (`http.client` with `skip_host=True`) and
+proves the read paths return real data for a well-formed loopback request. The
+service is still unauthenticated by design: any local process or user on this
+machine can reach it. See `docs/limitations.md`.
+
 ## 3. Repository layout
 
 ```
@@ -106,7 +138,8 @@ midivault/
     classifier.py        instrument/role/style rules, confidence, evidence
     duplicates.py        exact + similarity grouping
     model.py             immutable dataclasses shared by parser/classifier
-    versions.py          PARSER_VERSION / CLASSIFIER_VERSION / RULESET
+    versions.py          PARSER_VERSION / CLASSIFIER_VERSION / FINGERPRINT_VERSION
+                         / RULESET / SCHEMA_VERSION
   db.py                  schema, migrations, FTS5, all SQL
   scanner.py             scan controller and background workers
   pipeline.py            worker-side parse → analyse → classify, cache payload
@@ -139,7 +172,7 @@ SQLite in WAL mode, one writer at a time, short transactions:
 | `excludes` | user-excluded subtrees |
 | `scan_runs`, `scan_issues` | durable scan history and failures |
 | `directories` | folder browsing and counts |
-| `files` | path, size, mtime, hash, parser/classifier versions, scan state, auto + effective labels, musical summary |
+| `files` | path, size, mtime, hash, parser/classifier/fingerprint versions, scan state, auto + effective labels, musical summary |
 | `tracks` | per-sequence/channel logical tracks, auto + effective labels |
 | `file_corrections`, `track_corrections` | user accepted/corrected labels |
 | `predictions` | immutable audit of auto predictions by classifier version |
@@ -158,6 +191,33 @@ SQLite WAL writes are frequent during a scan. `user_*` corrections, collections,
 tags, favorites and notes are independent of the parser cache, so a version bump,
 rescan or index rebuild does not erase them. The database can be backed up with
 SQLite's online backup API while the app is open.
+
+### Index versions and migration
+
+Three stamps decide what work is still valid, and each is compared, never just
+written:
+
+| Stamp | Invalidates |
+| --- | --- |
+| `PARSER_VERSION` | the cached parse blob and its preview |
+| `CLASSIFIER_VERSION` | automatic labels, evidence and predictions |
+| `FINGERPRINT_VERSION` | the similarity vector, i.e. every cross-file comparison |
+
+`SCHEMA_VERSION` is the shape of the tables themselves. Opening an index reads
+the stored version first: equal means nothing runs; lower means the index is
+copied to `midivault-index-v<from>-before-migration-<utc>.sqlite3` through the
+backup API and the version-gated steps in `db.MIGRATIONS` are applied in order;
+higher means `SchemaError` and the app refuses to start rather than downgrade a
+newer index. A version with no registered step fails closed the same way. The
+path is exercised in `tests/test_schema_migration.py`, including the guarantee
+that corrections, favorites, tags, notes and collections survive it.
+
+Fingerprint generations are deliberately not bridged. A vector whose `fv` is
+missing or different is dropped from the candidate set, so an index half-written
+by an older build reports *fewer* similar groups rather than invented ones. The
+next incremental scan re-indexes those files once — the legacy stamp is part of
+the skip test — and similarity comes back on its own. `/api/health` publishes
+the current generation and how many indexed files are still legacy.
 
 ## 5. Scanning and analysis pipeline
 

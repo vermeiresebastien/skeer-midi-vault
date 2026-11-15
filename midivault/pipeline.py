@@ -19,12 +19,19 @@ from .engine.smf_parser import MidiParseError, parse_smf
 from .engine.versions import (
     CLASSIFIER_METHOD,
     CLASSIFIER_VERSION,
+    FINGERPRINT_VERSION,
     MAX_FILE_BYTES,
     PARSER_VERSION,
 )
 
 
 def _fingerprint(parse_result, analysis: dict[str, Any]) -> dict[str, Any] | None:
+    """Compact musical fingerprint used for *similarity*, never identity.
+
+    ``fv`` stamps the generation of the vector. Any change to the components or
+    their scaling must bump ``FINGERPRINT_VERSION``; comparing across
+    generations is meaningless and is refused downstream.
+    """
     primary_index = analysis.get("primary_sequence_index", 0)
     sequence = next(
         (item for item in parse_result.sequences if item.index == primary_index),
@@ -54,6 +61,7 @@ def _fingerprint(parse_result, analysis: dict[str, Any]) -> dict[str, Any] | Non
     pc_sum = sum(pc) or 1.0
     onset_sum = sum(onset) or 1.0
     return {
+        "fv": FINGERPRINT_VERSION,
         "pc": [round(value / pc_sum, 6) for value in pc],
         "on": [round(value / onset_sum, 6) for value in onset],
         "pitch_mean": round(pitch_total / weight_total, 3) if weight_total else None,
@@ -194,6 +202,7 @@ def parse_and_classify_file(job: dict[str, Any]) -> dict[str, Any]:
             "classification": classification,
             "parser_version": PARSER_VERSION,
             "classifier_version": CLASSIFIER_VERSION,
+            "fingerprint_version": FINGERPRINT_VERSION,
         }
         cache_blob = gzip.compress(
             json.dumps(cache_payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8"),
@@ -264,6 +273,7 @@ def parse_and_classify_file(job: dict[str, Any]) -> dict[str, Any]:
             "warnings": file_warnings,
             "embedded_text": [item.get("text", "") for item in file_info.get("embedded_text", [])],
             "tracks": tracks,
+            "fingerprint_version": FINGERPRINT_VERSION,
             "fingerprint_json": json.dumps(fingerprint, separators=(",", ":")) if fingerprint else None,
             "search_fields": _search_fields(filename, path, analysis, classification),
             "cache_blob": cache_blob,

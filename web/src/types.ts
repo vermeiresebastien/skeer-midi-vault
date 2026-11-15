@@ -709,6 +709,8 @@ export interface Bootstrap {
     parser: number;
     classifier: number;
     schema: number;
+    schema_supported?: number;
+    fingerprint: number;
     classifier_method: string;
     ruleset: string;
   };
@@ -726,7 +728,15 @@ export interface Bootstrap {
   excludes: Array<{ id: number; path: string; note?: string | null; created_at?: string }>;
   collections: Collection[];
   tags: Tag[];
-  db: { path: string; fts_enabled: boolean; size_bytes: number };
+  db: {
+    path: string;
+    fts_enabled: boolean;
+    size_bytes: number;
+    schema_version?: number;
+    fingerprint_version?: number;
+    fingerprint_coverage?: { current: number; legacy: number; indexed: number };
+    last_migration?: { from: number; to: number; backup: string; at: string } | null;
+  };
   default_export_dir?: string;
   home_dir?: string;
   desktop?: { mode: boolean; can_quit: boolean };
