@@ -50,12 +50,12 @@ the selection on every facet click (`App.tsx:541-544`, verified), select-all is
 page-scoped over 60 rows, and autoplay arms once per click with no sequence-end hook in
 the engine. One click per file is Explorer with extra steps.
 
-**Third decision: the form factor stays a standalone app.** The engine-purity claim is
-true at the import level (verified: importing `midivault.engine` pulls in no `sqlite3`,
-`http`, `db`, `api` or `scanner`), which makes a thin CLI cheap. A VST3 browser is not
-cheap: it needs a C++ re-implementation or an IPC fork of a Python engine, and Live
-already owns the better synths. A plugin is a multi-week detour; a loopback MIDI port
-plus a verified drag gets most of the same workflow for a fraction of it.
+**Third decision: the form factor stays a standalone app.** Reversed 2026-11-15, when the
+user chose Lane 2 -- a self-contained C++ reader, with SQLite vendored as source rather
+than linked from a cache nobody can attribute. What still holds from this paragraph: the
+engine-purity claim is true at the import level (verified: importing `midivault.engine`
+pulls in no `sqlite3`, `http`, `db`, `api` or `scanner`), which is what makes a thin CLI
+cheap. The plug-in does not talk to port 8737; `plugin/` reads the index itself.
 
 ---
 
@@ -80,7 +80,7 @@ plus a verified drag gets most of the same workflow for a fraction of it.
 | 15 | Soundfont / sample-based instruments | audition | High | High | **Blocked on a licensing decision** (§5) |
 | 16 | Live Remote Script → project tempo/key into the vault | platform | Med | Med | **Later** — no supported Windows mechanism exists today |
 | 17 | CLI `analyse/query/scan` | platform | Med | Low | **Optional** — do as a consequence of 2, not before it |
-| 18 | VST3 browser + previewer | platform | Low | High | **Defer** — multi-week detour |
+| 18 | VST3 browser + previewer | platform | Low | High | **Building** — Lane 2; steps 1/3/4 in `plugin/` |
 | 19 | MCP/SSE machine endpoint | platform | Low | Med | **Defer** — duplicates the CLI, widens the boundary |
 | 20 | Embedding / semantic search | engine | Low | High | **Reject under stdlib-only** — no model weights, no ANN; FTS5+BM25 already covers text |
 
@@ -323,10 +323,18 @@ has so far avoided entirely.
 
 ## 7. Explicitly not doing
 
-**VST3 browser/previewer** — needs a C++ re-implementation or IPC fork of a Python engine,
-and the minimum viable version is a panel talking to `127.0.0.1:8737`, i.e. the existing
-app in plugin clothing. SQLite concurrency is *not* the obstacle (WAL + 30 s
-`busy_timeout`, `db.py:59-81`) — the engine binding and correction ownership are.
+**VST3 browser/previewer** — no longer belongs on this list, and the two reasons given for
+it did not survive the code. It was going to need "a C++ re-implementation or IPC fork of a
+Python engine": the re-implementation is a locator, one read-only SQLite connection and one
+`juce::MidiFile`, because the plug-in never needed the engine -- the index already holds
+what the engine decided, corrections included, which was the ownership worry answered rather
+than worked around. The panel talking to `127.0.0.1:8737` really was the wrong shape, and
+Lane 2 exists to avoid shipping it. And "SQLite concurrency is *not* the obstacle" was half
+right: `busy_timeout` (db.py:74) never came up because nothing here writes, but three other
+things did -- `immutable=1` silently read stale pages, a read-only open creates the `-shm`
+and `-wal` beside the user's index and cannot remove them, and a round trip through JUCE's
+writer adds closing note-offs on every pass without ever converging. All three are measured
+in `plugin/tests/` and written into the sources they constrain.
 **MCP/SSE endpoint** — thin, but duplicates a CLI and enlarges a boundary we are still
 closing in Step 1; better to be a client of an existing Live MCP than a host.
 **Embedding-based semantic search** — infeasible under stdlib-only: no model weights, no

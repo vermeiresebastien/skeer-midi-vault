@@ -53,3 +53,8 @@ dist-installer/
 # of what dj-library and sample-vault do. packaging/build_installer.ps1 runs
 # `npm run build` but never `npm ci`, so a checkout with no web/node_modules
 # needs that once first. start.ps1 handles both automatically.
+
+# The VST3 form lives in plugin/. This is the CMake tree, and unlike build/ at
+# the repo root there is nothing authored inside it: every byte is output of
+# `plugin/build.ps1`, including a whole JUCE build and the built .vst3 bundle.
+plugin/build/

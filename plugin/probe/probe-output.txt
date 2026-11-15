@@ -1,0 +1,84 @@
+STATE 1 -- writer closed cleanly (no -wal, no -shm)
+  files=12 -wal=absent -shm=absent
+  [PASS] readonly                     read 12 files, journal=wal, -wal=0 -shm=32768
+  [PASS] query_only                   read 12 files, journal=wal, -wal=0 -shm=32768
+STATE 2 -- un-checkpointed -wal, -shm removed (the corner case)
+  rebuilt for readonly: -wal=49472 -shm=absent
+  [PASS] readonly                     read 9 files, journal=wal, -wal=49472 -shm=32768 | fresh connection sees probe_query -> 1
+  rebuilt for readonly_immutable: -wal=49472 -shm=absent
+  [PASS] readonly_immutable           read 8 files, journal=delete, -wal=49472 -shm=absent | fresh connection sees probe_query -> 0
+  rebuilt for query_only: -wal=49472 -shm=absent
+  [PASS] query_only                   read 9 files, journal=wal, -wal=49472 -shm=32768 | fresh connection sees probe_query -> 1
+STATE 3 -- the real service mid-scan (writer alive, -shm present)
+  [PASS] readonly                     read 0 files, journal=wal, -wal=0 -shm=32768
+  [PASS] query_only                   read 0 files, journal=wal, -wal=0 -shm=32768
+  scan state=completed indexed=36 -wal=4074712 -shm=32768
+  [PASS] readonly                     read 37 files, journal=wal, -wal=4074712 -shm=32768
+  [PASS] query_only                   read 37 files, journal=wal, -wal=4074712 -shm=32768
+STATE 4 -- the user's own index, read-only, no writer running
+  size=449,347,584 bytes -wal=absent -shm=absent
+  [PASS] readonly                     read 45969 files, journal=wal, -wal=0 -shm=32768
+
+[
+ {
+  "state": "clean-exit",
+  "open": "readonly",
+  "ok": true,
+  "detail": "read 12 files, journal=wal, -wal=0 -shm=32768"
+ },
+ {
+  "state": "clean-exit",
+  "open": "query_only",
+  "ok": true,
+  "detail": "read 12 files, journal=wal, -wal=0 -shm=32768"
+ },
+ {
+  "state": "wal-without-shm",
+  "open": "readonly",
+  "ok": true,
+  "detail": "read 9 files, journal=wal, -wal=49472 -shm=32768 | fresh connection sees probe_query -> 1"
+ },
+ {
+  "state": "wal-without-shm",
+  "open": "readonly_immutable",
+  "ok": true,
+  "detail": "read 8 files, journal=delete, -wal=49472 -shm=absent | fresh connection sees probe_query -> 0"
+ },
+ {
+  "state": "wal-without-shm",
+  "open": "query_only",
+  "ok": true,
+  "detail": "read 9 files, journal=wal, -wal=49472 -shm=32768 | fresh connection sees probe_query -> 1"
+ },
+ {
+  "state": "during-scan",
+  "open": "readonly",
+  "ok": true,
+  "detail": "read 0 files, journal=wal, -wal=0 -shm=32768"
+ },
+ {
+  "state": "during-scan",
+  "open": "query_only",
+  "ok": true,
+  "detail": "read 0 files, journal=wal, -wal=0 -shm=32768"
+ },
+ {
+  "state": "live-after-scan",
+  "open": "readonly",
+  "ok": true,
+  "detail": "read 37 files, journal=wal, -wal=4074712 -shm=32768"
+ },
+ {
+  "state": "live-after-scan",
+  "open": "query_only",
+  "ok": true,
+  "detail": "read 37 files, journal=wal, -wal=4074712 -shm=32768"
+ },
+ {
+  "state": "user-real-index",
+  "open": "readonly",
+  "ok": true,
+  "detail": "read 45969 files, journal=wal, -wal=0 -shm=32768"
+ }
+]
+VERDICT: 10/10 attempts succeeded, 0 refused

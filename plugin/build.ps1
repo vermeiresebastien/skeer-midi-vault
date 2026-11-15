@@ -1,0 +1,36 @@
+# Configures, builds and then runs the four headless checks against the VST3 form of
+# SKEER MIDI VAULT: where the index is (vault-locator-test), reading it without writing to it
+# (vault-index-test), reading a source .mid (vault-midi-test) and loading the bundle the way a
+# DAW does (vault-host-test).
+#
+# JUCE is taken from a local checkout by default because a 100 MB shallow clone is the
+# slowest possible way to find out whether a build works. CMakeLists.txt still declares
+# FetchContent at tag 8.0.8, so a fresh clone with no -Juce argument builds on its own.
+#
+# Disclosed rather than smoothed over: the default checkout above is skulpt's and reports
+# 8.0.4, while CMakeLists.txt asks FetchContent for 8.0.8, so the pair was measured against both.
+# Pointing -Juce at a real 8.0.8 tree and running the same four suites gave identical counts --
+# 15, 24+1 skipped, 35+1 skipped, 20 checks, none failed. Keep that habit on this line: the
+# modules differed once already between those tags (MidiMessageSequence::size became getNumEvents).
+#
+#   powershell -File plugin/build.ps1
+#   powershell -File plugin/build.ps1 -Juce D:/Projects/skeer-audio/skulpt/external/JUCE
+#   powershell -File plugin/build.ps1 -Juce D:/Projects/skeer-audio/pulsekit/build/_deps/juce-src
+
+param(
+    [string] $Juce = "D:/Projects/skeer-audio/skulpt/external/JUCE",
+    [string] $Config = "Release"
+)
+
+$ErrorActionPreference = "Stop"
+$here = $PSScriptRoot
+$build = Join-Path $here "build"
+
+cmake -S $here -B $build "-DFETCHCONTENT_SOURCE_DIR_JUCE=$Juce"
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+cmake --build $build --config $Config
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+ctest --test-dir $build -C $Config --output-on-failure
+exit $LASTEXITCODE
