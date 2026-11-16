@@ -55,7 +55,12 @@ user chose Lane 2 -- a self-contained C++ reader, with SQLite vendored as source
 than linked from a cache nobody can attribute. What still holds from this paragraph: the
 engine-purity claim is true at the import level (verified: importing `midivault.engine`
 pulls in no `sqlite3`, `http`, `db`, `api` or `scanner`), which is what makes a thin CLI
-cheap. The plug-in does not talk to port 8737; the reader is built and tested into the VST3, but the processor does not call it yet.
+cheap. What Lane 2 settled rather than guessed: the plug-in never talks to
+`127.0.0.1:8737` -- it reads the same index file with its own C++ reader over SQLite
+vendored as source, so a running service is not a precondition for it working. And it now
+does read that index: the editor panel's explicit Connect click opens it read-only, and
+nothing before that click touches the file (measured by `vault-editor-test`, which lists
+the index folder on both sides of building the panel).
 
 ---
 
@@ -80,7 +85,7 @@ cheap. The plug-in does not talk to port 8737; the reader is built and tested in
 | 15 | Soundfont / sample-based instruments | audition | High | High | **Blocked on a licensing decision** (§5) |
 | 16 | Live Remote Script → project tempo/key into the vault | platform | Med | Med | **Later** — no supported Windows mechanism exists today |
 | 17 | CLI `analyse/query/scan` | platform | Med | Low | **Optional** — do as a consequence of 2, not before it |
-| 18 | VST3 browser + previewer | platform | Low | High | **Building** — Lane 2; plugin steps 1/3/4/5 and 9 (state restore) green: 5 suites, 15/24+1/35+1/77/22 checks, on JUCE 8.0.4 and 8.0.8; Step 7's gate reads 10 literals in 6 files |
+| 18 | VST3 browser + previewer | platform | Low | High | **Building** — Lane 2; plugin steps 1/3/4/5 and 9 (state restore) are committed. Steps 6 (the editor panel) and 7 (drag out, Copy path, Save clip as…) are committed as `eb7e4d9`: 6 suites, 15/24+1/35+1/77/136/26 checks, identical on JUCE 8.0.4 and 8.0.8. An independent review of that delta returned **not safe to commit**; both data-loss paths, the strip check that could not fail, and the three MEDIUM findings are now closed, each proven red against a revert of its own fix and green again byte-exact (see the status block at the end of this file). It is still **not accepted**: step 8 — a session in a real host — has not happened, and that is the only thing left on this row. The plan's Step 7 version gate reads 10 literals in 6 files |
 | 19 | MCP/SSE machine endpoint | platform | Low | Med | **Defer** — duplicates the CLI, widens the boundary |
 | 20 | Embedding / semantic search | engine | Low | High | **Reject under stdlib-only** — no model weights, no ANN; FTS5+BM25 already covers text |
 
@@ -406,5 +411,96 @@ into something a producer can actually ear-scan a pack with.
 **Status 2026-11-15:** those three are built and verified, along with the selection-preserving
 half of 8, and committed as `67ff177`. 1 and 2 are covered by `tests/test_http_boundary.py` and
 `tests/test_schema_migration.py` (both red against the pre-fix tree); 10 and 8 by
-`tests/autoplay-deck.mjs` in a real browser (red against `b424bd4`). Nothing is pushed, so
-`origin/master` still sits at `b424bd4`.
+`tests/autoplay-deck.mjs` in a real browser (red against `b424bd4`).
+
+**Status 2026-11-16 — the plug-in lane (row 18, Lane 2):** steps 1/3/4/5 and 9 (state restore)
+were built and committed earlier. Step 6 (the editor panel) and step 7 (drag a clip out of the
+list, Copy path, Save clip as…) are committed as `eb7e4d9` on top of them; step 8 is
+not built, because step 8 is a human session in a real host.
+
+Six headless C++ suites cover the lane — 15 / 24+1 skipped / 35+1 skipped / 77 / 136 / 26 checks —
+measured identical on JUCE 8.0.4 and 8.0.8 by running `plugin/build.ps1` against each tree (both
+invocations are in `AGENTS.md`). Those numbers are a measurement, obtained by running each
+executable, not a comment copied forward. The editor suite went 70 → 136 in the fix round below:
+sixty-six checks for the branches the review could reach but the suite could not.
+
+**What the suites prove.** A restored project naming a real clip makes the bundle emit MIDI
+through the VST3 wrapper. Building the panel opens nothing in the user's data folder — a probe
+that connected at construction turns four checks red, one of them a folder diff — and the index is
+read only after an explicit Connect. An exported clip hashes to the same SHA-256 as its source, so
+it is the original bytes and not a re-encode. No run of anything in this lane wrote to a source
+`.mid` or to the index, and that was re-measured for this commit rather than carried forward: the
+37 files under `fixtures/demo_library` hash to one aggregate (`6e293445…`) that is identical before
+and after every run above, `git diff` against the previous commit on that folder is empty, and the
+live index is still `da691fce…` at 449,347,584 bytes with the `-shm` and `-wal` beside it still
+stamped 2026-11-15 18:51 — the suites point at their own temporary index and never open that
+folder at all.
+
+**What the review found, and where each finding stands now.** An independent read of the same
+delta returned *not safe to commit*, and two of its findings were data-loss paths reachable from
+the two buttons step 7 adds:
+
+- the replace-confirmation box compared its button result the wrong way round, so **Cancel replaced
+  the file and Replace did nothing** (JUCE's non-native `AlertWindow` numbers the first button 1 and
+  the second 0 — verified against the checkout this build compiles, not inferred);
+- a **0-byte source file deleted the target** instead of writing it, because `File::replaceWithData`
+  turns a zero-length write into `deleteFile()`;
+- the strip check could not fail — it substring-matched `byte-identical`, which the *refusal*
+  sentence contains too — and the post-write re-hash, the only defence against a short write, had
+  no assertion depending on it;
+- plus three MEDIUM findings: a save note that outlived its own subject, a transient read failure
+  that threw away a Connect the user had asked for, and four branches no check reached.
+
+All six are closed. The confirm box is **gone rather than re-numbered**: the chooser now launches
+with `warnAboutOverwriting`, so the OS asks the replace question, `saveChooserFlags()` is the single
+source of truth a check reads, and `handleChosenTarget()` is the dialog-free seam the answer lands
+on — which is what makes that half provable at all. An empty source is refused before any write,
+with its own outcome and a message that says the target was left alone. The strip check now compares
+the success sentence's exact prefix and asserts it does not begin with the refusal, and a read-back
+cap drives the `bytesDiffer` verdict on purpose. A failed read keeps the index path and says "not
+read this time"; Disconnect is the only click that forgets it. The unreachable branches are reached,
+including the clipboard, which is proven by reading back what was put there.
+
+The closure is differential, not asserted: each fix was reverted one at a time and the suite went
+red for the reason that fix exists — the empty-source revert reproduced the deletion on screen, the
+re-hash revert turned exactly the two `bytesDiffer` checks red, the flag and `overwriteExisting`
+reverts each put the replace contract back under a check, the keep-the-connection revert produced
+the literal "Index: not connected" in nine places, and the note-clearing revert failed its four
+retirement checks. Each file was then restored and proven byte-identical by SHA-256 before the green
+re-run.
+
+Three things remain out of reach of any suite here, by construction: a real OLE drag (only the
+container's answer function is called, never `startDrag`), the operating system's own overwrite
+prompt (a modal dialog owned by the shell — the plug-in's box was deleted precisely because nobody
+could drive it), and whether a hosted editor keeps keyboard focus. Those need a window and a host,
+which is step 8. So the honest statement on this row is: **built, reviewed, closed and re-measured
+on what the suites can see; not accepted.**
+
+Two calls in it are the owner's and were taken by the builder because nothing said otherwise. The
+panel's layout — one column, filter box on top, library list, the three exported controls always
+visible, a status strip under them — was built without the design agreement the brief asked for, so
+it is a proposal drawn in C++ rather than an approved design; nothing about it is hard to move. And
+`EDITOR_WANTS_KEYBOARD_FOCUS` went FALSE → TRUE so the filter box could receive keystrokes, which
+means the host routes typing to this window while it has focus. That is what every plug-in with a
+search field does and it is one line to put back, but it changes how the plug-in feels in a session
+and belongs to him, not to this lane. Both are written down in `docs/limitations.md`.
+
+**The suite's one flake is retired, and by its negative control rather than by a green run.**
+It was never a suite-order effect: 1 red in 6 full-suite runs and 2 red in 10 isolated runs of a
+Python tree identical to `df30202`, every failure the same `AssertionError: 2 not greater than or
+equal to 3`. The test started the scan and installed its own recording spy two lines later, so the
+count depended on how far the worker had got before the patch landed — a slow run's tail met the
+`>= 3` floor and a fast run's head missed it. The fix opens the window before `start()` and gates on
+the fixture's own file count, `len(seen) == db.stats()["files"]`, with the expected four pinned by a
+separate assertion so a fixture change that emptied the index could not quietly turn equality into a
+comparison with zero (`tests/test_scanner_db.py:492` is the gate, `:478` the count).
+
+Measured on the tree as committed: 20 consecutive isolated runs of that test and 6 full runs of
+`python -m unittest discover -s tests`, every one exit 0 and every full one `Ran 100 tests — OK`.
+Then the two mutations, changing only the recording window and leaving the assertions exactly as the
+fix wrote them. Opening the window *after* the run ends fails 3 times in 3, so the equality gate has
+teeth. Putting the original order back — the race, re-induced — fails 11 times in 20, with `3 != 4`
+seven times, `2 != 4` twice and `1 != 4` and `0 != 4` once each. Twenty green runs in a row have
+about a 1.2e-7 chance on that measured rate, which is why 20 is the sample and not 3. The old floor
+would have passed seven of those eleven failures: `>= 3` was not a weak threshold, it was a
+threshold the defect could satisfy while still losing a quarter of the lookups it claimed to count.

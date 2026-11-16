@@ -216,6 +216,20 @@ scans.
 - The note the save buttons leave on the strip ("Saved …" / "Not saved …") is cleared
   by the next action that means something else — a row click, a query, a Disconnect.
   It is a note about the last clip and the last target, not a permanent banner.
+- The panel **takes keyboard focus** while it is open: `EDITOR_WANTS_KEYBOARD_FOCUS` is TRUE in
+  `plugin/CMakeLists.txt`, so during the moment the filter box has focus the host's own shortcuts do
+  not fire. That is what every plug-in with a search field does, and the host gets its keys back as
+  soon as focus leaves — but the value used to be FALSE, it changes how a session feels, and putting
+  it back is one line at the price of a search box that only sometimes receives typing. The suite
+  cannot see this at all: no window is created, so nobody steals or keeps a focus nobody gave.
+- Nothing about the panel's **layout** was agreed before it was drawn. One column, filter box on
+  top, the library list, the three exported controls always visible, a status strip under them: that
+  is a proposal written in C++ (`plugin/Source/VaultEditor.cpp`), not an approved design. What the
+  strip says, how tall a row is, and whether those three controls belong on the panel when a host
+  already draws its own parameter row for them are all still open. Re-laying the panel out would not
+  move a rule: the refusals, the connect-on-click-only rule and the byte-verbatim copy are gated in
+  `VaultClipExport` and the processor, not in the geometry — but several checks read the strip's
+  exact sentences, so a re-layout has to bring those strings with it deliberately.
 - Reading a WAL-mode index over a read-only connection leaves two files beside it:
   `midivault.sqlite3-shm` (32 KiB) and a 0-byte `midivault.sqlite3-wal`. Measured on both
   JUCE trees after a full editor session. The reader **cannot remove them** — cleaning

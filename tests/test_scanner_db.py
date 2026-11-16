@@ -446,11 +446,19 @@ class ScannerDatabaseTests(unittest.TestCase):
         self.assertEqual(reverted["file"]["instrument_source"], "auto")
 
     def test_a_scan_reads_the_index_through_one_connection_per_run(self) -> None:
-        """The skip check asks about every discovered file.
+        """The skip check asks about every discovered file, and asks it through one handle.
 
         Opening a fresh handle per question was measurable: about 1.3 ms per file
         on the index alone, most of it SQLite open and WAL-header cost, on a scan
         whose whole purpose is to avoid work.
+
+        The recording window is what had to be fixed here, not the fixture. `start()`
+        returns as soon as the thread is running and the walk yields its first file
+        right away, so a body that installed the spy after that call raced the run it
+        was measuring: on 2 of 20 isolated runs of this exact fixture the scan finished
+        before the patch landed and only 2 of the 4 lookups were recorded. A floor of 3
+        was then met by a slow run's tail and missed by a fast run's head, which is a
+        flake in the test body and says nothing about the scan.
         """
         seen: list[object] = []
         original = self.db.get_scan_file_record
@@ -459,14 +467,36 @@ class ScannerDatabaseTests(unittest.TestCase):
             seen.append(con)
             return original(path, con=con)
 
-        self.scanner.start(source_ids=[self.source["id"]], mode="incremental",
-                           intensity="eco", workers=1)
+        # The expectation is counted from the fixture, not from the run under test: setUp()
+        # scanned this library once, so the index holds exactly one row per file the walk is
+        # allowed to discover. Four of the six files on disk qualify -- First Bass.mid,
+        # Second Bass.MIDI, Simple Piano.mid and corrupt.mid. library/excluded/Hidden.mid is
+        # under the path add_exclude() was given and library/notes.txt is not a supported
+        # extension (midivault/engine/versions.py:28), so neither is yielded and neither is
+        # asked about. scanner.py:369-371 asks once per yielded file, so the gate is equality,
+        # not a floor: fewer lookups means the window missed files, more means it asked twice.
+        expected_lookups = self.db.stats()["files"]
+        # The literal sits here so a fixture or rule change that emptied the index cannot turn
+        # the equality above into a green comparison of len(seen) with zero.
+        self.assertEqual(expected_lookups, 4, "the fixture no longer holds four discoverable files")
+
+        # Before start(), so the window covers the whole run.
         self.db.get_scan_file_record = spy
         try:
-            wait_scan(self.scanner)
+            self.scanner.start(source_ids=[self.source["id"]], mode="incremental",
+                               intensity="eco", workers=1)
+            status = wait_scan(self.scanner)
         finally:
             self.db.get_scan_file_record = original
-        self.assertGreaterEqual(len(seen), 3, "the scan did not consult the index per file")
+
+        self.assertEqual(len(seen), expected_lookups,
+                         "the scan did not consult the index exactly once per discovered file")
+        self.assertEqual(status["discovered"], expected_lookups,
+                         "the run discovered a different number of files than the fixture holds")
+        # Widening the window could have picked up a lookup made from the calling thread outside
+        # a run, which would have no handle to reuse and would go red here. It stays green because
+        # scanner.py:371 is the only caller in midivault/ and it always passes the handle opened at
+        # scanner.py:339; a None now means the scan stopped reusing, which is what this test is for.
         self.assertNotIn(None, seen, "a lookup opened its own connection")
         self.assertTrue(all(handle is seen[0] for handle in seen),
                         "the run used more than one read handle")
