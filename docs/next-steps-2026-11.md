@@ -485,11 +485,16 @@ means the host routes typing to this window while it has focus. That is what eve
 search field does and it is one line to put back, but it changes how the plug-in feels in a session
 and belongs to him, not to this lane. Both are written down in `docs/limitations.md`.
 
-**The suite's one flake is retired, and by its negative control rather than by a green run.**
+**The suite's one *assertion* flake is retired, and by its negative control rather than by a green
+run.** This says nothing about the separate, harness-level failure `AGENTS.md` documents: Windows holding a
+just-closed WAL file so `tearDown` reports a failure on a run where every assertion passed, about one suite
+in six *before* `ignore_cleanup_errors=True` was set. No repeated-run evidence for the post-mitigation rate
+is recorded anywhere, so do not read either paragraph as "the suite is clean" — read the rate, and say which
+assertion the rate belongs to.
 It was never a suite-order effect: 1 red in 6 full-suite runs and 2 red in 10 isolated runs of a
 Python tree identical to `df30202`, every failure the same `AssertionError: 2 not greater than or
 equal to 3`. The test started the scan and installed its own recording spy two lines later, so the
-count depended on how far the worker had got before the patch landed — a slow run's tail met the
+count depended on how far the worker had got before the spy was in place — a slow run's tail met the
 `>= 3` floor and a fast run's head missed it. The fix opens the window before `start()` and gates on
 the fixture's own file count, `len(seen) == db.stats()["files"]`, with the expected four pinned by a
 separate assertion so a fixture change that emptied the index could not quietly turn equality into a
