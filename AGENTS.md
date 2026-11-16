@@ -45,7 +45,7 @@ npm --prefix web ci                     # frontend deps only; the Python app has
 npm --prefix web run dev                # Vite :5173, proxies /api -> :8737
 npm --prefix web run build              # tsc --noEmit && vite build — this is also the only typecheck
 python -m unittest discover -s tests    # 100 tests, ~22s; framework is unittest, NOT pytest
-powershell -File plugin/build.ps1       # VST3 + 5 headless suites (locator, index, midi source, emit, host)
+powershell -File plugin/build.ps1       # VST3 + 6 headless suites (locator, index, midi source, emit, editor, host)
 powershell -File plugin/build.ps1 -BuildDir build/tag-808 -Juce D:/Projects/skeer-audio/pulsekit/build/_deps/juce-src   # 8.0.8 tree
 python scripts/evaluate_classification.py
 node tests/e2e-web.mjs                  # needs playwright-core (in web/node_modules) + CHROME_PATH
@@ -67,16 +67,42 @@ there. Keep that property: a fix landing without its check failing on HEAD is no
 verified.
 
 `plugin/build.ps1` is the plug-in lane and the only command that needs a compiler: it
-configures, builds and runs five C++ suites — `vault-locator-test` (where the index
+configures, builds and runs six C++ suites — `vault-locator-test` (where the index
 is), `vault-index-test` (reading it without writing to it), `vault-midi-test` (the
-source bytes), `vault-emit-test` (a clip on the host's clock) and `vault-host-test`
-(loading the bundle the way a DAW does) — then `ctest`. It writes into
+source bytes), `vault-emit-test` (a clip on the host's clock), `vault-editor-test` (the
+panel a producer touches) and `vault-host-test` (loading the bundle the way a DAW does,
+and emitting through that wrapper) — then `ctest`. It writes into
 `plugin/build/` and installs nothing. The default JUCE is skulpt's local checkout at
 8.0.4 while `plugin/CMakeLists.txt` asks FetchContent for 8.0.8, so run both lines
 above and require both green: the modules differed between those tags once already
 (`MidiMessageSequence::size` became `getNumEvents`). The second tree needs its own
 build directory — reconfiguring one tree with the other's JUCE fails inside
 `juceaide` — which is what `-BuildDir build/tag-808` is for.
+
+The plug-in has a real editor (`plugin/Source/VaultEditor.cpp`): one column with a
+filter box, the library list, the three exported controls always visible, and a status
+strip that says which file is playing and which one the project asked for. `createEditor()`
+returns it and `hasEditor()` is true. Two things about it are rules, not details: the
+index is touched **only** after an explicit Connect click — building the panel opens
+nothing — and every query opens its own read-only connection and closes it before
+returning, so no handle on the user's library outlives a click and none can be standing
+in the way of a host-driven state restore. SQLite is never queried from `processBlock`,
+and a clip becomes playing only through `VaultMIDIProcessor::loadFile()`.
+
+Three more are rules the last review round wrote down, and a change that breaks any of
+them should be argued with that review, not silently rewritten: a query that **fails**
+keeps the index path and says "not read this time" — only an explicit Disconnect forgets
+it, so the strip must never collapse "could not read" into "not connected"; the replace
+prompt on "Save clip as..." is the **OS's** (`saveChooserFlags()` sets
+`warnAboutOverwriting`), so no in-house `AlertWindow` is stacked on top of it — JUCE's
+non-native alert numbers its first button **1**, and a confirm box here is a gate nobody
+can drive headless; and a 0-byte source is refused before anything is written, because
+`File::replaceWithData` turns a zero-length write into a delete. `handleChosenTarget()` is
+the dialog-free seam the chooser's callback and the suite both call; do not move the
+refusals back into `saveClipAs()`, where nothing can reach them.
+`vault-editor-test` drives that widget tree headless — no window, no peer, no desktop,
+no stolen focus — which means it has to pump a message loop for the filter box, because
+`juce::TextEditor` posts its change notification rather than calling it inline.
 
 There is **no lint command** — no ruff/black/mypy config, no ESLint config. Do not
 invent one unprompted. Tests isolate in `tempfile` directories; they never touch

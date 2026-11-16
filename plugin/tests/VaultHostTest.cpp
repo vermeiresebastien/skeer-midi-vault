@@ -7,6 +7,10 @@
 // parser, whether the exported parameter list reaches a host, or whether a host can get MIDI
 // out of it. This is what turns "it should load in Live" into evidence.
 //
+// The last section is the one that was missing until step 6: it hands the bundle a project state
+// naming a real clip, drives a transport position, and asserts that MIDI leaves. Loading is not
+// working, and only the second one is what a producer hears.
+//
 // Exit code is the failure count clamped to 1, so ctest reads it directly.
 
 #include <JuceHeader.h>
@@ -68,6 +72,33 @@ juce::AudioProcessorParameter* findParameter (juce::AudioPluginInstance& instanc
 
     return nullptr;
 }
+
+/** A transport a host would report: playing, at a tempo, at a position. The emission check needs
+    one because a clip with nowhere to start waits rather than guessing where bar one is.
+
+    The return type is spelled as a decltype because 8.0.4 returns juce::Optional here and 8.0.9
+    returns std::optional: the override has to match whichever JUCE this build compiles against. */
+struct HostHead : public juce::AudioPlayHead
+{
+    using Position = decltype (std::declval<const juce::AudioPlayHead&>().getPosition());
+
+    Position getPosition() const override
+    {
+        PositionInfo position;
+        position.setPpqPosition (beat);
+        position.setBpm (tempo);
+        position.setIsPlaying (true);
+
+        // JUCE's VST3 host wrapper asserts this is present when it builds a process context,
+        // because the VST3 SDK says so: a context with no sample position is not a position.
+        position.setTimeInSamples (samples);
+        return { position };
+    }
+
+    double beat = 0.0;
+    double tempo = 140.0;    // the fixture clip's own tempo, so the grid is not rescaled
+    juce::int64 samples = 0;
+};
 
 } // namespace
 
@@ -287,6 +318,119 @@ int main (int argc, char* argv[])
 
     check (finite, "the plugin's audio output stays finite");
     std::printf ("info  MIDI events after processBlock: %d\n", midi.getNumEvents());
+
+    // What comes *out*, which is the half no earlier check here measured. A host hands a plugin its
+    // project state, drives a transport position, and expects events. "The bundle loads" was true
+    // in step 5 and the plug-in was silent; this is what turns loading into working.
+    {
+        const juce::File clip (juce::File (juce::String (SKEER_FIXTURE_DIR))
+                                   .getChildFile ("Drums")
+                                   .getChildFile ("Trap Hat Pattern 140.mid"));
+
+        check (clip.existsAsFile(), "the demo clip the emission check points a project at exists");
+
+        if (clip.existsAsFile())
+        {
+            // What the plug-in writes into a project: its own state document. This is what
+            // getStateInformation() produces and what a DAW stores, not a shape invented here.
+            juce::XmlElement project ("VaultMIDI");
+            project.setAttribute ("sourceFile", clip.getFullPathName());
+            project.setAttribute ("sourceHash", juce::SHA256 (clip).toHexString());
+            project.setAttribute ("stateVersion", 2);
+
+            juce::MemoryBlock projectBlob;
+            juce::AudioProcessor::copyXmlToBinary (project, projectBlob);
+
+            // A hosted VST3 never receives that document directly. The host keeps the plug-in's
+            // bytes inside its own wrapper document and base64-encodes the component stream
+            // (juce_VST3PluginFormat.cpp:3467-3499): setStateInformation looks for an
+            // <IComponent> child and hands its decoded contents to the component. A check that
+            // passed the raw document here would be testing a call no host makes.
+            juce::XmlElement wrapper ("VST3PluginState");
+            wrapper.createNewChildElement ("IComponent")->addTextElement (projectBlob.toBase64Encoding());
+
+            juce::MemoryBlock blob;
+            juce::AudioProcessor::copyXmlToBinary (wrapper, blob);
+
+            instance->setStateInformation (blob.getData(), static_cast<int> (blob.getSize()));
+
+            // Read back what the host now holds. A host re-saving the project does this, and it is
+            // the only place the restore's effect is observable without playing: if the plug-in
+            // ignored the state, the path is not there to be read. Checked before the transport so
+            // "no events" has one obvious suspect rather than three.
+            juce::MemoryBlock readBack;
+            instance->getStateInformation (readBack);
+
+            juce::String restoredPath;
+
+            // getXmlFromBinary hands back a unique_ptr the caller owns (both JUCE tags here), so
+            // `auto` keeps both the ownership and the dereference right.
+            if (auto outer = juce::AudioProcessor::getXmlFromBinary (readBack.getData(),
+                                                                    static_cast<int> (readBack.getSize())))
+            {
+                if (auto* component = outer->getChildByName ("IComponent"))
+                {
+                    juce::MemoryBlock inner;
+
+                    if (inner.fromBase64Encoding (component->getAllSubText()))
+                        if (auto innerXml = juce::AudioProcessor::getXmlFromBinary (
+                                inner.getData(), static_cast<int> (inner.getSize())))
+                            restoredPath = innerXml->getStringAttribute ("sourceFile");
+                }
+            }
+
+            std::printf ("info  sourceFile the host reads back after restoring: %s\n",
+                         restoredPath.isEmpty() ? "<none>" : restoredPath.toRawUTF8());
+            check (restoredPath == clip.getFullPathName(),
+                   "the state the host stored is the state the plug-in now holds");
+
+            // Set after the state, because a restored tree is the authority: these three make the
+            // emission claim unambiguous -- the host clock drives the clip, at the clip's own
+            // tempo, in one pass. The pointers found above are reused rather than looked up again,
+            // so there is one answer to "which control is this".
+            if (transpose != nullptr)
+                transpose->setValueNotifyingHost (0.5f);
+
+            if (followTempo != nullptr)
+                followTempo->setValueNotifyingHost (1.0f);
+
+            if (loop != nullptr)
+                loop->setValueNotifyingHost (1.0f);
+
+            HostHead head;
+            instance->setPlayHead (&head);
+            instance->prepareToPlay (48000.0, 512);
+
+            juce::AudioBuffer<float> outBuffer (
+                juce::jmax (1, instance->getTotalNumOutputChannels()), 512);
+
+            int events = 0, noteOns = 0;
+
+            const double beatsPerBlock = 512.0 * head.tempo / (60.0 * 48000.0);
+
+            for (int block = 0; block < 8; ++block)
+            {
+                head.beat    = block * beatsPerBlock;
+                head.samples = static_cast<juce::int64> (block) * 512;
+
+                juce::MidiBuffer out;
+                instance->processBlock (outBuffer, out);
+
+                events += out.getNumEvents();
+
+                for (const auto metadata : out)
+                    noteOns += metadata.getMessage().isNoteOn() ? 1 : 0;
+            }
+
+            std::printf ("info  restored project + running transport: %d events (%d note-ons) in "
+                         "8 blocks\n", events, noteOns);
+
+            check (events > 0,
+                   "a project state naming a real clip makes the plugin emit MIDI through the wrapper");
+            check (noteOns > 0,
+                   "and what leaves includes notes, not only channel bookkeeping");
+        }
+    }
 
     instance->releaseResources();
 

@@ -181,6 +181,81 @@ general-purpose classification accuracy.
   (React, Vite, font packages, Playwright only for tests). Runtime Python is
   standard-library only; the standalone build bundles the Python runtime.
 
+## The VST3 plug-in
+
+The plug-in is a separate artefact from the app: `plugin/build.ps1` builds it, and
+`packaging/` never mentions it, so **installing SKEER MIDI VAULT does not put a VST3
+anywhere** and no host will see it until the bundle is copied into a folder that host
+scans.
+
+- It has a browser panel over the app's own index — filter box, one list, the three
+  exported controls (Follow Host Tempo, Transpose, Loop), and a status strip that says
+  which file is playing, which file the project asked for, and how long the clip is.
+  **Nothing in the plug-in reads the index until you press Connect.** Building or
+  resizing the window opens no file — measured by `plugin/tests/VaultEditorTest.cpp`,
+  which lists the index folder on both sides of those clicks — and the panel keeps no
+  connection between clicks: every query opens its own read-only connection and closes
+  it before returning, which is why a host-driven state restore cannot leave a stale
+  handle behind and the browser still answers after one.
+- A query that fails does **not** undo the Connect. The strip keeps naming the index
+  and where it came from, and adds that this read did not come off; the rows go,
+  because showing yesterday's list over an index this build just refused is worse than
+  an empty list. **Rescan** is the retry and **Disconnect** is the only click that
+  forgets the path. "Not connected" and "could not read it this time" are therefore two
+  different sentences on screen, and `vault-editor-test` asserts both — plus that a
+  Rescan after a failure comes back to the same index without pressing Connect again.
+- The filter query runs on **every keystroke**: each one opens a connection and issues
+  two statements, a `count(*)` over the usable rows and the `SELECT` whose text filter
+  is a leading-wildcard `LIKE` over both `filename` and `path`
+  (`plugin/Source/VaultIndexReader.cpp:246`) — a pattern SQLite cannot satisfy from an
+  index. The row set is capped at 200 and the strip says when the cap bites. What the
+  pair costs against the real index on this machine, while a DAW holds the audio
+  device, has not been measured; the debounce that would soften it also changes how
+  typing feels, and that is the owner's call — so the behaviour stands and is stated
+  here rather than changed quietly.
+- The note the save buttons leave on the strip ("Saved …" / "Not saved …") is cleared
+  by the next action that means something else — a row click, a query, a Disconnect.
+  It is a note about the last clip and the last target, not a permanent banner.
+- Reading a WAL-mode index over a read-only connection leaves two files beside it:
+  `midivault.sqlite3-shm` (32 KiB) and a 0-byte `midivault.sqlite3-wal`. Measured on both
+  JUCE trees after a full editor session. The reader **cannot remove them** — cleaning
+  up a `-wal` is a write, and this connection is not allowed to write, which is the
+  price of a plug-in that provably cannot damage the library. They are inert: SQLite
+  reuses or replaces both on the next open, and the index file itself is byte-identical
+  after the whole session (asserted by `vault-index-test` and `vault-editor-test`). The
+  app's own connection is write-capable, so its next commit-and-close clears them: with
+  the pair left standing beside a fixture index, one ordinary write transaction ending
+  cleanly left neither file in the folder.
+- Connect reads four locations in a fixed priority order (the `SKEER_MIDIVAULT_DATA`
+  override, the per-user installed data folder, the machine-wide one, then beside the
+  plug-in bundle) and takes **the first index it finds** rather than merging libraries.
+  When more than one exists the strip says so — "first of 2 indexes found" — so a second
+  library is visible instead of silently ignored.
+- "Save clip as..." writes only to a path you chose, as a byte-for-byte copy of the
+  source, verified by re-hashing what landed. It refuses three things: the file the
+  clip is playing from; a target that already exists when the caller did not say it
+  may be replaced; and a source that is **0 bytes**. The empty-source refusal writes
+  nothing and leaves the target alone, because `juce_File.cpp:777` turns a zero-length
+  write into `deleteFile()` — without it, "Save clip as..." aimed at a 0-byte clip is
+  a delete wearing a save's clothes.
+- The replace question is asked by the **operating system's save dialog**, not by a box
+  this plug-in draws: the chooser is launched with `warnAboutOverwriting`, which
+  becomes `FOS_OVERWRITEPROMPT` / `OFN_OVERWRITEPROMPT` on Windows. This used to be an
+  in-house `AlertWindow` whose button result was compared the wrong way round — JUCE's
+  non-native alert numbers the first button 1 and the second 0, so Cancel replaced the
+  file and Replace did nothing. Flipping the compare was not the fix: a dialog this
+  repo cannot drive headless, stacked on the OS prompt that is already there, is the
+  weaker of the two gates. What the suite proves is the half *after* the answer —
+  `handleChosenTarget()` is the dialog-free seam a confirmed replace lands on — and the
+  prompt itself is still reachable only by hand, which is step 8.
+- The copy is a new file: the index does not know about it until a scan sees it.
+- **Not yet accepted in a real host.** The suites load the bundle through JUCE's own VST3
+  wrapper, hand it a saved project state naming a clip, drive a synthetic transport and
+  assert MIDI comes out — that is measured, and it is not the same thing as a producer
+  session in a DAW. Dragging a row onto another application, and auditioning the plug-in
+  through a host's own instrument, have not been run; see
+  `docs/next-steps-2026-11.md`, row 18, step 8.
+
 ## Test scope not covered
 
 The test report distinguishes executed coverage from untested paths. Not covered:

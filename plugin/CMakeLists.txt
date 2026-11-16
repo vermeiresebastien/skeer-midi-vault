@@ -38,10 +38,19 @@ set(VAULT_MIDI_SOURCES
 set(VAULT_EMIT_SOURCES
     Source/VaultMidiEmitter.cpp)
 
+# The front door: the panel and the byte-verbatim export. Both are GUI-side code, and both are
+# needed by every target that compiles VaultMIDIProcessor.cpp, because createEditor() is part of
+# that class's vtable -- a target that left the editor out would fail to link rather than run
+# without a window.
+set(VAULT_EDITOR_SOURCES
+    Source/VaultEditor.cpp
+    Source/VaultClipExport.cpp)
+
 set(VAULT_PLUGIN_SOURCES
     ${VAULT_CORE_SOURCES}
     ${VAULT_MIDI_SOURCES}
     ${VAULT_EMIT_SOURCES}
+    ${VAULT_EDITOR_SOURCES}
     Source/VaultMIDIProcessor.cpp)
 
 set(VAULT_DEFINES
@@ -87,7 +96,14 @@ juce_add_plugin(SkeerMidiVaultPlugin
     NEEDS_MIDI_INPUT TRUE
     NEEDS_MIDI_OUTPUT TRUE
     IS_MIDI_EFFECT TRUE
-    EDITOR_WANTS_KEYBOARD_FOCUS FALSE
+    # TRUE, deliberately: the panel has a filter box, and a text field that cannot receive
+    # keystrokes is a defect. The cost is the other half of the same coin -- the host routes keys
+    # to this window while it has focus, so a producer's next keystroke after clicking into the
+    # filter goes to the search box rather than to a host shortcut. That is what every plug-in with
+    # a search field does, and the host gets its keys back the moment focus leaves. Left FALSE, the
+    # filter would be typeable only when the host chose to pass keys through, which is a per-host
+    # lottery, and a search box that sometimes swallows typing is worse than one that takes focus.
+    EDITOR_WANTS_KEYBOARD_FOCUS TRUE
     # The installer is the only thing that may place a bundle. Left TRUE, JUCE copies the
     # build straight into a scanned VST3 folder on every compile, which is exactly how a
     # second copy of one plugin comes to exist.
@@ -153,6 +169,10 @@ target_compile_definitions(VaultHostTest PRIVATE
     # A console program runs no dispatch loop, and the asynchronous plugin entry points
     # report back on the message thread -- which never gets pumped here.
     JUCE_MODAL_LOOPS_PERMITTED=1
+    # The emission check hands the loaded bundle a project state naming a real file from the demo
+    # library. A host does not browse for it; it restores what a project saved, which is why the
+    # path arrives as a compile definition rather than through a panel.
+    SKEER_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../fixtures/demo_library"
     VAULT_VST3_BUNDLE="${CMAKE_CURRENT_BINARY_DIR}/SkeerMidiVaultPlugin_artefacts/$<CONFIG>/VST3/SKEER MIDI VAULT.vst3")
 
 juce_generate_juce_header(VaultHostTest)
@@ -161,6 +181,9 @@ target_link_libraries(VaultHostTest
     PRIVATE
         juce::juce_audio_utils
         juce::juce_audio_processors
+        # The emission block hashes the fixture it points the project at, so the state it hands the
+        # bundle carries a digest the bytes on disk actually have.
+        juce::juce_cryptography
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_warning_flags)
@@ -285,15 +308,22 @@ add_test(NAME vault-midi-test COMMAND VaultMidiTest)
 # The clock, the tempo switch, the transpose and the loop, tested against a transport this program
 # writes itself: a synthetic host position per block, with numbers chosen so the expected sample
 # offset is exact. The plug-in wrapper is in the binary too, because the parameter has to be shown
-# to reach the clip and not only to exist next to it. No SQLite: nothing here asks the index
-# anything, which is what keeps this target about time rather than about storage.
+# to reach the clip and not only to exist next to it.
+#
+# Storage is linked here and the earlier comment saying it was not is now wrong, so it is replaced
+# rather than left to mislead: since step 6 the processor's vtable names createEditor(), the editor
+# browses the index, and a target that compiles the processor cannot link without the reader and
+# SQLite. What this suite still asserts is time, not storage -- it never presses Connect and every
+# transport is synthetic -- but the program is no longer one that cannot ask the index anything.
 # ---------------------------------------------------------------------------
 juce_add_console_app(VaultEmitTest
     PRODUCT_NAME "VaultEmitTest")
 
 target_sources(VaultEmitTest PRIVATE
+    ${VAULT_CORE_SOURCES}
     ${VAULT_MIDI_SOURCES}
     ${VAULT_EMIT_SOURCES}
+    ${VAULT_EDITOR_SOURCES}
     Source/VaultMIDIProcessor.cpp
     tests/VaultEmitTest.cpp)
 
@@ -312,10 +342,67 @@ target_link_libraries(VaultEmitTest
         juce::juce_audio_basics
         juce::juce_core
         juce::juce_cryptography
+        # The editor's Connect path is in this binary (see the note above), and the reader is what
+        # pulls in SQLite.
+        VaultSQLite
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_warning_flags)
 
 add_test(NAME vault-emit-test COMMAND VaultEmitTest)
+
+# ---------------------------------------------------------------------------
+# The front door, driven without a window
+#
+# The panel is the only part of this plug-in a producer touches, and the part no other suite here
+# can reach: it needs a message thread, a widget tree, and an index that exists only in this test.
+# So this program builds its own fixture folder -- an index *and* a real .mid copied out of the
+# demo library, because a row whose path is not on disk cannot test a load -- points discovery at
+# it through SKEER_MIDIVAULT_DATA, and drives the controls directly.
+#
+# Nothing is shown on screen and no window is created: no showTopLevelWindowOnScreen(), no peer,
+# no desktop and no stolen focus. The checks are about behaviour, not pixels -- what the buttons
+# do, what the index folder is left holding, and whether the strip says the true thing.
+# ---------------------------------------------------------------------------
+juce_add_console_app(VaultEditorTest
+    PRODUCT_NAME "VaultEditorTest")
+
+target_sources(VaultEditorTest PRIVATE
+    ${VAULT_CORE_SOURCES}
+    ${VAULT_MIDI_SOURCES}
+    ${VAULT_EMIT_SOURCES}
+    ${VAULT_EDITOR_SOURCES}
+    Source/VaultMIDIProcessor.cpp
+    tests/VaultEditorTest.cpp)
+
+target_include_directories(VaultEditorTest PRIVATE Source)
+
+target_compile_definitions(VaultEditorTest PUBLIC ${VAULT_DEFINES})
+
+target_compile_definitions(VaultEditorTest PRIVATE
+    SKEER_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../fixtures/demo_library"
+    # Typing into a juce::TextEditor does not call onTextChange inline: textChanged() posts a
+    # command message (juce_TextEditor.cpp:1304), so the panel's filter only re-queries when a
+    # message loop runs. A console program has no loop, so this check pumps one for a few
+    # milliseconds and the filter behaves as it does under a host. Without the macro the call is
+    # compiled out and the check would be asserting a code path no host ever takes.
+    JUCE_MODAL_LOOPS_PERMITTED=1)
+
+juce_generate_juce_header(VaultEditorTest)
+
+target_link_libraries(VaultEditorTest
+    PRIVATE
+        juce::juce_audio_processors
+        juce::juce_audio_basics
+        juce::juce_gui_basics
+        juce::juce_core
+        juce::juce_cryptography
+        # The reader is what pulls SQLite in; the fixture is written with the same amalgamation.
+        VaultSQLite
+    PUBLIC
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_warning_flags)
+
+add_test(NAME vault-editor-test COMMAND VaultEditorTest)
 
 add_test(NAME vault-host-test COMMAND VaultHostTest)

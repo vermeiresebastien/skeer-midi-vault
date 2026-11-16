@@ -1,7 +1,8 @@
-# Configures, builds and then runs the five headless checks against the VST3 form of
+# Configures, builds and then runs the six headless checks against the VST3 form of
 # SKEER MIDI VAULT: where the index is (vault-locator-test), reading it without writing to it
 # (vault-index-test), reading a source .mid (vault-midi-test), playing a clip on the host's clock
-# (vault-emit-test) and loading the bundle the way a DAW does (vault-host-test).
+# (vault-emit-test), driving the editor panel without a window (vault-editor-test) and loading the
+# bundle the way a DAW does and emitting through that wrapper (vault-host-test).
 #
 # JUCE is taken from a local checkout by default because a 100 MB shallow clone is the
 # slowest possible way to find out whether a build works. CMakeLists.txt still declares
@@ -10,7 +11,7 @@
 # Disclosed rather than smoothed over: the default checkout above is skulpt's and reports
 # 8.0.4, while CMakeLists.txt asks FetchContent for 8.0.8, so the pair was measured against both.
 # Both trees, measured 2026-11-16 with the command in the header above, gave identical counts --
-# 15, 24+1 skipped, 35+1 skipped, 77, 22 checks, none failed. Keep that habit on this line: the
+# 15, 24+1 skipped, 35+1 skipped, 77, 136, 26 checks, none failed. Keep that habit on this line: the
 # modules differed once already between those tags (MidiMessageSequence::size became getNumEvents).
 #
 # Measuring the second tag needs its own build directory. Reconfiguring the same one with a

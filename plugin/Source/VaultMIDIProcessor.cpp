@@ -1,5 +1,7 @@
 #include "VaultMIDIProcessor.h"
 
+#include "VaultEditor.h"
+
 const juce::Identifier VaultMIDIProcessor::sourceFileKey { "sourceFile" };
 const juce::Identifier VaultMIDIProcessor::sourceHashKey { "sourceHash" };
 const juce::Identifier VaultMIDIProcessor::stateVersionKey { "stateVersion" };
@@ -319,7 +321,10 @@ void VaultMIDIProcessor::setStateInformation (const void* data, int sizeInBytes)
 
 juce::AudioProcessorEditor* VaultMIDIProcessor::createEditor()
 {
-    return nullptr;
+    // A real editor, built per call -- a host that opens two windows gets two panels over the same
+    // processor, which is the host's business. Nothing here connects to the index; the panel's
+    // Connect button is the only thing that touches it.
+    return new VaultEditor (*this);
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()

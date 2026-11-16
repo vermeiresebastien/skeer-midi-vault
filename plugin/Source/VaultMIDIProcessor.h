@@ -11,7 +11,9 @@
 // transpose, loop -- is decided there and tested there, and this file owns only the wiring: the
 // AudioProcessorValueTreeState, the play head, the loaded file, and the state a host saves.
 //
-// The editor comes in step 6, which is why hasEditor() is still false.
+// The editor is VaultEditor: the index browser, the three exported controls and the status strip
+// that says which file is playing and which one the project wanted. createEditor() builds it, and
+// tests/VaultEditorTest.cpp drives it headless -- without a window, a display or the user's mouse.
 class VaultMIDIProcessor : public juce::AudioProcessor
 {
 public:
@@ -75,7 +77,7 @@ public:
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
 
     juce::AudioProcessorEditor* createEditor() override;
-    bool hasEditor() const override { return false; }
+    bool hasEditor() const override { return true; }
 
     const juce::String getName() const override { return "SKEER MIDI VAULT"; }
 
