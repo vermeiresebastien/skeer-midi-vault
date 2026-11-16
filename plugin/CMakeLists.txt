@@ -32,9 +32,16 @@ set(VAULT_CORE_SOURCES
 set(VAULT_MIDI_SOURCES
     Source/VaultMidiSource.cpp)
 
+# The clip clock is as independent of the plug-in wrapper as the reader is: it takes a parsed file
+# and a description of a transport and produces events, so the behaviour of step 5 is testable
+# without a host, which is the only way it can be tested at all.
+set(VAULT_EMIT_SOURCES
+    Source/VaultMidiEmitter.cpp)
+
 set(VAULT_PLUGIN_SOURCES
     ${VAULT_CORE_SOURCES}
     ${VAULT_MIDI_SOURCES}
+    ${VAULT_EMIT_SOURCES}
     Source/VaultMIDIProcessor.cpp)
 
 set(VAULT_DEFINES
@@ -90,11 +97,11 @@ juce_add_plugin(SkeerMidiVaultPlugin
     VST3_CATEGORIES Fx)
 
 # What this switch buys, measured: with it at its default, a host loading this bundle was
-# offered 2083 parameters -- Follow Host Tempo, Transpose, Bypass and 16 channels x 130
-# auto-published "MIDI CC ch|cc" controls. The emulation exists so a host can drive a
-# plugin's MIDI *input* by automating parameters; this plugin reads notes, never remote-
-# controlled CCs, and it produces CCs as output events, which need no parameter. So the
-# 2080 controls would only ever be noise in a DAW's parameter list.
+# offered the plugin's own controls plus Bypass and 16 channels x 130 auto-published "MIDI CC
+# ch|cc" controls -- 2080 parameters on top of a list the user can actually read. The emulation
+# exists so a host can drive a plugin's MIDI *input* by automating parameters; this plugin reads
+# notes, never remote-controlled CCs, and it produces CCs as output events, which need no
+# parameter. So those 2080 controls would only ever be noise in a DAW's parameter list.
 # Set on the plugin target, not in VAULT_DEFINES: the host test compiles no wrapper, and a
 # switch that only means something to one binary should not appear in the other's flags.
 target_compile_definitions(SkeerMidiVaultPlugin_VST3 PRIVATE
@@ -107,6 +114,11 @@ target_compile_definitions(SkeerMidiVaultPlugin PUBLIC ${VAULT_DEFINES})
 target_link_libraries(SkeerMidiVaultPlugin
     PRIVATE
         juce::juce_audio_utils
+        # VaultMidiSource hashes the bytes it reads, and juce::SHA256 lives in a module no other
+        # JUCE target pulls in. Measured: without this the plugin compiles, the shared-code library
+        # builds, and only the VST3 link reports three unresolved juce::SHA256 symbols -- which is
+        # to say the defect shows up one step past the point where it is cheap to see.
+        juce::juce_cryptography
         VaultSQLite
     PUBLIC
         juce::juce_recommended_config_flags
@@ -266,5 +278,44 @@ target_link_libraries(VaultMidiTest
         juce::juce_recommended_warning_flags)
 
 add_test(NAME vault-midi-test COMMAND VaultMidiTest)
+
+# ---------------------------------------------------------------------------
+# Playing a clip
+#
+# The clock, the tempo switch, the transpose and the loop, tested against a transport this program
+# writes itself: a synthetic host position per block, with numbers chosen so the expected sample
+# offset is exact. The plug-in wrapper is in the binary too, because the parameter has to be shown
+# to reach the clip and not only to exist next to it. No SQLite: nothing here asks the index
+# anything, which is what keeps this target about time rather than about storage.
+# ---------------------------------------------------------------------------
+juce_add_console_app(VaultEmitTest
+    PRODUCT_NAME "VaultEmitTest")
+
+target_sources(VaultEmitTest PRIVATE
+    ${VAULT_MIDI_SOURCES}
+    ${VAULT_EMIT_SOURCES}
+    Source/VaultMIDIProcessor.cpp
+    tests/VaultEmitTest.cpp)
+
+target_include_directories(VaultEmitTest PRIVATE Source)
+
+target_compile_definitions(VaultEmitTest PUBLIC ${VAULT_DEFINES})
+
+target_compile_definitions(VaultEmitTest PRIVATE
+    SKEER_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../fixtures/demo_library")
+
+juce_generate_juce_header(VaultEmitTest)
+
+target_link_libraries(VaultEmitTest
+    PRIVATE
+        juce::juce_audio_processors
+        juce::juce_audio_basics
+        juce::juce_core
+        juce::juce_cryptography
+    PUBLIC
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_warning_flags)
+
+add_test(NAME vault-emit-test COMMAND VaultEmitTest)
 
 add_test(NAME vault-host-test COMMAND VaultHostTest)

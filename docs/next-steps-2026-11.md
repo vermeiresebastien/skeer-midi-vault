@@ -55,7 +55,7 @@ user chose Lane 2 -- a self-contained C++ reader, with SQLite vendored as source
 than linked from a cache nobody can attribute. What still holds from this paragraph: the
 engine-purity claim is true at the import level (verified: importing `midivault.engine`
 pulls in no `sqlite3`, `http`, `db`, `api` or `scanner`), which is what makes a thin CLI
-cheap. The plug-in does not talk to port 8737; `plugin/` reads the index itself.
+cheap. The plug-in does not talk to port 8737; the reader is built and tested into the VST3, but the processor does not call it yet.
 
 ---
 
@@ -80,7 +80,7 @@ cheap. The plug-in does not talk to port 8737; `plugin/` reads the index itself.
 | 15 | Soundfont / sample-based instruments | audition | High | High | **Blocked on a licensing decision** (§5) |
 | 16 | Live Remote Script → project tempo/key into the vault | platform | Med | Med | **Later** — no supported Windows mechanism exists today |
 | 17 | CLI `analyse/query/scan` | platform | Med | Low | **Optional** — do as a consequence of 2, not before it |
-| 18 | VST3 browser + previewer | platform | Low | High | **Building** — Lane 2; steps 1/3/4 in `plugin/` |
+| 18 | VST3 browser + previewer | platform | Low | High | **Building** — Lane 2; plugin steps 1/3/4/5 and 9 (state restore) green: 5 suites, 15/24+1/35+1/77/22 checks, on JUCE 8.0.4 and 8.0.8; Step 7's gate reads 10 literals in 6 files |
 | 19 | MCP/SSE machine endpoint | platform | Low | Med | **Defer** — duplicates the CLI, widens the boundary |
 | 20 | Embedding / semantic search | engine | Low | High | **Reject under stdlib-only** — no model weights, no ANN; FTS5+BM25 already covers text |
 
@@ -168,13 +168,43 @@ separately, and correct `docs/release-notes-1.0.0.md:52` (still says 51/51; real
 55) and the stale `AGENTS.md` vitest note — vitest *is* in `web/package.json:30` and
 installed; the command fails because no spec file exists under `web/src/`.
 
-**Step 7 — A gate that fails.** *S.* No `.github/`, no hooks, no lint, and the only
-check between an edit and a shipped EXE is remembering. Verified version literals: 7
-occurrences across 5 files (`midivault/__init__.py:8`, `desktop.py:39`,
-`web/package.json:4`, `skeer-midi-vault.iss:8,20`, `build/version_info.txt:19,24`).
-Add `scripts/check_version_consistency.py` asserting byte-equality, a minimal Actions
-workflow running `unittest discover` + `npm run build` (which is the typecheck) + that
-script, and delete the dead empty `midivault/api/` package sitting beside `api.py`.
+**Step 7 — A gate that fails.** *S.* ✅ **Gate and its red case done 2026-11-16; no CI by
+choice.** No `.github/`, no hooks, no lint, and the only check between an edit and a
+shipped EXE used to be remembering. `scripts/check_version_consistency.py` now reads every
+version literal the repo states and exits non-zero on any disagreement. What it probes is
+in the script and in the table it prints — never in a prose tally like the one this
+paragraph used to carry, which was hand-counted, already stale and short by the literal
+that matters most. Its own output on 2026-11-16:
+
+```
+  file:line                              literal               value
+  midivault/__init__.py:8                __version__           1.0.0
+  packaging/skeer-midi-vault.iss:8       AppVersion            1.0.0
+  packaging/skeer-midi-vault.iss:20      VersionInfoVersion    1.0.0.0
+  build/version_info.txt:3               filevers              1, 0, 0, 0
+  build/version_info.txt:4               prodvers              1, 0, 0, 0
+  build/version_info.txt:19              FileVersion           1.0.0
+  build/version_info.txt:24              ProductVersion        1.0.0
+  desktop.py:40                          VERSION               1.0.0
+  web/package.json:4                     version               1.0.0
+  plugin/CMakeLists.txt:3                project VERSION       1.0.0
+
+6 files, 10 values, one version 1.0.0.
+```
+
+That copy is dated evidence, not a maintained list — re-run the script after a bump.
+Four of the ten sit in `build/version_info.txt` (lines 3, 4, 19 and 24), because Windows
+reads the fixed file info and the string table separately: a bump that reaches `filevers`
+and misses `prodvers` or either string ships an installer whose product version disagrees
+with the binary inside it, and one probe never sees that. `plugin/CMakeLists.txt:3` is in
+the list precisely because it is the literal that lands in the shipped bundle.
+`tests/test_version_consistency.py` runs the gate from `unittest discover` and adds the red
+case — the six targets copied into a temp directory with one literal moved, required to
+exit 1 and name the disagreement — because a checker that probes nothing also exits 0.
+Still open: the minimal Actions workflow running `unittest discover` + `npm run build`
+(which is the typecheck) + this script. The 2026-11-16 assignment that built the gate ruled
+new CI infrastructure out, so that stays a plan. `midivault/api/` is empty and untracked —
+git never carried it — so there is nothing to delete in the repo.
 
 ---
 

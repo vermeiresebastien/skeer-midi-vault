@@ -1,7 +1,7 @@
-# Configures, builds and then runs the four headless checks against the VST3 form of
+# Configures, builds and then runs the five headless checks against the VST3 form of
 # SKEER MIDI VAULT: where the index is (vault-locator-test), reading it without writing to it
-# (vault-index-test), reading a source .mid (vault-midi-test) and loading the bundle the way a
-# DAW does (vault-host-test).
+# (vault-index-test), reading a source .mid (vault-midi-test), playing a clip on the host's clock
+# (vault-emit-test) and loading the bundle the way a DAW does (vault-host-test).
 #
 # JUCE is taken from a local checkout by default because a 100 MB shallow clone is the
 # slowest possible way to find out whether a build works. CMakeLists.txt still declares
@@ -9,22 +9,30 @@
 #
 # Disclosed rather than smoothed over: the default checkout above is skulpt's and reports
 # 8.0.4, while CMakeLists.txt asks FetchContent for 8.0.8, so the pair was measured against both.
-# Pointing -Juce at a real 8.0.8 tree and running the same four suites gave identical counts --
-# 15, 24+1 skipped, 35+1 skipped, 20 checks, none failed. Keep that habit on this line: the
+# Both trees, measured 2026-11-16 with the command in the header above, gave identical counts --
+# 15, 24+1 skipped, 35+1 skipped, 77, 22 checks, none failed. Keep that habit on this line: the
 # modules differed once already between those tags (MidiMessageSequence::size became getNumEvents).
+#
+# Measuring the second tag needs its own build directory. Reconfiguring the same one with a
+# different -Juce fails inside JUCE: its nested juceaide project has already cached the first
+# tree's CMakeLists.txt and refuses the second. -BuildDir build/tag-808 sits inside the ignored
+# build tree, so the pair is compared without a stray directory showing up in git status.
 #
 #   powershell -File plugin/build.ps1
 #   powershell -File plugin/build.ps1 -Juce D:/Projects/skeer-audio/skulpt/external/JUCE
-#   powershell -File plugin/build.ps1 -Juce D:/Projects/skeer-audio/pulsekit/build/_deps/juce-src
+#   powershell -File plugin/build.ps1 -BuildDir build/tag-808 -Juce D:/Projects/skeer-audio/pulsekit/build/_deps/juce-src
 
 param(
     [string] $Juce = "D:/Projects/skeer-audio/skulpt/external/JUCE",
-    [string] $Config = "Release"
+    [string] $Config = "Release",
+    # Relative to this script, so the default is the same directory every existing invocation
+    # already used and a second tree only gets a directory when one is asked for.
+    [string] $BuildDir = "build"
 )
 
 $ErrorActionPreference = "Stop"
 $here = $PSScriptRoot
-$build = Join-Path $here "build"
+$build = Join-Path $here $BuildDir
 
 cmake -S $here -B $build "-DFETCHCONTENT_SOURCE_DIR_JUCE=$Juce"
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

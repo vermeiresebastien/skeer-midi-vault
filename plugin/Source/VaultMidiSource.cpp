@@ -14,6 +14,7 @@ bool MidiSource::load (const juce::String& filePath)
     if (! source.existsAsFile())
     {
         error = "There is no file at " + filePath;
+        loadFailure = LoadFailure::notFound;
         return false;
     }
 
@@ -25,6 +26,7 @@ bool MidiSource::load (const juce::String& filePath)
     if (! input.openedOk())
     {
         error = "The file is there but could not be opened: " + filePath;
+        loadFailure = LoadFailure::unreadable;
         return false;
     }
 
@@ -42,6 +44,7 @@ bool MidiSource::load (const juce::String& filePath)
     {
         error = filePath + " is not a Standard MIDI File that JUCE can read";
         file.clear();
+        loadFailure = LoadFailure::unreadable;
         return false;
     }
 
@@ -49,10 +52,12 @@ bool MidiSource::load (const juce::String& filePath)
     {
         error = filePath + " has no tracks in it";
         file.clear();
+        loadFailure = LoadFailure::unreadable;
         return false;
     }
 
     error.clear();
+    loadFailure = LoadFailure::none;
     isLoaded = true;
     return true;
 }
@@ -62,6 +67,7 @@ void MidiSource::clear()
     file.clear();
     hash.clear();
     error.clear();
+    loadFailure = LoadFailure::none;
     numBytes = 0;
     isLoaded = false;
 }

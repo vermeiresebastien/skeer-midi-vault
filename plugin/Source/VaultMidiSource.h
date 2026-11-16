@@ -30,6 +30,17 @@ enum class HashCheck
 class MidiSource
 {
 public:
+    /** Why the last load() returned false, in the terms a user needs. "We can't find it" and "it
+        is there but will not open" are different sentences in the browser, and this class is the
+        only thing that knows which one happened: re-testing the path outside would guess, and would
+        report a permission denial as a missing file. */
+    enum class LoadFailure
+    {
+        none,         // the last load() succeeded
+        notFound,     // nothing at that path, or its folder cannot be reached
+        unreadable,   // something is there, but it will not open, is not a Standard MIDI File, or holds no tracks
+    };
+
     /** Reads, hashes and parses. On failure, loaded() is false and errorMessage() says why. */
     bool load (const juce::String& filePath);
 
@@ -46,6 +57,7 @@ public:
     /** Lowercase hex SHA-256 of the content last read. */
     juce::String contentHash() const        { return hash; }
     juce::String errorMessage() const       { return error; }
+    LoadFailure failure() const noexcept    { return loadFailure; }
 
     HashCheck checkAgainst (const juce::String& recordedHash) const;
 
@@ -53,6 +65,7 @@ private:
     juce::MidiFile file;
     juce::String hash;
     juce::String error;
+    LoadFailure loadFailure = LoadFailure::none;
     juce::int64 numBytes = 0;
     bool isLoaded = false;
 };

@@ -44,7 +44,9 @@ python -m midivault.server --open       # run from source; serves web/dist on 12
 npm --prefix web ci                     # frontend deps only; the Python app has ZERO runtime deps
 npm --prefix web run dev                # Vite :5173, proxies /api -> :8737
 npm --prefix web run build              # tsc --noEmit && vite build — this is also the only typecheck
-python -m unittest discover -s tests    # 97 tests, ~20s; framework is unittest, NOT pytest
+python -m unittest discover -s tests    # 100 tests, ~22s; framework is unittest, NOT pytest
+powershell -File plugin/build.ps1       # VST3 + 5 headless suites (locator, index, midi source, emit, host)
+powershell -File plugin/build.ps1 -BuildDir build/tag-808 -Juce D:/Projects/skeer-audio/pulsekit/build/_deps/juce-src   # 8.0.8 tree
 python scripts/evaluate_classification.py
 node tests/e2e-web.mjs                  # needs playwright-core (in web/node_modules) + CHROME_PATH
 node tests/autoplay-deck.mjs            # drives the real UI: autoplay deck, bounded run, durable selection
@@ -63,6 +65,18 @@ each re-run against a detached `git worktree` at HEAD — point `SKEER_ENGINE_TS
 the pre-fix `engine.ts`, or `SKEER_DIST` at a pre-fix build, and the checks fail
 there. Keep that property: a fix landing without its check failing on HEAD is not
 verified.
+
+`plugin/build.ps1` is the plug-in lane and the only command that needs a compiler: it
+configures, builds and runs five C++ suites — `vault-locator-test` (where the index
+is), `vault-index-test` (reading it without writing to it), `vault-midi-test` (the
+source bytes), `vault-emit-test` (a clip on the host's clock) and `vault-host-test`
+(loading the bundle the way a DAW does) — then `ctest`. It writes into
+`plugin/build/` and installs nothing. The default JUCE is skulpt's local checkout at
+8.0.4 while `plugin/CMakeLists.txt` asks FetchContent for 8.0.8, so run both lines
+above and require both green: the modules differed between those tags once already
+(`MidiMessageSequence::size` became `getNumEvents`). The second tree needs its own
+build directory — reconfiguring one tree with the other's JUCE fails inside
+`juceaide` — which is what `-BuildDir build/tag-808` is for.
 
 There is **no lint command** — no ruff/black/mypy config, no ESLint config. Do not
 invent one unprompted. Tests isolate in `tempfile` directories; they never touch
@@ -109,16 +123,30 @@ that, and the flake is in the harness, not the code.
   synthetic fixtures, never claims about real-world MIDI. Genre stays a low-confidence
   hint. See [docs/limitations.md](docs/limitations.md).
 
-## Version bumps need all five
+## Version bumps need all six
 
 `midivault/__init__.py` · `packaging/skeer-midi-vault.iss` (`AppVersion`,
-`VersionInfoVersion`) · `build/version_info.txt` · `desktop.py` (`VERSION`) ·
-`web/package.json` (`version`).
+`VersionInfoVersion`) · `build/version_info.txt` (`filevers`, `prodvers`,
+`FileVersion`, `ProductVersion`) · `desktop.py` (`VERSION`) ·
+`web/package.json` (`version`) · `plugin/CMakeLists.txt` (`project(... VERSION)`).
 
 `midivault/__init__.py` is the only one the interface can see: `/api/bootstrap`
 publishes it as `app.version`, which Settings → About and
 `window.__SKEER_MIDIVAULT_DEBUG__.version` both read. Never hardcode a version
 string in `web/src/`.
+
+The sixth is load-bearing, not a build artifact: CMake writes
+`plugin/CMakeLists.txt`'s `project(... VERSION)` into the built bundle's
+`moduleinfo.json` and into the binary, and that is the number a host lists the
+plug-in by. A 1.0.1 app beside a plug-in still saying 1.0.0 is two products
+claiming one release.
+
+`python scripts/check_version_consistency.py` reads all ten values across those
+six files and exits non-zero on any disagreement; `tests/test_version_consistency.py`
+runs it, so `python -m unittest discover -s tests` fails on a half-done bump. That
+test also runs the checker against a bumped copy in a temp directory and requires it
+to fail, because a gate nobody has seen go red is not known to be a gate. The script's
+own output -- not this list -- is the authority on which literals are probed.
 
 ## Docs drift — verified against the tree
 

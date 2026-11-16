@@ -208,13 +208,13 @@ int main (int argc, char* argv[])
     std::printf ("info  exported parameters: %d (MIDI CC emulations: %d)\n",
                  parameters, autoPublishedCCs);
 
-    // Two declared controls plus the bypass the wrapper adds for every VST3, and nothing
+    // Three declared controls plus the bypass the wrapper adds for every VST3, and nothing
     // else. JUCE publishes a MIDI CC parameter for all 16 channels x 130 controllers when
     // a plugin asks for MIDI input, which is a host's way of automating CC *into* a plugin
-    // this one never reads -- so 2083 here is not a longer list of the same thing, it is
-    // 2080 controls no user can point at anything.
+    // this one never reads -- so a list of two thousand here is not a longer version of the
+    // same thing, it is 2080 controls no user can point at anything.
     check (autoPublishedCCs == 0, "no auto-published MIDI CC controls reach the host");
-    check (parameters == 3, "the host sees the two controls the plugin declares and the wrapper's bypass");
+    check (parameters == 4, "the host sees the three controls the plugin declares and the wrapper's bypass");
 
     for (int i = 0; i < jmin (parameters, 6); ++i)
         info ("param[" + juce::String (i) + "]: "
@@ -222,9 +222,11 @@ int main (int argc, char* argv[])
 
     auto* transpose = findParameter (*instance, "Transpose");
     auto* followTempo = findParameter (*instance, "Follow Host Tempo");
+    auto* loop = findParameter (*instance, "Loop");
 
     check (transpose != nullptr, "Transpose reaches the host by name");
     check (followTempo != nullptr, "Follow Host Tempo reaches the host by name");
+    check (loop != nullptr, "Loop reaches the host by name");
 
     if (transpose != nullptr)
     {
@@ -239,6 +241,15 @@ int main (int argc, char* argv[])
         const auto text = followTempo->getText (followTempo->getValue(), 16);
         std::printf ("info  Follow Host Tempo at value 0 reads: %s\n", text.toRawUTF8());
         check (text == "Off", "the tempo switch really has an Off the user can pick");
+    }
+
+    if (loop != nullptr)
+    {
+        loop->setValueNotifyingHost (0.0f);
+        const auto text = loop->getText (loop->getValue(), 16);
+        std::printf ("info  Loop at value 0 reads: %s\n", text.toRawUTF8());
+        check (text == "Once", "and looping is a choice the host can turn off, not a behaviour "
+                               "the clip has to be left with");
     }
 
     // The wrapper's MIDI path: a note through the VST3 boundary, on a buffer sized from the
