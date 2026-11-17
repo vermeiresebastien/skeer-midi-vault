@@ -146,6 +146,12 @@ seen carrying it on 2026-11-18: `release_check.ps1 -Stages installed` ended
 `NOT READY - 0 passed, 1 failed, 0 skipped, of 1 stages`, its `installed` detail naming
 `C:\Users\Sebastien\AppData\Local\SKEER MIDI VAULT cycle` and `Error 5: Access is denied`.
 
+One reading trap, because the two clocks in the evidence differ: the `install-cycle-<utc>` and
+`release-check-<utc>` folder names and the bundle's `built_at` are UTC, while every line Setup
+writes is local — Setup declares its own offset on the first line of its log,
+`Log opened. (Time zone: UTC+01:00)` here. So the run in `install-cycle-20261117-235354` opens with
+a `2026-11-18 00:53` line: the same second, an hour later on paper. The dates above are local.
+
 The refusal follows the **executable**, not the folder, and that was pinned down on 2026-11-18.
 `Get-Acl` reports `Allow FullControl` for this user on `%LOCALAPPDATA%` and on the Start Menu's
 `Programs`, and a `powershell` child of this same shell creates folders and writes files in all of
