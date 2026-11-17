@@ -48,7 +48,7 @@ Rules:
   `SKEER MIDI VAULT.spec` by hand needs `--distpath launch`.
 - `dist/` and `dist-installer/` are the superseded locations, kept ignored only so
   pre-existing copies stay out of `git status`.
-- [tests/test_packaged_smoke.py:22](tests/test_packaged_smoke.py) launches
+- [tests/test_packaged_smoke.py:33](tests/test_packaged_smoke.py) launches
   `launch\SKEER MIDI VAULT\SKEER MIDI VAULT.exe` by default; `SKEER_PACKAGED_EXE`
   overrides it.
 

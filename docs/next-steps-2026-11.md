@@ -58,6 +58,16 @@ classifier, so "100% accuracy" is partly the answer key leaking into the questio
 output chain can clip with no limiter and a meter that cannot show it; and notes over
 the voice cap vanish without a trace.
 
+Read as a present-tense list, that ledger is 2026-11-14 and one line has moved since. Checked
+against the tree on 2026-11-18: the first item is closed — `schema_version` is read back and
+compared (`_stored_schema_version` at `db.py:103`, the migrate-or-refuse branch at
+`db.py:147-161`), which is Step 2's ✅. The other four are open and were confirmed still open:
+the predictions overwrite (now `db.py:744`, and no step owns it), the answer-key leak
+(`scripts/evaluate_classification.py:135` and `tests/test_demo_accuracy.py:27` both still pass
+the fixture's own folder into `classify`), the unbounded output chain (no `WaveShaper` anywhere
+in `web/src/audio/engine.ts`) and the silent voice drop (`engine.ts:730-732`, not `:686-689` —
+still `skippedNotes += 1; return;`). Steps 3, 4 and 6 are where the last three are scheduled.
+
 **Second decision: compete on the audition loop, not on more metadata.** The landscape
 lane established that MIDI Xplorer is the benchmark — key + scale with confidence, BPM,
 chords, tempo-synced preview, piano roll, non-destructive — and is **macOS-only**, with
