@@ -13,6 +13,22 @@ harnesses were added under `tests/`. An earlier re-run the same day reported 79,
 and one on 2026-11-14 reported 55. Everything before the Python table is the
 original 2026-11-02 session and keeps the numbers that session produced.
 
+Re-verification for 1.1.0 (2026-11-17): the header and the tables below this
+paragraph are the 2026-11-02/11-15 records and are left exactly as those sessions
+produced them. Against the 1.1.0 tree at commit `862bb16`,
+`python -m unittest discover -s tests` reported **Ran 104 tests — OK** in 19.9 s,
+`plugin/build.ps1` reported exit 0 and **ctest 6/6** on both the 8.0.4 and the 8.0.8
+JUCE tree, and `python tests/test_packaged_smoke.py` reported
+**PASS packaged smoke test** against `launch\SKEER MIDI VAULT\SKEER MIDI VAULT.exe`
+(health `SKEER MIDI VAULT 1.1.0`, 36 files indexed / 1 failed / 0 issues, 403 and 415
+boundary responses honored on a keep-alive connection, no orphan
+`--multiprocessing-fork` workers). The browser harnesses were not re-run for this
+build; their 11-15 figures are the most recent measurement that exists for them. The
+release-gate, version-consistency and installer-cycle checks that 1.1.0 added are not
+unittest suites and are reported in
+[`release-notes-1.1.0.md`](release-notes-1.1.0.md) and
+[`../packaging/README.md`](../packaging/README.md).
+
 Machine-readable results: [`e2e-results.json`](e2e-results.json),
 [`playback-stability.json`](playback-stability.json),
 [`benchmark-results.json`](benchmark-results.json),
@@ -244,13 +260,23 @@ executor.
 
 ## Installer
 
-`packaging/build_installer.ps1` builds `SKEER-MIDI-VAULT-Setup-1.0.0.exe` (Inno Setup)
-and the portable ZIP into `launch/` with SHA-256 checksums. Rebuilt 2026-11-15 after
+`packaging/build_installer.ps1` builds the Setup executable and the portable ZIP named
+for the current release, plus the VST3 bundle they carry, into `launch/` with SHA-256
+checksums. Rebuilt 2026-11-15 after
 the boundary, migration and deck work: Setup 23,361,854 bytes (22.3 MiB,
 `c2afd2a0f6f932eb…`), portable ZIP 31,303,849 bytes (29.9 MiB, `572086aa04723f26…`).
 Both hashes were recomputed independently against `launch/SHA256SUMS.txt`, and the
 interface payload inside the bundle is byte-identical to `web/dist` — including the
 new deck code — so what was verified is what ships.
+
+Rebuilt again 2026-11-17 for 1.1.0: `SKEER-MIDI-VAULT-Setup-1.1.0.exe` 25,672,313 bytes
+(`fa94a75a2cb23bce…`) and `SKEER-MIDI-VAULT-Portable-1.1.0.zip` 34,694,635 bytes
+(`a08612f2f8fd3546…`); the manifest is LF-only and `sha256sum -c SHA256SUMS.txt` exits 0.
+The bundle was stamped `862bb165fe2e…` with `dirty: true` and `python
+tests/test_packaged_smoke.py` passed against it. The installer's own payload check found
+all 198 files copied by the real Setup with nothing extra; the registration and uninstall
+legs are environment-blocked and listed as such in
+[`../packaging/README.md`](../packaging/README.md).
 
 A full interactive install → shortcuts → uninstall cycle could **not** be completed
 inside this sandboxed build session: the setup child process is denied writes to

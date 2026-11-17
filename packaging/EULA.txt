@@ -3,9 +3,6 @@ END USER LICENSE AGREEMENT
 
 Copyright (C) 2026 SKEER AUDIO. All rights reserved.
 
-IMPORTANT: This is a template license agreement supplied with the product build.
-Review it with legal counsel before selling or distributing the application.
-
 1. LICENSE GRANT
    SKEER AUDIO grants you a non-exclusive, non-transferable licence to install
    and use this copy of SKEER MIDI VAULT for your own personal or internal
@@ -39,10 +36,24 @@ Review it with legal counsel before selling or distributing the application.
    THE APPLICATION. SKEER AUDIO'S TOTAL LIABILITY SHALL NOT EXCEED THE AMOUNT
    YOU PAID FOR THE LICENCE.
 
-6. SUPPORT AND UPDATES
+6. SUPPORT, UPDATES AND CONTACT
    Support, updates and upgrade terms are provided separately by the seller.
-   This version is 1.0.0.
+   This version is 1.1.0.
+   Licence and support enquiries: <<<FILL: contact>>>
 
-7. ACCEPTANCE
+7. GOVERNING LAW
+   This agreement is governed by the law of <<<FILL: jurisdiction>>>, and any
+   dispute arising out of it is subject to the exclusive jurisdiction of the
+   courts of that place. Nothing in this agreement limits a right you cannot
+   lawfully waive, including rights that cannot be excluded in your own country.
+
+8. TERMINATION
+   Your licence ends if you break these terms and do not remedy the breach
+   within 30 days of being told. On termination you must stop using the
+   application and delete your copies of it. Your content is unaffected:
+   uninstalling removes the application, not your MIDI files, tags, notes or
+   corrections.
+
+9. ACCEPTANCE
    By installing or using the application you agree to the terms above. If you
    do not agree, do not install the application.

@@ -637,6 +637,8 @@ class MidiVaultHandler(BaseHTTPRequestHandler):
             "supported_extensions": sorted(SUPPORTED_EXTENSIONS),
             "supported_formats": [0, 1, 2],
             "db": ctx.db.db_health(),
+            # Present only in a packaged build: the commit these bytes were made from.
+            "build": ctx.config.get("build_info"),
         }
 
     def _bootstrap(self) -> dict[str, Any]:

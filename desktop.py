@@ -37,7 +37,7 @@ from midivault.scanner import ScanManager
 from midivault.server import _default_data_dir
 
 APP_NAME = "SKEER MIDI VAULT"
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 MUTEX_NAME = "Local\\SkeerMidiVaultDesktopV1"
 PREFERRED_PORT = 8737
 
@@ -51,6 +51,21 @@ def _bundle_root() -> Path:
 
 def _web_dir() -> Path:
     return _bundle_root() / "web" / "dist"
+
+
+def _build_info() -> dict[str, Any] | None:
+    """The provenance stamp PyInstaller bundled, or None for a run from source.
+
+    Source runs have no stamp by design, so a packaged-only assertion cannot be satisfied by
+    accident: the field is absent, not empty.
+    """
+    try:
+        payload = json.loads(
+            (_bundle_root() / "buildinfo" / "BUILDINFO.json").read_text(encoding="utf-8")
+        )
+    except (OSError, ValueError):
+        return None
+    return payload if isinstance(payload, dict) else None
 
 
 def _icon_path() -> Path:
@@ -226,6 +241,8 @@ def run(args: argparse.Namespace) -> int:
                         # Per-session secret; the web layer reads it back from
                         # GET /api/session and echoes it on every write.
                         "session_token": secrets.token_urlsafe(32),
+                        # Which commit these bytes came from, for /api/health to publish.
+                        "build_info": _build_info(),
                     },
                 )
                 break

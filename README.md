@@ -27,11 +27,11 @@ The standalone builds all land in one folder, **`launch/`**:
 - **[`SKEER MIDI VAULT/`](launch/SKEER%20MIDI%20VAULT/)** — the standalone
   application. Double-click `SKEER MIDI VAULT.exe` inside it; keep `_internal/`
   beside the exe, it holds the Python runtime and the interface bundle.
-- **[SKEER-MIDI-VAULT-Setup-1.0.0.exe](launch/SKEER-MIDI-VAULT-Setup-1.0.0.exe)** —
+- **[SKEER-MIDI-VAULT-Setup-1.1.0.exe](launch/SKEER-MIDI-VAULT-Setup-1.1.0.exe)** —
   per-user installer, the file to send to customers. No Python, Node.js, terminal
-  or admin rights required.
-- **[SKEER-MIDI-VAULT-Portable-1.0.0.zip](launch/SKEER-MIDI-VAULT-Portable-1.0.0.zip)** —
-  extract and run.
+  or admin rights required. It also carries the VST3 plug-in (see below).
+- **[SKEER-MIDI-VAULT-Portable-1.1.0.zip](launch/SKEER-MIDI-VAULT-Portable-1.1.0.zip)** —
+  extract and run; app bundle and the staged `VST3/` folder.
 - **[SHA256SUMS.txt](launch/SHA256SUMS.txt)** — SHA-256 checksums for
   release distribution.
 
@@ -43,6 +43,26 @@ shortcut. The application starts a loopback-only service, opens the interface in
 your default browser, and stays available from a tray icon. Closing the tab does
 not stop the local service; use the tray icon or
 **Settings → Data & privacy → Quit SKEER MIDI VAULT** to exit.
+
+## VST3 plug-in
+
+The same library, inside the host. `SKEER MIDI VAULT.vst3` is a MIDI-only plug-in:
+one column with a filter box, the library list, three controls that are always
+visible — **Follow Host Tempo**, **Transpose** (±24) and **Loop** — and a status
+strip that says which file is playing and which one the project asked for. Pick a
+MIDI file and the clip is emitted on the host's own clock; "Save clip as..." writes
+a standard MIDI file wherever you point it.
+
+It reads the application's index and never writes to it: every query opens its own
+read-only connection and closes it before returning, nothing is touched until you
+click Connect, and SQLite is never queried from `processBlock`. Your `.mid` files are
+never renamed, moved or edited.
+
+Where it lands depends on how Setup was run. A per-user install puts the bundle at
+`%LOCALAPPDATA%\Programs\SKEER MIDI VAULT\VST3`, which a host has to be pointed at by
+hand; Setup run with `/ALLUSERS` also installs to
+`C:\Program Files\Common Files\VST3`, the folder every host scans by default. The
+Setup log states which of the two happened.
 
 The application requires Microsoft Edge or Google Chrome (standard on
 Windows 10/11). The Setup file is currently **unsigned**; Windows SmartScreen may
@@ -283,14 +303,22 @@ the optional benchmark script to sample process-tree memory.
 
 | Check | Result | Report |
 | --- | --- | --- |
-| Python unit/integration tests | **97/97** (now includes schema migration and the loopback boundary) | [`docs/test-report.md`](docs/test-report.md) |
-| Browser end-to-end checks | **16/16** (now includes piano-roll drag and scrub) | [`docs/e2e-results.json`](docs/e2e-results.json) |
+| Python unit/integration tests | **104/104** (2026-11-17; includes schema migration, the loopback boundary and the version gate) | [`docs/test-report.md`](docs/test-report.md) |
+| VST3 plug-in suites (headless) | **6/6** on both JUCE 8.0.4 and 8.0.8, and the bundle's `moduleinfo.json` reads 1.1.0 | [`plugin/build.ps1`](plugin/build.ps1) |
+| Installer payload | real Setup installed **all 198 payload files**, nothing missing, nothing extra | [`packaging/install_cycle_check.ps1`](packaging/install_cycle_check.ps1) |
+| Release gate | `scripts/release_check.ps1` exits 0 only when every selected stage ran and passed; falsifier prints **FALSIFIER OK** | [`packaging/README.md`](packaging/README.md) |
+| Browser end-to-end checks | **16/16** (piano-roll drag and scrub included) | [`docs/e2e-results.json`](docs/e2e-results.json) |
 | Autoplay deck checks | **8/8** — auto-advance, bounded run, manual stop, selection survives filtering | [`tests/autoplay-deck.mjs`](tests/autoplay-deck.mjs) |
 | Sound path and interaction checks | **23/23** across four harnesses — MIDI output lifecycle, Space activation, deck past a soundless row, scan-setting round trip | [`docs/test-report.md`](docs/test-report.md) |
 | Standalone packaged app | **passed** health, session token enforced (`403` without it), keep-alive framing on the shipped socket (`403 → 200`, `415 → 200`), parser generation and scan-settings defaults reported by the frozen service, frozen process-worker scan, quit, zero orphan workers | [`tests/test_packaged_smoke.py`](tests/test_packaged_smoke.py) |
 | Classification regression | file 31/31 family, 31/31 role; track 13/13 family, 11/13 role | [`docs/classification-evaluation.md`](docs/classification-evaluation.md) |
 | Scan/search benchmark | 1,000 files: **83 files/s** full, **255 files/s** incremental; peak tree RSS **88.2 MB**; search p50 **~13.5 ms** | [`docs/benchmark-results.json`](docs/benchmark-results.json) |
 | Playback stability | source-time drift **0.989×** over 7.6 s while scanning and filtering; 0 late/0 skipped notes | [`docs/playback-stability.json`](docs/playback-stability.json) |
+
+The Python, plug-in, installer-payload and release-gate rows were measured against the
+1.1.0 build on 2026-11-17. The browser, autoplay, sound-path, benchmark and playback rows
+are the 2026-11-15 measurements — those harnesses have not been re-run since, and their
+figures are quoted as of that date in `docs/test-report.md`.
 
 Hardware for the benchmark and browser runs: AMD Ryzen 9 3900X, 24 logical cores,
 63.9 GB RAM, Windows 10 22H2, Python 3.12.10, Node 24.19, Chrome headless. Full
@@ -317,6 +345,13 @@ python tests/test_packaged_smoke.py
 
 # rebuild standalone app + Windows installer + portable ZIP (exports to launch/)
 .\packaging\build_installer.ps1
+
+# one exit code for "this is releasable": 0 READY, 1 failed stage, 2 could not run
+.\scripts\release_check.ps1
+.\scripts\release_check.ps1 -Fast
+
+# real Setup → run the installed exe → uninstall → compare to before
+.\packaging\install_cycle_check.ps1
 ```
 
 The browser suites need `playwright-core` (already installed in `web/node_modules`)
@@ -335,10 +370,13 @@ The installer build needs Inno Setup 6; see
 
 ## Status
 
-Version **1.0.0** — first complete local desktop-web release. The feature report
-lists implemented, partial and deliberately missing work:
-[Completed / partial / missing](docs/completed-partial-missing.md). Recent fixes
-and standalone-distribution details:
+Version **1.1.0** — the VST3 plug-in ships with the installer, every deliverable
+carries a provenance stamp naming its commit, and one command decides whether a
+build may leave the machine: `scripts\release_check.ps1`. The feature report lists
+implemented, partial and deliberately missing work:
+[Completed / partial / missing](docs/completed-partial-missing.md). What is new and
+what is still only true conditionally:
+[Release notes 1.1.0](docs/release-notes-1.1.0.md). Earlier:
 [Release notes 1.0.0](docs/release-notes-1.0.0.md).
 
 ## SKEER identity

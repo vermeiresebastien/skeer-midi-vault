@@ -5,6 +5,12 @@ hardening, audition/sound, 2026 competitive landscape, form factor). Every claim
 that drives a sequencing decision was re-verified against the files, not taken from the
 lanes. Effort: **S** = under an hour, **M** = a few hours, **L** = a day-plus.
 
+Dated note, 2026-11-17: this is the plan as written on 2026-11-14, and several of the
+defects it describes have since been fixed, so most inline `path:line` citations here are
+against the pre-fix tree and drift by a line or land on code that no longer matches the
+sentence. The step entries that carry a ✅ state what is true now and re-cite themselves;
+re-open the file before acting on any citation in a paragraph without one.
+
 ---
 
 ## 1. The decision
@@ -24,6 +30,20 @@ The load-bearing dependency is this:
   returns nothing.
 - The intelligence avenues we actually want next — transposition-invariant similarity,
   groove vectors, chord sequences — all change the fingerprint.
+
+That three-bullet premise is superseded, and it is left standing above as the reason the
+sequencing went the way it did. Re-checked against the 1.1.0 tree on 2026-11-17:
+`FINGERPRINT_VERSION = 1` and `LEGACY_FINGERPRINT_VERSION = 0` exist
+([`versions.py:25-26`](../midivault/engine/versions.py)), `scanner.py:255` skips a cached
+record whose generation is not the current one, `duplicates.py:62-72` reads that generation
+out of the vector and returns *legacy* rather than guessing, and
+`db.py:965-981` only feeds `fingerprint_json` into similarity once
+`fingerprint_version` agrees. The line citations in the bullets above are the 2026-11-14
+ones and no longer point at the code they describe — `duplicates.py:85-92` is now the
+tempo/duration gates, not the cosine (`_cosine` is `duplicates.py:28`), `db.py:812-814` is
+tag and label assembly, `versions.py:9-10` is the `SCHEMA_VERSION` paragraph and
+`scanner.py:315-323` is failure recording. Step 2 of §3 is where that work is recorded
+as done.
 
 So the first useful similarity feature silently corrupts every existing library by
 comparing old vectors against new ones, and nothing in the app can tell the user.
@@ -168,10 +188,14 @@ the *file* category instead of your part correction.
 filename **and its folder** into `classify` (`scripts/evaluate_classification.py:134-135`,
 `tests/test_demo_accuracy.py:26-27`, folder from `fixtures/demo_labels.json`), so
 "100% on 31 files" is largely the generator leaking its answer key. The only defensible
-number today is track-role 84.6%. Re-run evaluation content-only, report both figures
-separately, and correct `docs/release-notes-1.0.0.md:52` (still says 51/51; real count is
-55) and the stale `AGENTS.md` vitest note — vitest *is* in `web/package.json:30` and
-installed; the command fails because no spec file exists under `web/src/`.
+number today is track-role 84.6%. Re-run evaluation content-only and report both figures
+separately. Two of this step's asks are discharged rather than open:
+`docs/release-notes-1.0.0.md:52` keeps its 51/51 as the dated 1.0.0 record, and the
+current counts live in `docs/release-notes-1.1.0.md` plus the dated 2026-11-17
+re-verification in `docs/test-report.md` (**Ran 104 tests — OK**); and the `AGENTS.md`
+vitest note is corrected against the tree — vitest *is* declared (`web/package.json:30`)
+and installed, and `npm --prefix web test` exits 1 with `No test files found` because no
+`src/**/*.test.ts` spec exists.
 
 **Step 7 — A gate that fails.** *S.* ✅ **Gate and its red case done 2026-11-16; no CI by
 choice.** No `.github/`, no hooks, no lint, and the only check between an edit and a
@@ -198,6 +222,12 @@ that matters most. Its own output on 2026-11-16:
 ```
 
 That copy is dated evidence, not a maintained list — re-run the script after a bump.
+Superseded on 2026-11-17 by the 1.1.0 bump, which took the set to 8 files and 11 values:
+`packaging/EULA.txt` gained a checked licence-version line, and the checker now also
+probes for an *absence* — no version literal in `packaging/build_installer.ps1`, which
+must read the number out of `midivault/__init__.py`. The current table is the gate's own
+`gate` stage output under `build\work\release-check-<utc>\`, and its one-line verdict is
+quoted in `docs/release-notes-1.1.0.md`.
 Four of the ten sit in `build/version_info.txt` (lines 3, 4, 19 and 24), because Windows
 reads the fixed file info and the string table separately: a bump that reaches `filevers`
 and misses `prodvers` or either string ships an installer whose product version disagrees

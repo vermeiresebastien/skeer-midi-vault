@@ -2,7 +2,7 @@
 
 Local-first MIDI library and audition tool: a Python 3.12 stdlib HTTP service
 (loopback only) plus a React 19 + TypeScript/Vite interface, indexed in SQLite.
-Version 1.0.0.
+Version 1.1.0.
 
 ## Deliverables: `launch/` is the one place to build and run from
 
@@ -19,15 +19,31 @@ the user hunt through `dist/` or `dist-installer/` for what to run.
   its sibling `_internal/` (Python runtime + `web/dist`) beside it: **onedir, not
   onefile.** Do not switch to `--onefile`; each multiprocessing scan worker would
   re-extract ~50 MB to `%TEMP%`.
-- `SKEER-MIDI-VAULT-Setup-1.0.0.exe`, `SKEER-MIDI-VAULT-Portable-1.0.0.zip`,
+- `SKEER-MIDI-VAULT-Setup-1.1.0.exe`, `SKEER-MIDI-VAULT-Portable-1.1.0.zip`,
   `SHA256SUMS.txt`
+- `VST3/SKEER MIDI VAULT.vst3` — the staged plug-in bundle the installer and the
+  ZIP both carry. `build_installer.ps1` refuses to ship it if its
+  `moduleinfo.json` disagrees with the release, and passes `/DPluginStaged` to Inno
+  only when it really staged one; `-SkipPlugin` makes an installer with no plug-in
+  rather than an ISCC error about a missing `Source`.
 
 Rules:
 
 - `launch/` is **fully gitignored** — nothing inside it is ever tracked.
 - The bundle is **removed before being rewritten** so a stale file cannot survive
-  a build ([packaging/build_installer.ps1:31](packaging/build_installer.ps1)).
+  a build ([packaging/build_installer.ps1:160](packaging/build_installer.ps1)), and
+  the staged plug-in bundle is removed the same way at line 210.
 - Verify `launch/` holds freshly timestamped binaries before reporting a build done.
+- The Setup is **per-user by default**: `{autopf}` is `%LOCALAPPDATA%\Programs` and
+  the plug-in goes to `{app}\VST3`, which a host has to be pointed at by hand. Only
+  Setup run with `/ALLUSERS` in admin mode also writes
+  `C:\Program Files\Common Files\VST3`, where every host looks by default.
+  `[Code] function CommonVst3` logs which of the two happened, so the Setup log —
+  not the README — says where the bundle landed.
+- An Inno `[Code]` section comment must be `//` or `{ }`. A `;` there is not a
+  comment, it is a syntax error (`'BEGIN' expected`), because the section is handed
+  to the script compiler instead of being read as an ini-style list. Measured on
+  Inno Setup 6.7.4.
 - `distpath` is a CLI option, not a spec setting: building from the root
   `SKEER MIDI VAULT.spec` by hand needs `--distpath launch`.
 - `dist/` and `dist-installer/` are the superseded locations, kept ignored only so
@@ -44,7 +60,7 @@ python -m midivault.server --open       # run from source; serves web/dist on 12
 npm --prefix web ci                     # frontend deps only; the Python app has ZERO runtime deps
 npm --prefix web run dev                # Vite :5173, proxies /api -> :8737
 npm --prefix web run build              # tsc --noEmit && vite build — this is also the only typecheck
-python -m unittest discover -s tests    # 100 tests, ~22s; framework is unittest, NOT pytest
+python -m unittest discover -s tests    # 104 tests, ~22s; framework is unittest, NOT pytest
 powershell -File plugin/build.ps1       # VST3 + 6 headless suites (locator, index, midi source, emit, editor, host)
 powershell -File plugin/build.ps1 -BuildDir build/tag-808 -Juce D:/Projects/skeer-audio/pulsekit/build/_deps/juce-src   # 8.0.8 tree
 python scripts/evaluate_classification.py
@@ -55,7 +71,24 @@ node tests/midi-output-guard.mjs        # fake requestMIDIAccess: refused send, 
 node tests/space-activation.mjs         # Space reaches the focused control, not the transport
 node tests/deck-broken-row.mjs          # the deck walks past a row whose details/preview are empty
 node tests/scan-settings.mjs            # Settings → Scanning re-hash guard: PATCH, reload, re-arm
+powershell -File scripts/release_check.ps1              # the release gate; exit 0 READY / 1 NOT READY / 2 INCOMPLETE
+powershell -File scripts/release_check.ps1 -Fast        # gate, suite, licence, checksums only
+python scripts/check_release_gate.py    # falsifies that gate and the build script: 33 cases on a copied tree
+powershell -File packaging/install_cycle_check.ps1      # Setup → run installed exe → uninstall, compared to before
 ```
+
+`scripts/release_check.ps1` is the one command whose exit code means "ship it": it
+owns eleven stages (`gate, suite, web, plugin, plugin808, installer, stamp, smoke,
+checksums, licence, installed`), writes one log per stage under
+`build\work\release-check-<utc>\`, and never reports READY on a stage it skipped.
+`scripts/check_release_gate.py` is its falsifier — it copies the real files into
+`build\work\release-gate-falsifier\`, stubs the child commands, and requires each
+defect to redden the stage that names it, with a green control case that reaches
+READY. Run it after touching either script: a gate nobody has seen go red is not
+known to be a gate. `packaging\install_cycle_check.ps1` is destructive by design and
+refuses before touching anything if the app is running or already registered; read
+[packaging/README.md](packaging/README.md) for what it proves and what a restricted
+shell cannot let it finish.
 
 `tests/midi-output-guard.mjs`, `space-activation.mjs`, `deck-broken-row.mjs` and
 `scan-settings.mjs` need no service: `tests/app-harness.mjs` serves the real
@@ -113,7 +146,13 @@ the token the same way in Python — both call `GET /api/session` and echo
 `X-SKEER-Token` on every write, so a harness that posts without it gets 403, the
 same as a foreign page. `test_packaged_smoke.py` is a standalone script, not a
 `unittest` module: it collects zero tests, so `python -m unittest discover -s tests`
-never runs it. Run it by hand after any packaging or boundary change. SQLite suites open their temp dir with
+never runs it. Two commands do: `scripts/release_check.ps1` runs it against
+`launch\SKEER MIDI VAULT\`, and `packaging\install_cycle_check.ps1` runs it again
+against the **installed** executable through `SKEER_PACKAGED_EXE`, because the
+bundle beside `launch/` is not the artifact a user ends up running. Its shutdown
+prints an `OSError: [WinError 10038]` traceback from the frozen HTTP thread — a
+known race between the quit path and the socket close, printed on an otherwise
+passing run; do not "fix" it by deleting the print. SQLite suites open their temp dir with
 `ignore_cleanup_errors=True`: Windows can hold a just-closed WAL file for a beat
 and fail `tearDown` on a run where every assertion passed — ~1 suite in 6 before
 that, and the flake is in the harness, not the code.
@@ -149,36 +188,47 @@ that, and the flake is in the harness, not the code.
   synthetic fixtures, never claims about real-world MIDI. Genre stays a low-confidence
   hint. See [docs/limitations.md](docs/limitations.md).
 
-## Version bumps need all six
+## Version bumps: seven files with a literal, one with an absence
 
 `midivault/__init__.py` · `packaging/skeer-midi-vault.iss` (`AppVersion`,
 `VersionInfoVersion`) · `build/version_info.txt` (`filevers`, `prodvers`,
 `FileVersion`, `ProductVersion`) · `desktop.py` (`VERSION`) ·
-`web/package.json` (`version`) · `plugin/CMakeLists.txt` (`project(... VERSION)`).
+`web/package.json` (`version`) · `plugin/CMakeLists.txt` (`project(... VERSION)`) ·
+`packaging/EULA.txt` (the "This version is X.Y.Z." line the licence page shows) —
+eleven values in all, plus `packaging/build_installer.ps1` probed for the *absence* of
+one. Measured 2026-11-17 at 1.1.0: the checker prints `8 files, 11 values, one version
+1.1.0.`
 
 `midivault/__init__.py` is the only one the interface can see: `/api/bootstrap`
 publishes it as `app.version`, which Settings → About and
 `window.__SKEER_MIDIVAULT_DEBUG__.version` both read. Never hardcode a version
 string in `web/src/`.
 
-The sixth is load-bearing, not a build artifact: CMake writes
+The plug-in literal is load-bearing, not a build artifact: CMake writes
 `plugin/CMakeLists.txt`'s `project(... VERSION)` into the built bundle's
 `moduleinfo.json` and into the binary, and that is the number a host lists the
 plug-in by. A 1.0.1 app beside a plug-in still saying 1.0.0 is two products
-claiming one release.
+claiming one release. `packaging/build_installer.ps1` reads the version from
+`midivault/__init__.py` and is itself probed for *not* carrying a literal, because a
+second home for the number is how a partial bump produced a ZIP named for the old
+version, an installer named for the new one, and an empty `SHA256SUMS.txt` with exit
+code 0.
 
-`python scripts/check_version_consistency.py` reads all ten values across those
-six files and exits non-zero on any disagreement; `tests/test_version_consistency.py`
-runs it, so `python -m unittest discover -s tests` fails on a half-done bump. That
-test also runs the checker against a bumped copy in a temp directory and requires it
-to fail, because a gate nobody has seen go red is not known to be a gate. The script's
-own output -- not this list -- is the authority on which literals are probed.
+`python scripts/check_version_consistency.py` prints the file:line, literal and value
+for every one of those, and exits non-zero on any disagreement;
+`tests/test_version_consistency.py` runs it, so `python -m unittest discover -s tests`
+fails on a half-done bump. That test also runs the checker against a bumped copy in a
+temp directory and requires it to fail, because a gate nobody has seen go red is not
+known to be a gate. The script's own output -- not this list -- is the authority on
+which literals are probed.
 
 ## Docs drift — verified against the tree
 
 - `web/package.json` `screenshots` points at a missing `tests/screenshots.mjs`;
   capture lives inside `tests/e2e-web.mjs`.
-- `npm --prefix web test` runs `vitest`, which is not a dependency and matches no
-  files — there are no frontend unit tests.
+- `npm --prefix web test` runs `vitest`, which *is* a declared and installed
+  devDependency (`^5.0.5`) — measured 2026-11-17 it exits 1 with `No test files
+  found`, because no `src/**/*.test.ts` spec exists. There are no frontend unit
+  tests; frontend verification is the browser harnesses under `tests/`.
 
 Check a documented path against the real tree before acting on it.

@@ -5,4 +5,4 @@ the HTTP API and the web interface. It accepts MIDI bytes and returns plain
 Python data structures.
 """
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"

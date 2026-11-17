@@ -1,6 +1,6 @@
 # Known limitations
 
-This is version 1.0.0. The list is deliberately explicit: the application is
+This is version 1.1.0. The list is deliberately explicit: the application is
 useful, but it is not a DAW, a commercial MIDI catalog and it does not claim
 general-purpose classification accuracy.
 
@@ -171,10 +171,16 @@ general-purpose classification accuracy.
   opens the interface in the **system default browser**. It is not a custom
   Electron/WinUI window. A browser (Edge/Chrome) is therefore required; the tray
   icon needs an interactive Windows desktop session.
-- A full install → shortcut → uninstall cycle was not executed inside this build
-  sandbox because the sandbox token is denied writes to HKCU and the Start Menu.
-  The installer compiled and the portable/packaged builds passed their smoke tests;
-  test the Setup once on a normal user desktop before selling.
+- The installer's payload is proven and its registration is not. On 2026-11-17
+  `packaging/install_cycle_check.ps1` ran the real Setup and confirmed **all 198 payload
+  files** land with nothing missing and nothing written outside the target directory —
+  that row goes red when one file is added to `launch/`. Setup then exited 4 and rolled
+  back, because this shell's child-process policy denies its writes to `%LOCALAPPDATA%`,
+  the Start Menu folder and `HKCU\...\Uninstall`. The Add/Remove Programs entry, the
+  shortcuts, the first launch of the installed executable and the uninstall comparison
+  have therefore never completed anywhere: run
+  `powershell -File packaging\install_cycle_check.ps1` once on a normal user desktop
+  before selling. The portable ZIP and the packaged app do pass their smoke tests.
 - No local model is installed or downloaded. The optional local-model integration
   point is an architecture seam for later work.
 - Third-party npm packages are used to build/serve the interface
@@ -183,10 +189,16 @@ general-purpose classification accuracy.
 
 ## The VST3 plug-in
 
-The plug-in is a separate artefact from the app: `plugin/build.ps1` builds it, and
-`packaging/` never mentions it, so **installing SKEER MIDI VAULT does not put a VST3
-anywhere** and no host will see it until the bundle is copied into a folder that host
-scans.
+Since 1.1.0 the plug-in ships with the app: `packaging/build_installer.ps1` stages the
+built bundle into `launch/VST3`, and Setup installs it — so **installing SKEER MIDI VAULT
+now does put a VST3 somewhere**. Where it lands is the remaining caveat, and it depends on
+how Setup was run. At the default lowest privileges it goes into
+`{app}\VST3`, a folder no host scans automatically, so add it to the host's VST3 search
+paths or re-run Setup with `/ALLUSERS`, which also copies it to
+`%ProgramFiles%\Common Files\VST3` where every host looks. The Setup log names which of the
+two happened. Either way nothing in the installer edits, adds or removes a host's own scan
+path, and the `/ALLUSERS` leg has never been executed here because elevation is not
+available in this environment — see `packaging/README.md`.
 
 - It has a browser panel over the app's own index — filter box, one list, the three
   exported controls (Follow Host Tempo, Transpose, Loop), and a status strip that says

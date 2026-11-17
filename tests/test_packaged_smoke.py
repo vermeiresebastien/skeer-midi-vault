@@ -3,6 +3,12 @@
 Runs the windowed PyInstaller build as a server, performs a real demo scan with
 the frozen process pool, checks the shipped service's HTTP framing and settings
 defaults over a keep-alive socket, then asks the embedded desktop service to quit.
+
+It also re-derives the provenance stamp bundled in `_internal\\buildinfo` and holds it against
+this tree: the interface inside the bundle must be the interface `web/dist` is now, the version
+the service publishes must be the version this checkout states, and the build must name the
+commit it came from. A bundle whose UI was rebuilt after it, or a binary that cannot say where
+it came from, fails here rather than shipping.
 """
 from __future__ import annotations
 
@@ -19,6 +25,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "scripts"))
+import build_stamp  # noqa: E402
+from midivault import __version__  # noqa: E402
 from midivault.engine.versions import PARSER_VERSION  # noqa: E402
 
 EXE = Path(os.environ.get(
@@ -194,6 +203,37 @@ def main() -> int:
         print("frozen parser generation", bootstrap["versions"]["parser"])
         assert bootstrap["versions"]["parser"] == PARSER_VERSION, bootstrap["versions"]
         assert bootstrap["settings"].get("verify_unchanged") == "1", bootstrap["settings"]
+
+        # ---- provenance: these bytes must be accountable for, not merely present.
+        # mtime was the old evidence and it proves nothing: a bundle can be older than the
+        # source it claims to be built from, or newer than a rebuild that never ran.
+        stamp_file = EXE.parent / "_internal" / "buildinfo" / "BUILDINFO.json"
+        assert stamp_file.exists(), f"the bundle carries no provenance stamp: {stamp_file}"
+        stamped = json.loads(stamp_file.read_text(encoding="utf-8"))
+        published = health.get("build")
+        assert published == stamped, (
+            "the service publishes a build stamp that is not the file in the bundle:\n"
+            f"  published: {published}\n  bundled:   {stamped}")
+
+        for key in ("commit", "dirty", "built_at", "web_dist", "untracked_digest"):
+            assert stamped.get(key) is not None, f"the stamp is missing {key}: {stamped}"
+
+        commit = stamped["commit"]
+        assert len(commit) == 40 and all(c in "0123456789abcdef" for c in commit), commit
+        assert isinstance(stamped["dirty"], bool), stamped["dirty"]
+        print("built from", commit[:12], "dirty" if stamped["dirty"] else "clean",
+              "at", stamped["built_at"])
+
+        bundled_dist = build_stamp.digest_tree(EXE.parent / "_internal" / "web" / "dist")
+        assert bundled_dist == stamped["web_dist"], (
+            f"the interface inside the bundle ({bundled_dist}) is not the one the stamp hashed "
+            f"({stamped['web_dist']}): it changed after the build wrote BUILDINFO.json")
+        source_dist = build_stamp.digest_tree(ROOT / "web" / "dist")
+        assert source_dist == stamped["web_dist"], (
+            f"this tree's web/dist ({source_dist}) is not what shipped ({stamped['web_dist']}): "
+            "the interface was rebuilt without rebuilding the app bundle")
+        assert bootstrap["app"]["version"] == __version__, (
+            f"the packaged app says {bootstrap['app']['version']}, this tree says {__version__}")
         refused, follow, body = framing_roundtrip(
             port,
             _request("POST", "/api/library/1/favorite", b'{"favorite":true}'),

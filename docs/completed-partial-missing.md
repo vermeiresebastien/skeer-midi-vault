@@ -1,8 +1,9 @@
 # Deliverable status: completed, partial, missing
 
-Scoped to the version 1.0.0 brief. "Completed" means implemented in this
-workspace and exercised by tests where the environment permits. Environment-
-blocked verification is called out explicitly.
+Scoped to the version 1.0.0 brief and re-checked against the 1.1.0 tree on
+2026-11-17. "Completed" means implemented in this workspace and exercised by
+tests where the environment permits. Environment-blocked verification is called
+out explicitly.
 
 ## Completed
 
@@ -95,10 +96,30 @@ blocked verification is called out explicitly.
 - [x] Standalone PyInstaller application containing the Python runtime and web
       interface; packaged smoke test passes (health, frozen process-worker scan,
       quit, no orphan workers).
-- [x] Per-user Windows installer (`SKEER-MIDI-VAULT-Setup-1.0.0.exe`) with
-      Start Menu/optional desktop shortcut, uninstall entry, EULA and
-      application icon; no Python, Node.js or admin rights required.
-- [x] Portable standalone ZIP with SHA-256 release checksums.
+- [x] Per-user Windows installer (`SKEER-MIDI-VAULT-Setup-1.1.0.exe`) that stages the
+      app, the interface, the provenance stamp and the VST3 bundle, with the EULA page
+      (two seller fields still unfilled — see **Partial**) and the application icon and
+      version metadata; no Python, Node.js or admin rights required. The Start Menu
+      shortcut, the uninstall entry and the first launch of the installed executable are
+      implemented in `packaging/skeer-midi-vault.iss` and are graded by
+      `packaging/install_cycle_check.ps1` — see **Partial** for which legs this
+      machine could not execute.
+- [x] VST3 plug-in (`SKEER MIDI VAULT.vst3`, same 1.1.0 version as the app) shipped
+      inside both deliverables: an editor panel with a filter box, the library list and
+      three exported controls, reading the app's own index read-only. It is placed in
+      `{app}\VST3` for a per-user install and additionally in
+      `Common Files\VST3` when Setup runs with `/ALLUSERS`.
+- [x] Build provenance: `_internal/buildinfo/BUILDINFO.json` inside the bundle
+      (commit, dirty flag, status/diff/untracked digests, `web/dist` hash), published
+      by `/api/health` and the debug surface.
+- [x] Portable standalone ZIP with SHA-256 release checksums (LF-only manifest, so
+      `sha256sum -c` exits 0); the ZIP and the installer carry the same 198 files.
+- [x] One release number asserted by a gate: `scripts/check_version_consistency.py`
+      reads 11 values across 8 files, including the licence page and the *absence* of a
+      literal in the build script.
+- [x] `scripts/release_check.ps1`: eleven stages, one exit code
+      (0 READY / 1 failed / 2 could not run), per-stage logs, and a falsifier
+      (`python scripts/check_release_gate.py`) that plants one defect per case.
 - [x] Desktop launcher: single-instance mutex, tray Open/Quit, Settings quit,
       automatic browser open, per-user runtime/log files.
 - [x] Local-only loopback binding and privacy notice.
@@ -142,15 +163,34 @@ blocked verification is called out explicitly.
   piano-roll keyboard navigation are not included.
 - **Platform coverage.** Windows 10/11 is the tested platform. The Python service
   is portable, but drive discovery and skip behavior are Windows-specific.
-- **Installer verification.** The Inno Setup installer compiles successfully and
-  the packaged/portable builds pass end-to-end smoke tests. A full interactive
-  install → shortcut → uninstall cycle could not complete inside this sandboxed
-  build session because the sandbox token is denied writes to HKCU/Start Menu;
-  run the Setup once on a normal user desktop before publishing. The portable ZIP
-  is fully tested.
-- **Installer signing.** The Setup EXE is unsigned. Windows SmartScreen warning
-  is expected until an Authenticode certificate is applied; signing guidance is
-  included but no certificate is supplied.
+- **Installer verification.** The payload is proven and the registration legs are not.
+  `packaging/install_cycle_check.ps1` ran against the real
+  `SKEER-MIDI-VAULT-Setup-1.1.0.exe` on 2026-11-17: Setup copied **all 198 payload
+  files** — app exe, `BUILDINFO.json`, `web/dist/index.html`, both checked VST3 files and
+  everything else — with nothing missing and nothing written outside the requested
+  directory, and that row goes red when one file is added to `launch/`. Setup then exited 4
+  and rolled back, because the agent shell's child-process policy refuses Setup's own
+  writes to `%LOCALAPPDATA%\Programs`, to the `%APPDATA%` Start Menu folder and to
+  `HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall`. The Add/Remove Programs
+  entry, the shortcuts, the first launch of the installed executable and the uninstall
+  comparison therefore have never completed anywhere. They need one run of
+  `powershell -File packaging\install_cycle_check.ps1` from a normal user terminal. The
+  `/ALLUSERS` leg — including the `Common Files\VST3` copy — has never run at all, because
+  elevation is not available in this environment.
+- **Licence page fields.** `packaging/EULA.txt` section 6 and section 7 still hold
+  `<<<FILL: contact>>>` and `<<<FILL: jurisdiction>>>`. The gate treats a placeholder as a
+  failed stage, so `licence` is FAIL and `scripts/release_check.ps1` reports NOT READY
+  until the seller fills both.
+- **Installer signing.** The Setup EXE is unsigned (`NotSigned`). Windows SmartScreen
+  warning is expected until an Authenticode certificate is applied. `build_installer.ps1`
+  is signing-ready through an inert-by-default `-Sign` switch that signs the app before
+  ISCC and the Setup after, runs `signtool verify /pa`, and writes `SHA256SUMS.txt` last —
+  but that code path has never executed, because no certificate exists yet.
+- **Plug-in interaction in a real host.** Six headless suites drive the editor tree,
+  including the message loop a `TextEditor` needs, but no window is ever created: a real
+  OLE drag, the operating system's own overwrite prompt and keyboard focus inside a host
+  window are unproven. Taking focus is a decision the owner has not yet ratified — see
+  `docs/limitations.md`.
 - **Native window shell.** The standalone app opens the system browser and runs a
   tray service; it is not a custom Electron/WinUI window. This preserves Web MIDI,
   browser folder picking and drag behavior available in Chrome/Edge.

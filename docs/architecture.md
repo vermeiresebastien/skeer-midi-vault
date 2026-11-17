@@ -1,8 +1,12 @@
 # SKEER MIDI VAULT — application architecture
 
-Status: implemented in this workspace (version 1.0.0). This document records the
-architecture proposal derived from the two existing SKEER-family codebases and
-the decisions that were actually shipped.
+Status: implemented in this workspace (version 1.1.0, released 2026-11-17). This
+document records the architecture proposal derived from the two existing SKEER-family
+codebases and the decisions that were actually shipped. The 1.1.0 additions — a read-only
+VST3 reader beside the app, a build-provenance stamp inside the bundle, and a release gate
+that owns the "is this releasable" answer — follow the same boundaries as the rest of this
+document: the engine stays pure, the index is written by exactly one process, and everything
+else opens it read-only.
 
 ## 1. What was inspected
 

@@ -31,13 +31,22 @@ screenshots-tmp/
 # VAULT.spec" passes them as icon= and version=, and
 # packaging/build_installer.ps1 reads both from build\. Ignoring build/ would
 # silently drop them and break packaging from a clean checkout.
-# build/work/ was already covered above; build/tools/ is the vendored Inno Setup
-# install (28 MB) that build_installer.ps1 downloads or reuses.
+# build/work/ was already covered above. build/tools/ is a vendored Inno Setup
+# install (28 MB) that was placed here by hand: packaging/build_installer.ps1
+# looks for ISCC.exe in several known locations and fails the preflight when none
+# of them has it, so a clean checkout needs Inno Setup installed or INNO_SETUP_ISCC
+# set. Nothing in the pipeline downloads it.
 build/tools/
 
 # Regenerated from build_installer.ps1's CLI flags on every run (--specpath
 # build). The authored spec is the tracked one at the repo root.
 build/SKEER MIDI VAULT.spec
+
+# Written by scripts/build_stamp.py and read back out of the bundle as
+# _internal\buildinfo\BUILDINFO.json. It records the commit and tree digests of
+# the checkout that produced a build, so it belongs to that build, not to the
+# source: a tracked copy would claim to be provenance for bytes it never stamped.
+build/BUILDINFO.json
 
 # Unified deliverables folder: standalone bundle, Setup exe, portable ZIP and
 # SHA256SUMS.txt. Regenerate with packaging/build_installer.ps1. Nothing inside
