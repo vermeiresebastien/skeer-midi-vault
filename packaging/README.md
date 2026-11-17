@@ -141,7 +141,10 @@ finish, only registration is refused, and the check ends `CYCLE INCOMPLETE` (exi
 `-Dir`, Setup is refused the folder before it copies anything, `files` reports FAIL for that reason
 alone, and it ends `CYCLE FAILED` (exit 1). Either headline now carries the refused path and the
 `Error 5: Access is denied` beside it, because `release_check.ps1` quotes that line into its
-`installed` row and "Setup did not install" on its own reads like a broken installer.
+`installed` row and "Setup did not install" on its own reads like a broken installer. That row was
+seen carrying it on 2026-11-18: `release_check.ps1 -Stages installed` ended
+`NOT READY - 0 passed, 1 failed, 0 skipped, of 1 stages`, its `installed` detail naming
+`C:\Users\Sebastien\AppData\Local\SKEER MIDI VAULT cycle` and `Error 5: Access is denied`.
 
 The refusal follows the **executable**, not the folder, and that was pinned down on 2026-11-18.
 `Get-Acl` reports `Allow FullControl` for this user on `%LOCALAPPDATA%` and on the Start Menu's
