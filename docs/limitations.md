@@ -176,10 +176,14 @@ general-purpose classification accuracy.
   `766aa311c5d0` build on 2026-11-18 — and confirmed **all 198 payload
   files** land with nothing missing and nothing written outside the target directory — that
   row goes red when one file is added to `launch/`. Setup then exited 4 and rolled back, because
-  this shell's child-process policy refuses Setup the **creation of a new folder**, under
-  `%LOCALAPPDATA%` and in the Start Menu, each time with `Error 5: Access is denied`. What is
-  *not* blocking here is the registry: the cycle's preflight shows a child process of this shell
-  can write `HKCU\...\Uninstall`, though Setup itself never reached that key, because it is
+  this shell's policy refuses **Setup** every write outside the workspace — first seen as the
+  creation of a new folder under `%LOCALAPPDATA%` and in the Start Menu (`Error 5: Access is
+  denied`), and confirmed as something broader: with both folders pre-created by the shell, so
+  Setup had nothing to make, it copied 0 files and failed at `CreateFile failed; code 5`. The
+  account's ACLs on those folders are FullControl and a `powershell` child of the same shell
+  writes there freely, so the refusal follows the executable, not the path and not the artifact.
+  The registry is not known to be a block: the cycle's preflight shows a child process of this
+  shell can write `HKCU\...\Uninstall`, though Setup itself never reached that key, because it is
   refused a folder first. From this shell the payload leg therefore needs
   `-FilesOnly -Dir <a path inside the workspace>`; run without `-Dir`, Setup never reaches its
   target and `files` reports FAIL for that reason alone. The Add/Remove Programs entry, the

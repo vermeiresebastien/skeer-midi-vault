@@ -151,17 +151,18 @@ it is documented in `AGENTS.md` and deliberately not silenced.
    `<<<FILL: jurisdiction>>>`. Until the seller fills them, the `licence` stage is FAIL and
    the gate is NOT READY. That is deliberate: the gate reads the same placeholder markers the
    build script refuses to strip.
-2. **The full install → run → uninstall cycle has not completed anywhere.** In this sandboxed
-   shell the payload copy is proven (row above), but the host's write policy refuses **Setup's
-   own child process** the creation of a new folder — both at the cycle's target under
-   `%LOCALAPPDATA%` and at
-   `%APPDATA%\Microsoft\Windows\Start Menu\Programs\SKEER AUDIO`, each with `Error 5: Access is
-   denied` — and Setup exits 4 after rollback. It is the shell and not the artifact: the same
-   Setup copies all 198 files when `-Dir` points inside the workspace, which is how to grade the
-   payload from here. A per-user install defaults to `{autopf}`, also under `%LOCALAPPDATA%`, so
-   expect the same refusal on this machine and none on the buyer's. Run
-   `powershell -File packaging\install_cycle_check.ps1` from a normal user terminal once, and
-   the `installed` stage can go PASS.
+2. **The full install → run → uninstall cycle has not completed anywhere, and this shell cannot
+   complete it.** The payload copy is proven (row above), but the host's policy refuses **Setup**
+   every write outside the workspace: first at creating its target under `%LOCALAPPDATA%` and
+   `%APPDATA%\Microsoft\Windows\Start Menu\Programs\SKEER AUDIO` (`Error 5: Access is denied`),
+   and — with both folders pre-created by the shell so that Setup had no directory left to make —
+   at `CreateFile failed; code 5`, still with 0 files copied. It follows the executable, not the
+   path: the ACLs on those folders are FullControl for this user and a `powershell` child of the
+   same shell writes there freely, while the identical Setup copies all 198 files into a workspace
+   path. So no `-Dir`, and no pre-made folder, gets the cycle finished from here. Run
+   `powershell -File packaging\install_cycle_check.ps1` from a normal user terminal once — the
+   three sibling SKEER installs already registered on this machine are proof the same installer
+   family registers and uninstalls correctly here — and the `installed` stage can go PASS.
 3. **The `/ALLUSERS` leg is untested**: no elevation is available here, so
    `CommonVst3` and the `Common Files\VST3` copy have never run.
 4. **The installer is unsigned.** `Get-AuthenticodeSignature` reports `NotSigned` for both

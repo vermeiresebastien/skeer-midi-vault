@@ -89,8 +89,10 @@ known to be a gate. `packaging\install_cycle_check.ps1` is destructive by design
 refuses before touching anything if the app is running or already registered; read
 [packaging/README.md](packaging/README.md) for what it proves and what a restricted
 shell cannot let it finish. In this shell that means `-FilesOnly -Dir <a path inside the
-workspace>`: policy refuses Setup the *creation of a new folder* under `%LOCALAPPDATA%`, so
-without `-Dir` not one file is copied and the `files` row goes red for that reason alone.
+workspace>`: policy refuses **Setup** every write outside the workspace — a child `powershell`
+creates folders and files under `%LOCALAPPDATA%` freely and the ACLs are FullControl, but Setup is
+refused even `CreateFile` there — so without `-Dir` not one file is copied and the `files` row
+goes red for that reason alone. Pre-creating the target does not help; do not spend a run trying.
 `stamp` decides the order of a release's last two actions — it compares the bundle's commit
 to `HEAD`, so **build after you commit**, or the gate rightly reports a bundle that no
 longer matches the tree.

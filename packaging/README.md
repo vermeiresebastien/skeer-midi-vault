@@ -143,6 +143,18 @@ alone, and it ends `CYCLE FAILED` (exit 1). Either headline now carries the refu
 `Error 5: Access is denied` beside it, because `release_check.ps1` quotes that line into its
 `installed` row and "Setup did not install" on its own reads like a broken installer.
 
+The refusal follows the **executable**, not the folder, and that was pinned down on 2026-11-18.
+`Get-Acl` reports `Allow FullControl` for this user on `%LOCALAPPDATA%` and on the Start Menu's
+`Programs`, and a `powershell` child of this same shell creates folders and writes files in all of
+them. Setup, launched the same way from the same parent, is refused even opening a file there: with
+`%LOCALAPPDATA%\SKEER MIDI VAULT cycle\1.1.0` and `Programs\SKEER AUDIO` pre-created by the shell so
+that Setup had no directory left to make, it copied 0 files and died with `CreateFile failed; code 5.
+Access is denied.` So do not spend another run on `-Dir` or on pre-made folders — nothing outside the
+workspace is writable by this artifact from here, and the cycle can only finish in a terminal outside
+the sandbox. (Both probe folders were removed afterwards, and the three things worth re-checking —
+the Add/Remove Programs entries, the running SKEER processes and the `SKEER*` folders in
+`%LOCALAPPDATA%` — read the same after the attempt as before it.)
+
 Two mechanics that were worth finding out rather than guessing at, both now handled by the script:
 `Start-Process` routes through `ShellExecute`, whose attachment manager raised a modal
 "Open File - Security Warning" that no headless run can answer, so Setup is launched with
