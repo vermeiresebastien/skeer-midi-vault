@@ -217,7 +217,16 @@ function Setup-Cause([string]$LogPath) {
     $hit = $lines | Where-Object { $_ -match $pattern -and $_ -notmatch 'Log closed' } | Select-Object -First 1
     if (-not $hit) { return 'no named cause in ' + (Split-Path $LogPath -Leaf) }
     $i = [array]::IndexOf($lines, $hit)
-    $context = ($lines[$i..([Math]::Min($i + 2, $lines.Count - 1))] -join ' ') -replace '\s+', ' '
+    # Setup narrates one exception over an indented block, and the row that tells a refused shell
+    # from a broken installer - "Error 5: Access is denied." - sits two rows under the line the
+    # pattern caught, with a blank between. So walk on while the rows belong to this record: a new
+    # timestamped row is the next event, not part of the cause.
+    $context = @($lines[$i])
+    for ($j = $i + 1; $j -lt $lines.Count -and $context.Count -lt 4; $j++) {
+        if ($lines[$j] -match '^\s*\d{4}-\d{2}-\d{2} ') { break }
+        if ($lines[$j] -match '\S') { $context += ($lines[$j] -replace '^\s+', '') }
+    }
+    $context = ($context -join ' ') -replace '\s+', ' '
     if ($context.Length -gt 260) { $context = $context.Substring(0, 260) + '...' }
     return $context.Trim()
 }
@@ -351,7 +360,10 @@ if ($setupExit -ne 0 -and -not $FilesOnly) {
     Add-Row 'install' 'FAIL' ("Setup exited $setupExit after copying " +
         "$(@(Installed-Dests $setupLog).Count) file(s) - $cause (log: $setupLog)")
     Write-Host ''
-    Write-Host "CYCLE FAILED - Setup did not install; evidence in $Evidence"
+    # release_check's `installed` row quotes this headline and nothing else, so the cause belongs
+    # here: "Setup did not install" on its own reads like a broken installer, and the far more
+    # likely reason - this shell refusing Setup a folder - is a privilege note one line up.
+    Write-Host "CYCLE FAILED - Setup did not install: $cause; evidence in $Evidence"
     Write-Host ('If that cause names a registry key, the Start Menu or "Access is denied", the ' +
                 'shell running this check is the problem and not the installer: re-run it from a ' +
                 'normal user terminal, or re-run with -FilesOnly to grade the payload copies only.')

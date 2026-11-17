@@ -285,6 +285,22 @@ installer fails the same way, confirming it is environmental rather than an
 application-payload failure. Test the Setup once on a normal user desktop before
 selling. The portable build is fully tested.
 
+Measured again on 2026-11-17/18, and one detail of that paragraph is now known to be wrong: the
+sandbox does not deny this shell's child process the **registry**. The cycle script's own
+preflight reports `a child process of this shell may write HKCU\...\Uninstall` as PASS. What it
+does refuse is the creation of a **new folder** — under `%LOCALAPPDATA%`, and in the user Start
+Menu — each time with `Error 5: Access is denied`, after which Setup rolls back and exits 4.
+
+The release build was then redone from a clean tree, and those are the bytes the release notes
+publish: commit `766aa311c5d0`, `dirty: false`, `built_at 2026-11-17T23:09:47Z`, Setup
+25,669,100 bytes (`d7ef9f2d05ab0fa9…`) and ZIP 34,695,007 bytes (`b056e9aa765b42dc…`), manifest
+LF-only with `sha256sum -c` exit 0. Against exactly those bytes: `python
+tests/test_packaged_smoke.py` PASS, printing `built from 766aa311c5d0 clean`; the payload leg
+PASS with `files - 199 file(s) installed … all 198 payload file(s), nothing extra`; and the full
+eleven-stage gate `NOT READY - 9 passed, 2 failed, 0 skipped, of 11 stages`, with
+`stamp PASS - commit 766aa311c5d0, clean, web/dist dafc8187f542` and the two FAILs being
+`licence` (two unfilled fields) and `installed` (the folder refusals above).
+
 ## Classification evaluation
 
 Command:

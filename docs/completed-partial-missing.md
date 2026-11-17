@@ -165,13 +165,16 @@ out explicitly.
   is portable, but drive discovery and skip behavior are Windows-specific.
 - **Installer verification.** The payload is proven and the registration legs are not.
   `packaging/install_cycle_check.ps1` ran against the real
-  `SKEER-MIDI-VAULT-Setup-1.1.0.exe` on 2026-11-17: Setup copied **all 198 payload
+  `SKEER-MIDI-VAULT-Setup-1.1.0.exe` on 2026-11-17, and again on 2026-11-18 against the clean
+  `766aa311c5d0` build: Setup copied **all 198 payload
   files** — app exe, `BUILDINFO.json`, `web/dist/index.html`, both checked VST3 files and
   everything else — with nothing missing and nothing written outside the requested
   directory, and that row goes red when one file is added to `launch/`. Setup then exited 4
-  and rolled back, because the agent shell's child-process policy refuses Setup's own
-  writes to `%LOCALAPPDATA%\Programs`, to the `%APPDATA%` Start Menu folder and to
-  `HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall`. The Add/Remove Programs
+  and rolled back, because the agent shell's child-process policy refuses Setup the creation of
+  a new folder — measured at the cycle's `%LOCALAPPDATA%` target and at the `%APPDATA%` Start
+  Menu folder, each `Error 5: Access is denied`, and at `HKCU\...\Uninstall` in a control build
+  of Inno's own minimal script. A per-user install puts its files under `%LOCALAPPDATA%` too,
+  so that is the leg this machine cannot exercise; it says nothing about the buyer's. The Add/Remove Programs
   entry, the shortcuts, the first launch of the installed executable and the uninstall
   comparison therefore have never completed anywhere. They need one run of
   `powershell -File packaging\install_cycle_check.ps1` from a normal user terminal. The

@@ -135,8 +135,13 @@ next thing an installer must write was refused to it: first
 minimal script `HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall`. That is the shell's
 child-process policy, not a defect in the artifact: the account's own `powershell` and `reg.exe`
 write those places freely, and a stock minimal Inno script fails in exactly the same place, so the
-refusal cannot be attributed to this script. The check therefore ends `CYCLE INCOMPLETE` (exit 2)
-here, and says which path it was refused.
+refusal cannot be attributed to this script. Which exit that produces depends on how far Setup got,
+and both were measured here on 2026-11-18: with `-FilesOnly -Dir` inside the workspace the copies
+finish, only registration is refused, and the check ends `CYCLE INCOMPLETE` (exit 2); with no
+`-Dir`, Setup is refused the folder before it copies anything, `files` reports FAIL for that reason
+alone, and it ends `CYCLE FAILED` (exit 1). Either headline now carries the refused path and the
+`Error 5: Access is denied` beside it, because `release_check.ps1` quotes that line into its
+`installed` row and "Setup did not install" on its own reads like a broken installer.
 
 Two mechanics that were worth finding out rather than guessing at, both now handled by the script:
 `Start-Process` routes through `ShellExecute`, whose attachment manager raised a modal
@@ -207,9 +212,13 @@ redesign is the most likely thing here to silently stop checking something.
 
 As measured on 2026-11-17 against the built 1.1.0 deliverables, `-Fast` reports `NOT READY` with
 three passes and exactly one failure — the two unfilled `EULA.txt` fields above. Nothing else in
-that set is red. The full set adds the two stages this machine cannot finish on the agent's behalf:
-`stamp`, which refuses a bundle whose tree was dirty when it was built, and `installed`, described
-in the cycle section above.
+that set is red. The full eleven-stage set, run on 2026-11-17 against a clean build of the release
+commit, reports `NOT READY - 9 passed, 2 failed, 0 skipped, of 11 stages`: `licence` FAIL on those
+same two fields, and `installed` FAIL because Setup cannot make a folder in this shell. `stamp` is
+**not** one of the failures — it passes on a bundle built from a committed tree, which is the only
+state in which these artifacts should be published. Both of the remaining reds are therefore about
+work that is not this machine's to finish: filling in the licence, and running the cycle from a
+normal user terminal.
 
 ## What not to ship
 

@@ -305,8 +305,8 @@ the optional benchmark script to sample process-tree memory.
 | --- | --- | --- |
 | Python unit/integration tests | **104/104** (2026-11-17; includes schema migration, the loopback boundary and the version gate) | [`docs/test-report.md`](docs/test-report.md) |
 | VST3 plug-in suites (headless) | **6/6** on both JUCE 8.0.4 and 8.0.8, and the bundle's `moduleinfo.json` reads 1.1.0 | [`plugin/build.ps1`](plugin/build.ps1) |
-| Installer payload | real Setup installed **all 198 payload files**, nothing missing, nothing extra | [`packaging/install_cycle_check.ps1`](packaging/install_cycle_check.ps1) |
-| Release gate | `scripts/release_check.ps1` exits 0 only when every selected stage ran and passed; falsifier prints **FALSIFIER OK** | [`packaging/README.md`](packaging/README.md) |
+| Installer payload | real Setup installed **all 198 payload files**, nothing missing, nothing extra (re-run 2026-11-18 on the clean `766aa31` build) | [`packaging/install_cycle_check.ps1`](packaging/install_cycle_check.ps1) |
+| Release gate | `scripts/release_check.ps1` exits 0 only when every selected stage ran and passed; falsifier prints **FALSIFIER OK**. All eleven stages on the clean build: `NOT READY - 9 passed, 2 failed` — `licence` (two unfilled fields) and `installed` (this shell refuses Setup a folder) | [`packaging/README.md`](packaging/README.md) |
 | Browser end-to-end checks | **16/16** (piano-roll drag and scrub included) | [`docs/e2e-results.json`](docs/e2e-results.json) |
 | Autoplay deck checks | **8/8** — auto-advance, bounded run, manual stop, selection survives filtering | [`tests/autoplay-deck.mjs`](tests/autoplay-deck.mjs) |
 | Sound path and interaction checks | **23/23** across four harnesses — MIDI output lifecycle, Space activation, deck past a soundless row, scan-setting round trip | [`docs/test-report.md`](docs/test-report.md) |

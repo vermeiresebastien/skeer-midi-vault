@@ -88,7 +88,12 @@ READY. Run it after touching either script: a gate nobody has seen go red is not
 known to be a gate. `packaging\install_cycle_check.ps1` is destructive by design and
 refuses before touching anything if the app is running or already registered; read
 [packaging/README.md](packaging/README.md) for what it proves and what a restricted
-shell cannot let it finish.
+shell cannot let it finish. In this shell that means `-FilesOnly -Dir <a path inside the
+workspace>`: policy refuses Setup the *creation of a new folder* under `%LOCALAPPDATA%`, so
+without `-Dir` not one file is copied and the `files` row goes red for that reason alone.
+`stamp` decides the order of a release's last two actions — it compares the bundle's commit
+to `HEAD`, so **build after you commit**, or the gate rightly reports a bundle that no
+longer matches the tree.
 
 `tests/midi-output-guard.mjs`, `space-activation.mjs`, `deck-broken-row.mjs` and
 `scan-settings.mjs` need no service: `tests/app-harness.mjs` serves the real

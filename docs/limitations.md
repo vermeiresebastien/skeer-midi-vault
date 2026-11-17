@@ -171,12 +171,18 @@ general-purpose classification accuracy.
   opens the interface in the **system default browser**. It is not a custom
   Electron/WinUI window. A browser (Edge/Chrome) is therefore required; the tray
   icon needs an interactive Windows desktop session.
-- The installer's payload is proven and its registration is not. On 2026-11-17
-  `packaging/install_cycle_check.ps1` ran the real Setup and confirmed **all 198 payload
-  files** land with nothing missing and nothing written outside the target directory —
-  that row goes red when one file is added to `launch/`. Setup then exited 4 and rolled
-  back, because this shell's child-process policy denies its writes to `%LOCALAPPDATA%`,
-  the Start Menu folder and `HKCU\...\Uninstall`. The Add/Remove Programs entry, the
+- The installer's payload is proven and its registration is not.
+  `packaging/install_cycle_check.ps1` ran the real Setup on 2026-11-17 — again against the
+  `766aa311c5d0` build on 2026-11-18 — and confirmed **all 198 payload
+  files** land with nothing missing and nothing written outside the target directory — that
+  row goes red when one file is added to `launch/`. Setup then exited 4 and rolled back, because
+  this shell's child-process policy refuses Setup the **creation of a new folder**, under
+  `%LOCALAPPDATA%` and in the Start Menu, each time with `Error 5: Access is denied`. What is
+  *not* blocking here is the registry: the cycle's preflight shows a child process of this shell
+  can write `HKCU\...\Uninstall`, though Setup itself never reached that key, because it is
+  refused a folder first. From this shell the payload leg therefore needs
+  `-FilesOnly -Dir <a path inside the workspace>`; run without `-Dir`, Setup never reaches its
+  target and `files` reports FAIL for that reason alone. The Add/Remove Programs entry, the
   shortcuts, the first launch of the installed executable and the uninstall comparison
   have therefore never completed anywhere: run
   `powershell -File packaging\install_cycle_check.ps1` once on a normal user desktop

@@ -1,15 +1,21 @@
 # SKEER MIDI VAULT 1.1.0 — release notes
 
-Built 2026-11-17 from commit `862bb16`. The build is stamped, and the stamp says
-`dirty: true` — see **What still blocks this release** for what that means and what
-has to happen before the bytes below are the shipping bytes.
+Built 2026-11-17T23:09:47Z from commit `766aa311c5d0`, and the tree was clean when it was
+stamped (`dirty: false`), so the gate's `stamp` stage passes on it. The gate is still NOT READY:
+see **What still blocks this release** for the two stages that say so and what they need.
+
+`launch/` is gitignored, so `launch/SHA256SUMS.txt` is the authority for whatever is in that
+folder right now. Every byte count and digest below belongs to the build named above. They are a
+record, not a checksum of the folder: the build is not byte-reproducible, measured on the two
+clean `766aa311c5d0` builds stamped here at 23:05:07Z and 23:09:47Z, which came out 25,671,546
+and 25,669,100 bytes.
 
 ## Standalone distribution
 
-- Windows per-user installer: `launch/SKEER-MIDI-VAULT-Setup-1.1.0.exe` — 25,672,313 bytes,
-  `fa94a75a2cb23bcecfa4032ad9cbb122e95747c3a888556d01bbcf0bdee2f5eb`
-- Portable ZIP: `launch/SKEER-MIDI-VAULT-Portable-1.1.0.zip` — 34,694,635 bytes,
-  `a08612f2f8fd35467f5a794b929b9280b8ae4c980c4c3d72a4d3f3d1d4c2f0f7`
+- Windows per-user installer: `launch/SKEER-MIDI-VAULT-Setup-1.1.0.exe` — 25,669,100 bytes,
+  `d7ef9f2d05ab0fa9b5a570bca2d7fb362a24156c6abeccaeb609c047fcfb6f7e`
+- Portable ZIP: `launch/SKEER-MIDI-VAULT-Portable-1.1.0.zip` — 34,695,007 bytes,
+  `b056e9aa765b42dcd72def7e1d3c23584ed10b895b18b020d382a2e65a1392ec`
 - Checksums: `launch/SHA256SUMS.txt` — 201 bytes, two rows, LF-only terminators, so
   `sha256sum -c SHA256SUMS.txt` run inside `launch/` exits 0.
 
@@ -132,8 +138,8 @@ reads it, not in the customer's copy.
 | Plug-in, JUCE 8.0.8 tree (`-BuildDir build/tag-808`) | exit 0, **ctest 6/6** |
 | Packaged smoke (`python tests/test_packaged_smoke.py`) | exit 0, health reports **1.1.0**, 36 files indexed / 1 failed / 0 issues, `keep-alive` 403→200 and 415→200, **no orphan `--multiprocessing-fork` workers** |
 | Checksums | `sha256sum -c SHA256SUMS.txt` exit 0, 0 CR bytes in the manifest |
-| Installer payload | real Setup installed **all 198 payload files** (199 log destinations, the extra being Inno's own uninstaller), **nothing missing and nothing extra**; proven red by adding one file to `launch/` and restored |
-| Release gate, `-Fast` | 3 PASS + `licence` FAIL → **NOT READY** (exit 1) |
+| Installer payload | real Setup installed **all 198 payload files** (199 log destinations, the extra being Inno's own uninstaller), **nothing missing and nothing extra**; proven red by adding one file to `launch/` and restored. Re-run against the `766aa311c5d0` Setup: `CYCLE INCOMPLETE`, `files` PASS, 3 phases skipped |
+| Release gate, all eleven stages | `NOT READY - 9 passed, 2 failed, 0 skipped, of 11 stages` (exit 1): `licence` FAIL on the two unfilled fields, `installed` FAIL because this shell is refused Setup's writes. **`stamp` PASS** — `commit 766aa311c5d0, clean, web/dist dafc8187f542` |
 
 The `WinError 10038` traceback the smoke log prints at shutdown is the known interpreter
 teardown race in the HTTP thread. It is after `PASS packaged smoke test` and before exit 0;
@@ -141,35 +147,41 @@ it is documented in `AGENTS.md` and deliberately not silenced.
 
 ## What still blocks this release
 
-1. **The tree was dirty when the build was stamped** (`commit 862bb165fe2e…`,
-   `dirty: true`). Commit the release-engineering work and rebuild; the `stamp` stage of the
-   gate will not go green until `launch/` is built from a clean checkout.
-2. **Two licence fields are unfilled** — `<<<FILL: contact>>>` and
+1. **Two licence fields are unfilled** — `<<<FILL: contact>>>` and
    `<<<FILL: jurisdiction>>>`. Until the seller fills them, the `licence` stage is FAIL and
    the gate is NOT READY. That is deliberate: the gate reads the same placeholder markers the
    build script refuses to strip.
-3. **The full install → run → uninstall cycle has not completed anywhere.** In this sandboxed
-   shell the payload copy is proven (row above) but Setup's own child process is refused by
-   the host's write policy at `%LOCALAPPDATA%\Programs`, at
-   `%APPDATA%\Microsoft\Windows\Start Menu\Programs\SKEER AUDIO` and at
-   `HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall`, so Setup exits 4 after
-   rollback. Run `powershell -File packaging\install_cycle_check.ps1` from a normal user
-   terminal once, and the `installed` stage can go PASS.
-4. **The `/ALLUSERS` leg is untested**: no elevation is available here, so
+2. **The full install → run → uninstall cycle has not completed anywhere.** In this sandboxed
+   shell the payload copy is proven (row above), but the host's write policy refuses **Setup's
+   own child process** the creation of a new folder — both at the cycle's target under
+   `%LOCALAPPDATA%` and at
+   `%APPDATA%\Microsoft\Windows\Start Menu\Programs\SKEER AUDIO`, each with `Error 5: Access is
+   denied` — and Setup exits 4 after rollback. It is the shell and not the artifact: the same
+   Setup copies all 198 files when `-Dir` points inside the workspace, which is how to grade the
+   payload from here. A per-user install defaults to `{autopf}`, also under `%LOCALAPPDATA%`, so
+   expect the same refusal on this machine and none on the buyer's. Run
+   `powershell -File packaging\install_cycle_check.ps1` from a normal user terminal once, and
+   the `installed` stage can go PASS.
+3. **The `/ALLUSERS` leg is untested**: no elevation is available here, so
    `CommonVst3` and the `Common Files\VST3` copy have never run.
-5. **The installer is unsigned.** `Get-AuthenticodeSignature` reports `NotSigned` for both
+4. **The installer is unsigned.** `Get-AuthenticodeSignature` reports `NotSigned` for both
    `SKEER-MIDI-VAULT-Setup-1.1.0.exe` and the bundled app executable. `-Sign` exists and is
    inert by default; it has never executed, because there is no Authenticode certificate
    yet. Its preflight refuses before it destroys anything when the cert cannot be found.
    `signtool verify /pa` is wired to run immediately after each signing step, and
    `SHA256SUMS.txt` is written last so the manifest hashes the signed bytes.
-6. **Plug-in keyboard focus and panel layout are not ratified.**
+5. **Plug-in keyboard focus and panel layout are not ratified.**
    `EDITOR_WANTS_KEYBOARD_FOCUS` was set TRUE so the filter box can be typed into, which
    means the host's own shortcuts do not fire while the panel has focus — one line to put
    back, at the price of a search box that sometimes ignores typing. The layout is a proposal
    in C++, not an approved design. No suite here can see either: no window is created.
-7. **A real host session (step 8) has not happened**: a real OLE drag, the OS overwrite
+6. **A real host session (step 8) has not happened**: a real OLE drag, the OS overwrite
    prompt, and focus inside a host window all remain unproven.
+
+One more, about the order of work rather than the product: `stamp` compares the bundle's commit
+to `HEAD`, so **the release build has to be the last action before publishing**. Editing these
+notes after a build — any commit at all — makes the next gate report `stamp FAIL`, correctly:
+that bundle no longer matches the tree it is being judged against.
 
 ## Read this before sale
 
