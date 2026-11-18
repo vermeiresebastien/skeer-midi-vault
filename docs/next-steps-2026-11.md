@@ -149,8 +149,10 @@ forced through one re-index by the scanner's incremental skip, and surfaced in S
 About. `SCHEMA_VERSION` is 2 with `MIGRATIONS[1]`, a pre-migration online-backup snapshot, and
 fail-closed `SchemaError` on a newer or unmapped index; `tests/test_schema_migration.py` (9 tests)
 runs red against the pre-migration code. The finding, for the record: `db.py` wrote
-`schema_version` unconditionally, with no comparison and no `ALTER` anywhere, while `README.md:238`
-and `docs/completed-partial-missing.md:77` described a mechanism that did not exist — the first
+`schema_version` unconditionally, with no comparison and no `ALTER` anywhere, while the README's
+migration prose (`README.md:238` as it read on 2026-11-15; that paragraph is gone, and migrations
+are now only a line in the file map) and `docs/completed-partial-missing.md:77` — the
+"schema versioning/migration" checkbox, now at `:79` — described a mechanism that did not exist — the first
 column-changing bump would have bricked existing installs rather than upgraded them.
 *Done when:* a test builds a v1 DB, opens it with v2 code, and asserts the data survived
 **and** the version advanced. *Met*, with extra coverage for the pre-migration backup, the
@@ -310,8 +312,9 @@ and user-set; never infer the project tempo automatically.
 ## 5. Wave 3 — Handoff and similarity
 
 **Step 15 — Verify the DAW handoff, then choose it.** *M, mostly manual.* Drag uses
-Chromium `DownloadURL` (`LibraryView.tsx:86-92`, `DetailsPanel.tsx:251-258`) and
-`completed-partial-missing.md:128-129` concedes it was never tested against a real DAW
+Chromium `DownloadURL` (`LibraryView.tsx:86-92`, `DetailsPanel.tsx:251-258`) and the
+**DAW drag target verification** bullet in `docs/completed-partial-missing.md` (under *Missing*, at
+`:154` as this was written) concedes it was never tested against a real DAW
 target. Whether a Chromium drag lands a file in Ableton is the question; one session
 with Live open answers it. In parallel test Web MIDI out to a loopback port — Live can
 arm a track from one, which gives audition-through-Live's-own-synths with no audio engine
@@ -360,7 +363,8 @@ over a `LIMIT 8000` query. Fix facets-caching, incremental duplicates and the `f
 index first; the rest only matters past ~5k files.
 
 **Step 20 — Ship 1.0.1 properly.** *M.* Run the installer cycle for real — install,
-shortcut, launch, uninstall — which `completed-partial-missing.md:144-152` admits has
+shortcut, launch, uninstall — which the **Installer verification** bullet in
+`docs/completed-partial-missing.md` (under *Missing*, at `:170` as this was written) admits has
 never happened, then decide on code signing (SmartScreen is the practical blocker for
 anyone else running this). Decide the soundfont question in §6 before touching
 packaging. Then the release-notes and AGENTS.md corrections from Step 6 land here.

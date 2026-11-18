@@ -1,37 +1,43 @@
 # SKEER MIDI VAULT 1.1.0 — release notes
 
-Built 2026-11-18T16:23:54Z from commit `a4708a87ec6d`, by the release gate's own `installer`
-stage, with `dirty: false` — so `stamp` passes on those bytes and the licence page inside that
-Setup is the filled one a customer then saw (§6 and §7 read in the wizard, 2026-11-18). That
-eleven-stage run reported `NOT READY - 10 passed, 1 failed, 0 skipped, of 11 stages` (evidence
-`build\work\release-check-20261118-162224`), its single FAIL being `installed`; and the payload
-leg was re-run against those exact bytes minutes later — `Setup 25671363 bytes, hash matches the
-manifest` and `files PASS - 199 file(s) installed … all 198 payload file(s), nothing extra`
-(`build\work\install-cycle-20261118-162825`). Both numbers below that belong to an earlier build —
-the 2026-11-17T23:09:47Z `766aa311c5d0` bytes or the 14:43:09Z `c520d03eed51` ones — say so, and
-so does the fact that this page moved HEAD after the build it describes; `launch/` holds whatever
-the most recent build put there, which is what `SHA256SUMS.txt` is for.
+The rule in **Order of work** below governs this whole page: the last action of a release is a
+gate run, and a gate run rebuilds. So whatever `launch/` holds when you read this was built from a
+committed, clean tree by the gate's own `installer` stage, and the two files that say so are
+`launch/SKEER MIDI VAULT/_internal/buildinfo/BUILDINFO.json` (commit, `dirty`, `built_at`) and
+`launch/SHA256SUMS.txt` (the bytes, verified by `sha256sum -c` there) — both beat anything written
+here, because recording a run in this file moves HEAD and makes the next run the current one.
+What this page can state truthfully is each gate **run**, labelled with the commit it judged:
 
-`launch/` is gitignored, so `launch/SHA256SUMS.txt` is the authority for whatever is in that
-folder right now, and re-running `sha256sum -c` there beats anything written here. The build is
-not byte-reproducible: two clean `766aa311c5d0` builds stamped at 23:05:07Z and 23:09:47Z came out
-25,671,546 and 25,669,100 bytes, and on 2026-11-18 the same `c520d03eed51` tree built 25,670,855
-bytes by hand and 25,671,112 through the gate four minutes later; the `a4708a87ec6d` tree built
-25,671,363 through the gate at 16:23:54Z.
+| Gate run (UTC) | Judged | Eleven-stage verdict | Payload leg against those same bytes |
+| --- | --- | --- | --- |
+| 2026-11-18T16:33:02Z | `52a16fd71c8b`, clean | `NOT READY - 10 passed, 1 failed, 0 skipped` — only `installed` | `-FilesOnly`: `Setup 25673369 bytes, hash matches the manifest`, `files PASS - 199 file(s) installed … all 198 payload file(s), nothing extra` (`install-cycle-20261118-163739`) |
+| 2026-11-18T16:22:24Z | `a4708a87ec6d`, clean | same 10 of 11, same single FAIL | same row on `Setup 25671363 bytes` (`install-cycle-20261118-162825`) |
+| 2026-11-18T14:43:09Z | `c520d03eed51`, clean | same 10 of 11, same single FAIL | `-FilesOnly` PASS, then that Setup through the real wizard: 199 destinations copied, refused the shortcut and the uninstall key, rolled back to 0 files |
+| 2026-11-17T23:09:47Z | `766aa311c5d0`, clean | `NOT READY - 9 passed, 2 failed` — `licence` (the two then-unfilled fields) and `installed` | `files PASS`, all 198 payload files, nothing extra |
+
+In every one of those runs the only stage that has never gone green is `installed`, and that is
+this shell refusing Setup any write outside the workspace — item 2 of **What still blocks this
+release**. The licence page inside each of those Setups is the filled one, and it has been read as
+a customer reads it: §6 and §7 in the rendered wizard, 2026-11-18.
+
+The build is not byte-reproducible, which is the second reason no size is pinned above: two clean
+`766aa311c5d0` builds stamped at 23:05:07Z and 23:09:47Z came out 25,671,546 and 25,669,100 bytes,
+the `c520d03eed51` tree built 25,670,855 by hand and 25,671,112 through the gate four minutes
+later, and the `a4708a87ec6d` and `52a16fd71c8b` gate builds eleven minutes apart came out
+25,671,363 and 25,673,369 — 2,006 bytes apart for a diff that touched no code.
 
 ## Standalone distribution
 
-- Windows per-user installer: `launch/SKEER-MIDI-VAULT-Setup-1.1.0.exe` — 25,671,363 bytes,
-  `ba49d61b4d7a4af6ed40f53108fccb8450e03c06a2c1b9e6c160391961b31734` (the `a4708a87ec6d` build
-  above; `sha256sum -c launch/SHA256SUMS.txt` exit 0 against it on 2026-11-18)
-- Portable ZIP: `launch/SKEER-MIDI-VAULT-Portable-1.1.0.zip` — 34,694,358 bytes,
-  `c5caac5276b978c47e50794f607022a31b97328488abbcd4e9dbccc7821a38f3`
-- Checksums: `launch/SHA256SUMS.txt` — 201 bytes, two rows, LF-only terminators, so
-  `sha256sum -c SHA256SUMS.txt` run inside `launch/` exits 0; re-verified against exactly the two
-  rows above on 2026-11-18.
+- Windows per-user installer: `launch/SKEER-MIDI-VAULT-Setup-1.1.0.exe` — the byte count and hash
+  of the copy in front of you are in `launch/SHA256SUMS.txt`, not here; the paragraph above shows
+  two consecutive clean builds of this release differing by 2,006 bytes.
+- Portable ZIP: `launch/SKEER-MIDI-VAULT-Portable-1.1.0.zip` — same authority.
+- Checksums: `launch/SHA256SUMS.txt` — two rows, LF-only terminators, so
+  `sha256sum -c SHA256SUMS.txt` run inside `launch/` exits 0; the gate's `checksums` stage runs
+  exactly that on every run in the table above, and it has passed on all four.
 - The 2026-11-17T23:09:47Z build from `766aa311c5d0` was Setup 25,669,100 bytes
   (`d7ef9f2d05ab0fa9…`) and ZIP 34,695,007 bytes (`b056e9aa765b42dc…`); it carried the unfilled
-  licence page and is superseded by the two rows above.
+  licence page and is superseded.
 
 Both deliverables carry the **same 198 files**: the app tree (196) and the VST3 bundle
 (2). The ZIP lists 213 entries because it also records the 15 directories.
@@ -152,13 +158,12 @@ reads it, not in the customer's copy.
 | Plug-in, JUCE 8.0.8 tree (`-BuildDir build/tag-808`) | exit 0, **ctest 6/6** |
 | Packaged smoke (`python tests/test_packaged_smoke.py`) | exit 0, health reports **1.1.0**, 36 files indexed / 1 failed / 0 issues, `keep-alive` 403→200 and 415→200, **no orphan `--multiprocessing-fork` workers** |
 | Checksums | `sha256sum -c SHA256SUMS.txt` exit 0, 0 CR bytes in the manifest |
-| Installer payload | real Setup installed **all 198 payload files** (199 log destinations, the extra being Inno's own uninstaller), **nothing missing and nothing extra**; proven red by adding one file to `launch/` and restored. Re-run against the `766aa311c5d0` Setup: `CYCLE INCOMPLETE`, `files` PASS, 3 phases skipped. **Re-run again on 2026-11-18 against the rebuilt `c520d03eed51` Setup** — `-FilesOnly -Dir` inside the workspace: `CYCLE INCOMPLETE - 3 phase(s) skipped, of 8`, `files PASS - 199 file(s) installed … all 198 payload file(s), nothing extra, and Setup could not finish registering`; and the same Setup driven in GUI mode copied all 199 destinations into a workspace folder before the identical refusal rolled it back to 0 files. **And again at 16:28 against the `a4708a87ec6d` Setup the final gate itself rebuilt**: `preflight PASS - Setup 25671363 bytes, hash matches the manifest`, `files PASS - 199 file(s) installed … all 198 payload file(s), nothing extra`, `CYCLE INCOMPLETE - 3 phase(s) skipped, of 8` (`build\work\install-cycle-20261118-162825`) |
-| Release gate, all eleven stages | **2026-11-18T16:22:24Z, against the `a4708a87ec6d` deliverables: `NOT READY - 10 passed, 1 failed, 0 skipped, of 11 stages` (exit 1, evidence `build\work\release-check-20261118-162224`)** — `gate` 8 files / 11 values, `suite` 104 OK, `licence` no placeholders, `checksums` 2 rows, `web` tsc+vite, `plugin` and `plugin808` both ctest 6/6, `installer` Setup 25,671,363 B and ZIP 34,694,358 B, `stamp PASS - commit a4708a87ec6d, clean, web/dist dafc8187f542`, `smoke PASS - exit 0, bundle built from a4708a87ec6d`; the one FAIL is `installed`, the folder refusal in item 2. The run before it (14:43:09Z, `c520d03eed51`) reported the same 10 of 11 on the same single stage; the run before that (2026-11-17, `766aa311c5d0`) was `NOT READY - 9 passed, 2 failed`, its second red being the two licence fields that are now filled. |
+| Installer payload | real Setup installed **all 198 payload files** (199 log destinations, the extra being Inno's own uninstaller), **nothing missing and nothing extra**; proven red by adding one file to `launch/` and restored. Re-run against every Setup in the table at the top of this page — each reported `hash matches the manifest` and a `files` PASS — and the `c520d03eed51` one went through the real wizard as well, which copied all 199 destinations before the refusal rolled them back to 0 |
+| Release gate, all eleven stages | the runs are in that table; the 2026-11-18T16:33:02Z leg against `52a16fd71c8b` is the stage detail to read (evidence `build\work\release-check-20261118-163302`) — `gate` 8 files / 11 values, `suite` 104 tests OK, `licence` no placeholders and the page states 1.1.0, `checksums` 2 rows and `sha256sum -c` exit 0, `web` tsc --noEmit and vite build, `plugin` and `plugin808` ctest 6/6 each, `installer` rebuilt both deliverables, `stamp PASS - commit 52a16fd71c8b, clean, web/dist dafc8187f542`, `smoke PASS - exit 0, bundle built from 52a16fd71c8b`; the one FAIL is `installed`, the folder refusal in item 2. Only the 2026-11-17 run differed, at 9 of 11: its second red was the two licence fields that are now filled. |
 
-That earlier caveat is discharged for every build `launch/` has held today: the `c520d03eed51`
-rebuild went through the payload leg twice — once through `-FilesOnly` and once through the real
-wizard — and the `a4708a87ec6d` Setup that the last gate built went through it once, against the
-manifest hash. What still has not run anywhere
+That earlier caveat is discharged for every Setup `launch/` has held today: each went through the
+payload leg against its own manifest hash, and the `c520d03eed51` one also through the real wizard.
+What still has not run anywhere
 is everything Setup must do *outside* the install folder (Start Menu, `HKCU\...\Uninstall`, the
 first launch of the registered executable, the uninstall comparison), because the refusal follows
 the Setup executable rather than the path, in silent and interactive mode alike.
@@ -192,7 +197,7 @@ the run reports `orphan workers []`, prints PASS, and the stage exits 0.
    right and refund path that follow, neither of which this EULA mentions — is written out in
    `packaging/README.md`.
 2. **The full install → run → uninstall cycle has not completed anywhere, and this shell cannot
-   complete it.** The payload copy is proven on these exact bytes (row above), but the host's
+   complete it.** The payload copy is proven against every Setup in the table above, but the host's
    policy refuses **Setup**
    every write outside the workspace: first at creating its target under `%LOCALAPPDATA%` and
    `%APPDATA%\Microsoft\Windows\Start Menu\Programs\SKEER AUDIO` (`Error 5: Access is denied`),
@@ -211,8 +216,8 @@ the run reports `orphan workers []`, prints PASS, and the stage exits 0.
    failed; code 5` for the uninstall entry — before `Rolling back changes` emptied the folder
    again. It could not even extract first: Setup is refused its `is-XXXX.tmp` under `%TEMP%`
    unless the child's `TMP`/`TEMP` are redirected into the workspace, which the check already does
-   and a hand-run Setup is not told. So no `-Dir`, and no
-   pre-made folder, gets the cycle finished from here. Run
+   and a hand-run Setup is not told. So `-Dir` buys the payload leg and nothing more: no
+   combination of arguments from this shell finishes the cycle. Run
    `powershell -File packaging\install_cycle_check.ps1` from a normal user terminal once — the
    three sibling SKEER installs already registered on this machine are proof the same installer
    family registers and uninstalls correctly here — and the `installed` stage can go PASS.
@@ -240,10 +245,14 @@ the run reports `orphan workers []`, prints PASS, and the stage exits 0.
 6. **A real host session (step 8) has not happened**: a real OLE drag, the OS overwrite
    prompt, and focus inside a host window all remain unproven.
 
-One more, about the order of work rather than the product: `stamp` compares the bundle's commit
-to `HEAD`, so **the release build has to be the last action before publishing**. Editing these
-notes after a build — any commit at all — makes the next gate report `stamp FAIL`, correctly:
-that bundle no longer matches the tree it is being judged against.
+## Order of work
+
+`stamp` compares the bundle's commit to `HEAD`, so **the release build has to be the last action
+before publishing**. Editing these notes after a build — any commit at all — makes the next gate
+report `stamp FAIL`, correctly: that bundle no longer matches the tree it is being judged against.
+The consequence is structural, not accidental, and it is why the header of this page names
+`BUILDINFO.json` and `SHA256SUMS.txt` instead of a hash: the final gate run of a release is the
+one nobody records, because recording it would require the commit that invalidates it.
 
 ## Read this before sale
 
