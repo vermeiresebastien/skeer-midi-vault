@@ -197,12 +197,57 @@ Two mechanics that were worth finding out rather than guessing at, both now hand
 the child is given a `TMP`/`TEMP` inside the evidence folder.
 
 **Still unverified, and only you can verify it:** the Add/Remove Programs entry, the Start Menu and
-optional desktop shortcut, the first launch of the installed executable with its tray icon, the
-EULA page as Setup shows it, and that the uninstaller leaves the machine as it found it. Run the
+optional desktop shortcut, the first launch of the installed executable with its tray icon, and that
+the uninstaller leaves the machine as it found it. Run the
 first command above from a normal user terminal — Setup and the uninstaller both write the
 registry and the user profile, which this agent's shell is not permitted to do on your behalf — and
 paste the last line back. `build\work\install-cycle-<utc>\` keeps the Setup logs, the before/after
 census and the installed-smoke transcript that go with whatever it reports.
+
+One item that used to open that list is no longer in it: the licence page has been seen the way a
+buyer sees it. On 2026-11-18 the wizard opened on *License Agreement* with §6 and §7 filled —
+`Licence and support enquiries: sebastienvermeire@gmail.com`, the Belgium jurisdiction clause, no
+`<<<FILL:` token anywhere — with *I do not accept the agreement* selected and **Next** disabled, and
+the run was ended with Cancel, leaving 0 files installed and nothing registered. What that page
+shows is `packaging/EULA.txt` verbatim, because
+`skeer-midi-vault.iss:45` sets `LicenseFile={#SourceRoot}\packaging\EULA.txt` — which is why the
+gate's `licence` stage and the falsifier's EULA case cover the same bytes the buyer reads.
+
+### A host session — the three questions only a DAW can answer
+
+Everything the plug-in does is proven headless. `plugin/build.ps1` builds the bundle and runs six
+suites against it — `vault-locator-test`, `vault-index-test`, `vault-midi-test`, `vault-emit-test`,
+`vault-editor-test` (the panel's widget tree, pumped without a window) and `vault-host-test`, which
+loads the bundle the way a host does and emits through that wrapper — on the 8.0.4 and the 8.0.8 JUCE
+alike. Three things are left, and none of them can be settled from a shell:
+
+1. **Does a host find it?** A per-user install puts the bundle in
+   `%LOCALAPPDATA%\Programs\SKEER MIDI VAULT\VST3`, which no host scans by default. Setup's own log
+   says which folder it used — `VST3: installing into …` or `VST3: installed only in …` — and the
+   choices are to point the host at that folder or re-run Setup elevated with `/ALLUSERS`, which
+   also writes `C:\Program Files\Common Files\VST3`. Either way the plug-in should be listed as
+   *SKEER MIDI VAULT* **1.1.0**: that number comes from the staged bundle's `moduleinfo.json`, is
+   what a host displays, and the build refuses to ship a bundle whose copy disagrees with the
+   release.
+2. **Does the panel behave by hand?** The filter box takes typing, the library list scrolls, the
+   three exported controls stay visible, and nothing touches the index until **Connect** is clicked.
+   Then confirm the two promises the code makes about failure: a query that *fails* keeps the index
+   path and says "not read this time" — only **Disconnect** forgets it and **Rescan** retries — and
+   the status strip names both the file that is playing and the file the project asked for.
+3. **Keyboard focus is your decision, not a test.** `EDITOR_WANTS_KEYBOARD_FOCUS` is TRUE so the
+   filter box can receive keystrokes, which also means the host's own shortcuts do not fire while
+   the panel has focus. Say which behaviour you want shipped; the other answer is one line in
+   `plugin/Source/`, and no suite can prefer either because none of them creates a window.
+
+While a host is open, exercise the two paths that end on a real filesystem: drag a clip out into the
+arrange page, and **Save clip as…** onto a file that already exists — the *operating system's* own
+overwrite prompt should appear, and cancelling it must leave that file untouched. Afterwards check a
+library folder: the product never renames, moves, edits or deletes a source MIDI file, and that rule
+is worth confirming against your own recordings rather than the suites.
+
+Write what you find into the **DAW drag target verification** and **Installer verification** bullets
+of `docs/completed-partial-missing.md`, and the row-18 / step-8 status of
+`docs/next-steps-2026-11.md`.
 
 ## Code signing and SmartScreen
 

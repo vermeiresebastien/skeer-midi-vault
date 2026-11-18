@@ -10,6 +10,7 @@ What this page can state truthfully is each gate **run**, labelled with the comm
 
 | Gate run (UTC) | Judged | Eleven-stage verdict | Payload leg against those same bytes |
 | --- | --- | --- | --- |
+| 2026-11-18T16:43:41Z | `76f7b2169835`, clean | `NOT READY - 10 passed, 1 failed, 0 skipped` — only `installed` (`release-check-20261118-164341`) | `-FilesOnly`: `Setup 25671511 bytes, hash matches the manifest`, `files PASS - 199 file(s) installed … all 198 payload file(s), nothing extra`, `CYCLE INCOMPLETE - 3 phase(s) skipped, of 8` (`install-cycle-20261118-164637`) |
 | 2026-11-18T16:33:02Z | `52a16fd71c8b`, clean | `NOT READY - 10 passed, 1 failed, 0 skipped` — only `installed` | `-FilesOnly`: `Setup 25673369 bytes, hash matches the manifest`, `files PASS - 199 file(s) installed … all 198 payload file(s), nothing extra` (`install-cycle-20261118-163739`) |
 | 2026-11-18T16:22:24Z | `a4708a87ec6d`, clean | same 10 of 11, same single FAIL | same row on `Setup 25671363 bytes` (`install-cycle-20261118-162825`) |
 | 2026-11-18T14:43:09Z | `c520d03eed51`, clean | same 10 of 11, same single FAIL | `-FilesOnly` PASS, then that Setup through the real wizard: 199 destinations copied, refused the shortcut and the uninstall key, rolled back to 0 files |
@@ -24,7 +25,8 @@ The build is not byte-reproducible, which is the second reason no size is pinned
 `766aa311c5d0` builds stamped at 23:05:07Z and 23:09:47Z came out 25,671,546 and 25,669,100 bytes,
 the `c520d03eed51` tree built 25,670,855 by hand and 25,671,112 through the gate four minutes
 later, and the `a4708a87ec6d` and `52a16fd71c8b` gate builds eleven minutes apart came out
-25,671,363 and 25,673,369 — 2,006 bytes apart for a diff that touched no code.
+25,671,363 and 25,673,369 — 2,006 bytes apart for a diff that touched no code. The next gate build,
+from a commit that edited two markdown files and no source, came out 25,671,511.
 
 ## Standalone distribution
 
@@ -34,7 +36,7 @@ later, and the `a4708a87ec6d` and `52a16fd71c8b` gate builds eleven minutes apar
 - Portable ZIP: `launch/SKEER-MIDI-VAULT-Portable-1.1.0.zip` — same authority.
 - Checksums: `launch/SHA256SUMS.txt` — two rows, LF-only terminators, so
   `sha256sum -c SHA256SUMS.txt` run inside `launch/` exits 0; the gate's `checksums` stage runs
-  exactly that on every run in the table above, and it has passed on all four.
+  exactly that on every run in the table above, and it has passed on all five.
 - The 2026-11-17T23:09:47Z build from `766aa311c5d0` was Setup 25,669,100 bytes
   (`d7ef9f2d05ab0fa9…`) and ZIP 34,695,007 bytes (`b056e9aa765b42dc…`); it carried the unfilled
   licence page and is superseded.
@@ -159,7 +161,7 @@ reads it, not in the customer's copy.
 | Packaged smoke (`python tests/test_packaged_smoke.py`) | exit 0, health reports **1.1.0**, 36 files indexed / 1 failed / 0 issues, `keep-alive` 403→200 and 415→200, **no orphan `--multiprocessing-fork` workers** |
 | Checksums | `sha256sum -c SHA256SUMS.txt` exit 0, 0 CR bytes in the manifest |
 | Installer payload | real Setup installed **all 198 payload files** (199 log destinations, the extra being Inno's own uninstaller), **nothing missing and nothing extra**; proven red by adding one file to `launch/` and restored. Re-run against every Setup in the table at the top of this page — each reported `hash matches the manifest` and a `files` PASS — and the `c520d03eed51` one went through the real wizard as well, which copied all 199 destinations before the refusal rolled them back to 0 |
-| Release gate, all eleven stages | the runs are in that table; the 2026-11-18T16:33:02Z leg against `52a16fd71c8b` is the stage detail to read (evidence `build\work\release-check-20261118-163302`) — `gate` 8 files / 11 values, `suite` 104 tests OK, `licence` no placeholders and the page states 1.1.0, `checksums` 2 rows and `sha256sum -c` exit 0, `web` tsc --noEmit and vite build, `plugin` and `plugin808` ctest 6/6 each, `installer` rebuilt both deliverables, `stamp PASS - commit 52a16fd71c8b, clean, web/dist dafc8187f542`, `smoke PASS - exit 0, bundle built from 52a16fd71c8b`; the one FAIL is `installed`, the folder refusal in item 2. Only the 2026-11-17 run differed, at 9 of 11: its second red was the two licence fields that are now filled. |
+| Release gate, all eleven stages | the runs are in that table; the 2026-11-18T16:43:41Z leg against `76f7b2169835` is the stage detail to read (evidence `build\work\release-check-20261118-164341`) — `gate` 8 files / 11 values, `suite` 104 tests OK, `licence` no placeholders and the page states 1.1.0, `checksums` 2 rows and `sha256sum -c` exit 0, `web` tsc --noEmit and vite build, `plugin` and `plugin808` ctest 6/6 each, `installer` rebuilt both deliverables (Setup 25,671,511 B, ZIP 34,695,225 B), `stamp PASS - commit 76f7b2169835, clean, web/dist dafc8187f542`, `smoke PASS - exit 0, bundle built from 76f7b2169835`; the one FAIL is `installed`, the folder refusal in item 2. Only the 2026-11-17 run differed, at 9 of 11: its second red was the two licence fields that are now filled. |
 
 That earlier caveat is discharged for every Setup `launch/` has held today: each went through the
 payload leg against its own manifest hash, and the `c520d03eed51` one also through the real wizard.
