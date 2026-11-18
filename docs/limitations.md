@@ -305,10 +305,11 @@ available in this environment — see `packaging/README.md`.
   source, verified by re-hashing what landed. It refuses three things: the file the
   clip is playing from; a target that already exists when the caller did not say it
   may be replaced; and a source that is **0 bytes**. The empty-source refusal writes
-  nothing and leaves the target alone, because JUCE's `File::replaceWithData`
-  (`juce_core/files/juce_File.cpp:781` in the 8.0.8 tree, re-read 2026-11-18) turns a
-  zero-length write into `deleteFile()` — without it, "Save clip as..." aimed at a 0-byte
-  clip is a delete wearing a save's clothes.
+  nothing and leaves the target alone, because JUCE's `File::replaceWithData` turns a
+  zero-length write into `deleteFile()` — that is line 781 of `juce_core/files/juce_File.cpp` in
+  the 8.0.8 tree, the checkout `plugin/build.ps1:24` passes as `-Juce`, re-read 2026-11-18 — so
+  without the refusal, "Save clip as..." aimed at a 0-byte clip is a delete wearing a save's
+  clothes.
 - The replace question is asked by the **operating system's save dialog**, not by a box
   this plug-in draws: the chooser is launched with `warnAboutOverwriting`, which
   becomes `FOS_OVERWRITEPROMPT` / `OFN_OVERWRITEPROMPT` on Windows. This used to be an
