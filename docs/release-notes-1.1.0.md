@@ -1,10 +1,13 @@
 # SKEER MIDI VAULT 1.1.0 — release notes
 
 Built 2026-11-18T14:43:09Z from commit `c520d03eed51`, by the release gate's own `installer`
-stage, and the tree was clean when it was stamped (`dirty: false`) — so `stamp` passes on these
-bytes and the licence page inside the Setup is the filled one. The gate still reports NOT READY,
+stage, and the tree was clean when it was stamped (`dirty: false`) — so `stamp` passes on those
+bytes and the licence page inside that Setup is the filled one, which is the page a customer then
+saw (§6 and §7 read in the wizard, 2026-11-18). The gate still reports NOT READY,
 on one stage: see **What still blocks this release**. Numbers below that belong to the earlier
-2026-11-17T23:09:47Z build from `766aa311c5d0` say so.
+2026-11-17T23:09:47Z build from `766aa311c5d0` say so, and so does every number that belongs to
+the 14:43:09Z build — `launch/` holds whatever the most recent build put there, which is what
+`SHA256SUMS.txt` is for.
 
 `launch/` is gitignored, so `launch/SHA256SUMS.txt` is the authority for whatever is in that
 folder right now, and re-running `sha256sum -c` there beats anything written here. The build is
@@ -144,12 +147,14 @@ reads it, not in the customer's copy.
 | Plug-in, JUCE 8.0.8 tree (`-BuildDir build/tag-808`) | exit 0, **ctest 6/6** |
 | Packaged smoke (`python tests/test_packaged_smoke.py`) | exit 0, health reports **1.1.0**, 36 files indexed / 1 failed / 0 issues, `keep-alive` 403→200 and 415→200, **no orphan `--multiprocessing-fork` workers** |
 | Checksums | `sha256sum -c SHA256SUMS.txt` exit 0, 0 CR bytes in the manifest |
-| Installer payload | real Setup installed **all 198 payload files** (199 log destinations, the extra being Inno's own uninstaller), **nothing missing and nothing extra**; proven red by adding one file to `launch/` and restored. Re-run against the `766aa311c5d0` Setup: `CYCLE INCOMPLETE`, `files` PASS, 3 phases skipped |
+| Installer payload | real Setup installed **all 198 payload files** (199 log destinations, the extra being Inno's own uninstaller), **nothing missing and nothing extra**; proven red by adding one file to `launch/` and restored. Re-run against the `766aa311c5d0` Setup: `CYCLE INCOMPLETE`, `files` PASS, 3 phases skipped. **Re-run again on 2026-11-18 against the rebuilt `c520d03eed51` Setup** — `-FilesOnly -Dir` inside the workspace: `CYCLE INCOMPLETE - 3 phase(s) skipped, of 8`, `files PASS - 199 file(s) installed … all 198 payload file(s), nothing extra, and Setup could not finish registering`; and the same Setup driven in GUI mode copied all 199 destinations into a workspace folder before the identical refusal rolled it back to 0 files |
 | Release gate, all eleven stages | **2026-11-18, against the rebuilt `c520d03eed51` deliverables: `NOT READY - 10 passed, 1 failed, 0 skipped, of 11 stages` (exit 1)** — every stage green except `installed`, which is the folder refusal in item 2. `licence PASS - no placeholders, licence page states 1.1.0`, `stamp PASS - commit c520d03eed51, clean, web/dist dafc8187f542`, `smoke PASS - exit 0, bundle built from c520d03eed51`, `installer` rebuilt Setup 25,671,112 B and ZIP 34,693,765 B, `checksums` 2 rows OK. The previous full run (2026-11-17, against the `766aa311c5d0` bytes) was `NOT READY - 9 passed, 2 failed`; its `licence` red was the two fields that are now filled. |
 
-The 2026-11-18 eleven-stage run re-ran every check in that table **except** the installer payload:
-its `installed` stage is refused a folder before Setup copies anything, so the 198-file proof still
-belongs to the `766aa311c5d0` bytes and the rebuilt Setup has not been through that leg.
+That earlier caveat is now discharged: the 2026-11-18 rebuild **has** been through the payload leg,
+twice — once through `-FilesOnly` and once through the real wizard. What still has not run anywhere
+is everything Setup must do *outside* the install folder (Start Menu, `HKCU\...\Uninstall`, the
+first launch of the registered executable, the uninstall comparison), because the refusal follows
+the Setup executable rather than the path, in silent and interactive mode alike.
 
 The `WinError 10038` traceback the smoke run prints at shutdown is the known interpreter teardown
 race in the HTTP thread, documented in `AGENTS.md` and deliberately not silenced. Where it sits in
@@ -160,33 +165,60 @@ the run reports `orphan workers []`, prints PASS, and the stage exits 0.
 
 ## What still blocks this release
 
-1. **The licence is filled and shipped; nobody has read it as a customer does.** Both answers are
-   in the page — `sebastienvermeire@gmail.com` at `packaging/EULA.txt:42`, `Belgium` at `:45`, the
-   address read from `git config user.email` and the country from this machine's geo
+1. **The licence is filled, shipped and now seen — and still not reviewed by counsel.** Both
+   answers are in the page — `sebastienvermeire@gmail.com` at `packaging/EULA.txt:42`, `Belgium`
+   at `:45`, the address read from `git config user.email` and the country from this machine's geo
    (`HKCU\Control Panel\International\Geo` → `Name BE`). Nothing was invented, including no legal
    name, because a personal name with an accent in it could not be verified from here. The gate's
-   `licence` stage exits 0 on it, and the Setup now in `launch/` was compiled after the fill —
-   ISCC logged `Reading file (LicenseFile)` in the run that produced these bytes — so a `<<<FILL:`
-   token cannot reach a buyer from this build. Two things that green row does not prove: the stage
-   judges the file's text, not the rendered dialog, and no Setup has ever shown this page here;
-   and the drafting has still **not been reviewed by counsel**. The question a personal seller
-   should settle before the first sale — whether selling software for money makes you a *trader*,
-   with the 14-day withdrawal right and refund path that follow, neither of which this EULA
-   mentions — is written out in `packaging/README.md`.
+   `licence` stage exits 0 on it, and the Setup in `launch/` was compiled after the fill — ISCC
+   logged `Reading file (LicenseFile)` in the run that produced these bytes — so a `<<<FILL:`
+   token cannot reach a buyer from this build. On 2026-11-18 that page was also **read as a
+   customer reads it**: the wizard opened on *License Agreement*, §6 rendered
+   `Licence and support enquiries: sebastienvermeire@gmail.com` and §7
+   `This agreement is governed by the law of Belgium, and any dispute arising out of it is subject
+   to the exclusive jurisdiction of the courts of that place`, wrapping intact and no token
+   anywhere; the radio defaults to *I do not accept the agreement*, which keeps **Next** disabled,
+   and the run was ended with Cancel — `0` files installed, no registry entry, no shortcut. What
+   the `licence` stage still does not prove, and what remains open, is that the drafting has
+   **not been reviewed by counsel**. The question a personal seller should settle before the first
+   sale — whether selling software for money makes you a *trader*, with the 14-day withdrawal
+   right and refund path that follow, neither of which this EULA mentions — is written out in
+   `packaging/README.md`.
 2. **The full install → run → uninstall cycle has not completed anywhere, and this shell cannot
-   complete it.** The payload copy is proven (row above), but the host's policy refuses **Setup**
+   complete it.** The payload copy is proven on these exact bytes (row above), but the host's
+   policy refuses **Setup**
    every write outside the workspace: first at creating its target under `%LOCALAPPDATA%` and
    `%APPDATA%\Microsoft\Windows\Start Menu\Programs\SKEER AUDIO` (`Error 5: Access is denied`),
    and — with both folders pre-created by the shell so that Setup had no directory left to make —
    at `CreateFile failed; code 5`, still with 0 files copied. It follows the executable, not the
    path: the ACLs on those folders are FullControl for this user and a `powershell` child of the
    same shell writes there freely, while the identical Setup copies all 198 files into a workspace
-   path. So no `-Dir`, and no pre-made folder, gets the cycle finished from here. Run
+   path. Measured again 2026-11-18 in **interactive** mode, where the wizard copied all 199
+   destinations into a workspace folder first and then raised those refusals as its own
+   message boxes — and they are not new: the silent 2026-11-17 run in
+   `build\work\install-cycle-20261117-231426` carries both, from the same Setup, after it had
+   copied the payload. `IPersistFile::Save failed; code 0x80070005` is for
+   `C:\Users\Sebastien\Desktop\SKEER MIDI VAULT.lnk`, the Start Menu refusal being the separate
+   `unable to create the directory "…Start Menu\Programs\SKEER AUDIO". Error 5` line, and
+   `Error creating registry key: HKEY_CURRENT_USER\...\Uninstall\{B7E2D5A8-…}_is1 / RegCreateKeyEx
+   failed; code 5` for the uninstall entry — before `Rolling back changes` emptied the folder
+   again. It could not even extract first: Setup is refused its `is-XXXX.tmp` under `%TEMP%`
+   unless the child's `TMP`/`TEMP` are redirected into the workspace, which the check already does
+   and a hand-run Setup is not told. So no `-Dir`, and no
+   pre-made folder, gets the cycle finished from here. Run
    `powershell -File packaging\install_cycle_check.ps1` from a normal user terminal once — the
    three sibling SKEER installs already registered on this machine are proof the same installer
    family registers and uninstalls correctly here — and the `installed` stage can go PASS.
-3. **The `/ALLUSERS` leg is untested**: no elevation is available here, so
-   `CommonVst3` and the `Common Files\VST3` copy have never run.
+   The nearest this shell can reach is the executable running from a *relocated* copy of the
+   payload rather than a registered location: `python tests/test_packaged_smoke.py` under
+   `SKEER_PACKAGED_EXE` PASSed against a hand-copied tree with `built from c520d03eed51 clean`,
+   `session protected: True`, `keep-alive` 403→200 and 415→200 and `orphan workers []`.
+3. **The `/ALLUSERS` leg is untested**: `IsAdmin=False` for this shell (measured 2026-11-18), so
+   `CommonVst3` and the `Common Files\VST3` copy have never run — and the bundle is not in
+   `Common Files\VST3` now (`Test-Path` false), which is also why no host on this machine can see
+   it yet. That leg needs an elevated terminal and a consent prompt only the owner can answer:
+   `Setup.exe /ALLUSERS`, after which the Setup log line `VST3: installing into …` — not the
+   README — says where the bundle landed.
 4. **The installer is unsigned.** `Get-AuthenticodeSignature` reports `NotSigned` for both
    `SKEER-MIDI-VAULT-Setup-1.1.0.exe` and the bundled app executable. `-Sign` exists and is
    inert by default; it has never executed, because there is no Authenticode certificate

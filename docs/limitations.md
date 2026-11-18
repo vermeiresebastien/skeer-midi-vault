@@ -171,27 +171,41 @@ general-purpose classification accuracy.
   opens the interface in the **system default browser**. It is not a custom
   Electron/WinUI window. A browser (Edge/Chrome) is therefore required; the tray
   icon needs an interactive Windows desktop session.
-- The installer's payload is proven and its registration is not.
-  `packaging/install_cycle_check.ps1` ran the real Setup on 2026-11-17 — again against the
-  `766aa311c5d0` build on 2026-11-18; the `c520d03eed51` rebuild after the licence fill has not
-  been through this leg — and confirmed **all 198 payload
+- The installer's payload is proven on every build in `launch/`; its registration is not.
+  `packaging/install_cycle_check.ps1` ran the real Setup on 2026-11-17, against the
+  `766aa311c5d0` build and again against the `c520d03eed51` rebuild on 2026-11-18, and confirmed
+  **all 198 payload
   files** land with nothing missing and nothing written outside the target directory — that
-  row goes red when one file is added to `launch/`. Setup then exited 4 and rolled back, because
+  row goes red when one file is added to `launch/`. Setup then exits 4 and rolls back, because
   this shell's policy refuses **Setup** every write outside the workspace — first seen as the
   creation of a new folder under `%LOCALAPPDATA%` and in the Start Menu (`Error 5: Access is
   denied`), and confirmed as something broader: with both folders pre-created by the shell, so
   Setup had nothing to make, it copied 0 files and failed at `CreateFile failed; code 5`. The
   account's ACLs on those folders are FullControl and a `powershell` child of the same shell
   writes there freely, so the refusal follows the executable, not the path and not the artifact.
-  The registry is not known to be a block: the cycle's preflight shows a child process of this
-  shell can write `HKCU\...\Uninstall`, though Setup itself never reached that key, because it is
-  refused a folder first. From this shell the payload leg therefore needs
-  `-FilesOnly -Dir <a path inside the workspace>`; run without `-Dir`, Setup never reaches its
+  The registry **is** a block to Setup as well, and the log that proves it predates this week:
+  the 2026-11-17 silent run that pointed `/DIR` inside the workspace copied the payload, then
+  failed at the desktop shortcut (`IPersistFile::Save failed; code 0x80070005`) and at
+  `Creating new uninstall key: HKEY_CURRENT_USER\...\Uninstall\{B7E2D5A8-…}_is1`
+  (`RegCreateKeyEx failed; code 5`) before `Rolling back changes`; the 2026-11-18 interactive run
+  reached the same two refusals. An earlier version of this bullet claimed Setup "never reached
+  that key" — wrong, because it generalised from the runs refused a folder first and never quoted
+  the one that got furthest. Even the extraction folder is refused: Setup cannot make its
+  `is-XXXX.tmp` under `%TEMP%` here, which is why an interactive run needs the child's
+  `TMP`/`TEMP` pointed inside the workspace — something `install_cycle_check.ps1` has done since
+  its own line 198, so only a hand-run Setup has to be told. From this shell the payload leg
+  therefore needs
+  `-FilesOnly -Dir <a path inside the workspace>` — and that path has to reach PowerShell with
+  its backslashes intact, since an unquoted `D:\…` loses them in a POSIX shell and Setup then
+  installs into a mangled relative folder and `files` reports 199 destinations outside the
+  requested directory. Run without `-Dir`, Setup never reaches its
   target and `files` reports FAIL for that reason alone. The Add/Remove Programs entry, the
   shortcuts, the first launch of the installed executable and the uninstall comparison
   have therefore never completed anywhere: run
   `powershell -File packaging\install_cycle_check.ps1` once on a normal user desktop
-  before selling. The portable ZIP and the packaged app do pass their smoke tests.
+  before selling. The portable ZIP and the packaged app do pass their smoke tests, and so does a
+  hand-copied relocated payload under `SKEER_PACKAGED_EXE` — but that is the executable running
+  from a folder, not from a registered install.
 - No local model is installed or downloaded. The optional local-model integration
   point is an architecture seam for later work.
 - Third-party npm packages are used to build/serve the interface

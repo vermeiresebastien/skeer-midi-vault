@@ -125,14 +125,25 @@ powershell -File packaging\install_cycle_check.ps1 -KeepInstall # leave it insta
 powershell -File packaging\install_cycle_check.ps1 -FilesOnly -Dir D:\somewhere\empty
 ```
 
-**As measured on 2026-11-17, from the agent shell:** the payload is proven and the registration is
+**As measured on 2026-11-17, from the agent shell, and re-measured on 2026-11-18 against the
+rebuilt Setup:** the payload is proven and the registration is
 not. Setup installed all 198 files `launch/` holds — nothing missing, nothing extra, including
 `_internal\buildinfo\BUILDINFO.json`, `_internal\web\dist\index.html` and both files of the VST3
 bundle that carry the version a host lists — and then rolled the tree back because writing the
 next thing an installer must write was refused to it: first
 `%LOCALAPPDATA%\SKEER MIDI VAULT cycle`, then
-`%APPDATA%\Microsoft\Windows\Start Menu\Programs\SKEER AUDIO`, and in a control build of Inno's own
-minimal script `HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall`. That is the shell's
+`%APPDATA%\Microsoft\Windows\Start Menu\Programs\SKEER AUDIO`, and
+`HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall` — that last one from Setup's own log,
+not only from a control build of Inno's own minimal
+script: driving the shipped Setup interactively copied all 199 destinations into a workspace
+folder, then raised `IPersistFile::Save failed; code 0x80070005` for the desktop `.lnk` and
+`RegCreateKeyEx failed; code 5` for the uninstall key, and `Rolling back changes` emptied the
+folder to 0 files with no registry entry left behind. Read `install-cycle-20261117-231426` before
+quoting any of that as new: the same two refusals are in the **silent** 2026-11-17 run whose
+`/DIR` pointed inside the workspace, which copied the payload, failed the desktop shortcut and
+then `Creating new uninstall key`, and rolled back. That the sentence has been here for a day
+without being quoted is what the "never reached that key" reading in `docs/limitations.md` came
+from, and it is why the check keeps the Setup log path in its `evidence:` line. That is the shell's
 child-process policy, not a defect in the artifact: the account's own `powershell` and `reg.exe`
 write those places freely, and a stock minimal Inno script fails in exactly the same place, so the
 refusal cannot be attributed to this script. Which exit that produces depends on how far Setup got,
@@ -145,6 +156,21 @@ alone, and it ends `CYCLE FAILED` (exit 1). Either headline now carries the refu
 seen carrying it on 2026-11-18: `release_check.ps1 -Stages installed` ended
 `NOT READY - 0 passed, 1 failed, 0 skipped, of 1 stages`, its `installed` detail naming
 `C:\Users\Sebastien\AppData\Local\SKEER MIDI VAULT cycle` and `Error 5: Access is denied`.
+
+Two things the same afternoon settled about running Setup by hand from a restricted shell, because
+a hand-run Setup is told neither. `-Dir` must arrive with its backslashes intact: a POSIX
+shell eats the
+ones in an unquoted `D:\…`, Inno then treats `D:Projects…` as *relative to the repo*, and the
+`files` row reports 199 destinations "outside the requested directory" for that reason alone —
+quote the argument, and the mangled folder is cleaned up by the rollback rather than left behind.
+And the wizard will not open at all until the child's `TMP`/`TEMP` point inside the workspace:
+Setup's first act is to create `is-XXXX.tmp` under `%TEMP%`, which is refused here, and the
+`/TMPDIR` switch does not help because this Setup rejects it on the command line (exit 1, no log
+written). `install_cycle_check.ps1` has done that redirection all along, at
+[install_cycle_check.ps1:198](install_cycle_check.ps1) — it is only a hand-run Setup that has to
+be told. With the environment redirected, the licence page renders and the rest of the wizard is
+reachable — it opens on *License Agreement* with **I do not accept the agreement** selected, which
+leaves **Next** disabled, so nothing installs unless someone chooses otherwise.
 
 One reading trap, because the two clocks in the evidence differ: the `install-cycle-<utc>` and
 `release-check-<utc>` folder names and the bundle's `built_at` are UTC, while every line Setup

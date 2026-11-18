@@ -93,6 +93,13 @@ workspace>`: policy refuses **Setup** every write outside the workspace — a ch
 creates folders and files under `%LOCALAPPDATA%` freely and the ACLs are FullControl, but Setup is
 refused even `CreateFile` there — so without `-Dir` not one file is copied and the `files` row
 goes red for that reason alone. Pre-creating the target does not help; do not spend a run trying.
+Two things on that route, both seen again on 2026-11-18: quote the `-Dir` value, because an
+unquoted `D:\…` loses its backslashes through a POSIX shell, Setup installs into a mangled
+repo-relative folder and `files` reports every destination as outside the requested directory; and
+a **hand-run** Setup will not open its wizard until its own `TMP`/`TEMP` point inside the workspace
+— it is refused the `is-XXXX.tmp` it makes under `%TEMP%` and `/TMPDIR` is not accepted on this
+command line (exit 1, no log), while the check itself has redirected them since
+[packaging/install_cycle_check.ps1:198](packaging/install_cycle_check.ps1).
 `stamp` decides the order of a release's last two actions — it compares the bundle's commit
 to `HEAD`, so **build after you commit**, or the gate rightly reports a bundle that no
 longer matches the tree.

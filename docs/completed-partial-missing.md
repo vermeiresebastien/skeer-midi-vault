@@ -99,11 +99,15 @@ out explicitly.
 - [x] Per-user Windows installer (`SKEER-MIDI-VAULT-Setup-1.1.0.exe`) that stages the
       app, the interface, the provenance stamp and the VST3 bundle, with the EULA page
       (both fields filled and compiled in on 2026-11-18) and the application icon and
-      version metadata; no Python, Node.js or admin rights required. The Start Menu
-      shortcut, the uninstall entry and the first launch of the installed executable are
-      implemented in `packaging/skeer-midi-vault.iss` and are graded by
-      `packaging/install_cycle_check.ps1` — see **Partial** for which legs this
-      machine could not execute.
+      version metadata; no Python, Node.js or admin rights required. The licence page was
+      then **seen as a buyer sees it**, rendered by the Setup built from `c520d03eed51`:
+      §6 shows `Licence and support enquiries: sebastienvermeire@gmail.com`, §7 shows
+      `This agreement is governed by the law of Belgium`, no `<<<FILL:` token appears, and
+      the wizard defaults to *I do not accept the agreement* with **Next** disabled until
+      the buyer chooses. The Start Menu shortcut, the uninstall entry and the first launch
+      of the installed executable are implemented in `packaging/skeer-midi-vault.iss` and
+      are graded by `packaging/install_cycle_check.ps1` — see **Partial** for which legs
+      this machine could not execute.
 - [x] VST3 plug-in (`SKEER MIDI VAULT.vst3`, same 1.1.0 version as the app) shipped
       inside both deliverables: an editor panel with a filter box, the library list and
       three exported controls, reading the app's own index read-only. It is placed in
@@ -163,28 +167,36 @@ out explicitly.
   piano-roll keyboard navigation are not included.
 - **Platform coverage.** Windows 10/11 is the tested platform. The Python service
   is portable, but drive discovery and skip behavior are Windows-specific.
-- **Installer verification.** The payload is proven and the registration legs are not.
-  `packaging/install_cycle_check.ps1` ran against the real
-  `SKEER-MIDI-VAULT-Setup-1.1.0.exe` on 2026-11-17, and again on 2026-11-18 against the clean
-  `766aa311c5d0` build — the last build this leg has covered, since the `c520d03eed51` rebuild
-  after the licence fill never got Setup past a refused folder: Setup copied **all 198 payload
-  files** — app exe, `BUILDINFO.json`, `web/dist/index.html`, both checked VST3 files and
-  everything else — with nothing missing and nothing written outside the requested
-  directory, and that row goes red when one file is added to `launch/`. Setup then exited 4
-  and rolled back, because the agent shell's child-process policy refuses Setup the creation of
-  a new folder — measured at the cycle's `%LOCALAPPDATA%` target and at the `%APPDATA%` Start
-  Menu folder, each `Error 5: Access is denied`, and at `HKCU\...\Uninstall` in a control build
-  of Inno's own minimal script. A per-user install puts its files under `%LOCALAPPDATA%` too,
-  so that is the leg this machine cannot exercise; it says nothing about the buyer's. The Add/Remove Programs
-  entry, the shortcuts, the first launch of the installed executable and the uninstall
+- **Installer verification.** The payload is proven on the shipped bytes and the registration
+  legs are not. `packaging/install_cycle_check.ps1` ran against the real
+  `SKEER-MIDI-VAULT-Setup-1.1.0.exe` on 2026-11-17 (the `766aa311c5d0` build) and again on
+  2026-11-18 against the `c520d03eed51` rebuild that carries the filled licence page, so this leg
+  now covers the artifact that is in `launch/`: with `-FilesOnly -Dir` pointed inside the
+  workspace it graded `files PASS - 199 file(s) installed, including the app, the stamp, the
+  interface and the VST3 bundle - all 198 payload file(s), nothing extra, and Setup could not
+  finish registering`, and a second run of that same Setup in **GUI** mode copied all 199
+  destinations into a workspace folder before the identical refusal rolled the whole thing back
+  (`0` files left behind, `HKCU` still holding no entry). Setup exits 4 either way, because the
+  agent shell's child-process policy refuses Setup everything outside the workspace — measured
+  the same afternoon at the cycle's `%LOCALAPPDATA%` target and at the `%APPDATA%` Start Menu
+  folder, each `Error 5: Access is denied`, in silent and in interactive mode alike; and at
+  `HKCU\...\Uninstall`, which Setup's own log has been refusing since the 2026-11-17 silent run
+  that pointed `/DIR` inside the workspace — that one copied the payload, failed the desktop
+  shortcut with `IPersistFile::Save failed; code 0x80070005`, then `RegCreateKeyEx failed;
+  code 5` on `Creating new uninstall key`, and rolled back; the 2026-11-18 interactive run
+  reached the same two. A per-user install puts its files
+  under `%LOCALAPPDATA%` too, so that is the leg
+  this machine cannot exercise; it says nothing about the buyer's. The Add/Remove Programs
+  entry, the shortcuts, the first launch of the registered executable and the uninstall
   comparison therefore have never completed anywhere. They need one run of
   `powershell -File packaging\install_cycle_check.ps1` from a normal user terminal. The
-  `/ALLUSERS` leg — including the `Common Files\VST3` copy — has never run at all, because
-  elevation is not available in this environment.
-- **Licence page, as rendered.** Both fields hold answers (`packaging/EULA.txt:42` and `:45`) and
-  the Setup now in `launch/` was compiled after the fill, so a token cannot reach a buyer. What is
-  still unproven is the page as a customer reads it: the gate's `licence` stage judges the file's
-  text, not the rendered dialog, and no Setup has ever been seen on this machine.
+  `/ALLUSERS` leg — including the `Common Files\VST3` copy — has never run at all: this shell is
+  not elevated (`IsAdmin=False`, measured 2026-11-18), the bundle is not in
+  `Common Files\VST3`, and the consent prompt that leg needs is the owner's to answer, not the
+  agent's. The closest this machine can reach is running a *relocated* copy of that payload:
+  `python tests/test_packaged_smoke.py` under `SKEER_PACKAGED_EXE` PASSed against a hand-copied
+  install tree with `built from c520d03eed51 clean`, so the executable does run from somewhere
+  other than `launch/` — it just has never been run from a Setup-registered location.
 - **Installer signing.** The Setup EXE is unsigned (`NotSigned`). Windows SmartScreen
   warning is expected until an Authenticode certificate is applied. `build_installer.ps1`
   is signing-ready through an inert-by-default `-Sign` switch that signs the app before

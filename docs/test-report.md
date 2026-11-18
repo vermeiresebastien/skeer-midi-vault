@@ -306,8 +306,37 @@ Re-run 2026-11-18 against the deliverables the gate itself rebuilt after the lic
 the same eleven stages report `NOT READY - 10 passed, 1 failed, 0 skipped, of 11 stages`: `licence`
 now `PASS - no placeholders, licence page states 1.1.0`, `stamp PASS - commit c520d03eed51, clean`,
 `smoke` exit 0 printing `built from c520d03eed51`, and the one FAIL still `installed` at the same
-folder refusal. The payload leg did not run against those bytes, so the 198-file row above belongs
-to the `766aa311c5d0` Setup.
+folder refusal.
+
+Later the same afternoon that last sentence was no longer true, on those exact bytes.
+`install_cycle_check.ps1 -FilesOnly -Dir <a folder inside the workspace>` reported
+`CYCLE INCOMPLETE - 3 phase(s) skipped, of 8` with
+`files - 199 file(s) installed, including the app, the stamp, the interface and the VST3 bundle -
+all 198 payload file(s), nothing extra, and Setup could not finish registering`.
+Two earlier runs of that same check failed, each for a reason this
+shell owns rather than the artifact: `-Dir` passed but *unquoted*, so a POSIX shell ate the
+backslashes and `files FAIL - Setup wrote 199 file(s) outside the requested directory` named
+`D:\Projects\skeer-audio\midi-vault\Projectsskeer-audiomidi-vaultbuildworkpayload-probe-1118`, a
+folder Inno resolved against the repo and its own rollback then removed; and the check run with no
+`-Dir` at all, `CYCLE FAILED - Setup did not install` carrying `Setup was unable to create the
+directory "C:\Users\Sebastien\AppData\Local\SKEER MIDI VAULT cycle". Error 5: Access is denied`.
+Driving the shipped Setup
+interactively (target and `TMP`/`TEMP` both inside the workspace, because Setup is refused its
+`%TEMP%` extraction folder here and `/TMPDIR` is rejected on this command line) reached the licence
+page and read §6 and §7 as a buyer does; it then copied all 199 destinations, was refused the
+Start Menu folder (`Error 5: Access is denied`), then the desktop `.lnk`
+(`IPersistFile::Save failed; code 0x80070005`) and then the uninstall key
+(`RegCreateKeyEx failed; code 5`) and rolled back to 0 files with no registry entry left — the
+same last two refusals a silent run of this Setup recorded on 2026-11-17 in
+`install-cycle-20261117-231426`, which is what an earlier version of these docs got wrong when it
+said Setup never reached that key. A second
+interactive run stopped at that licence page and was ended with Cancel — its log counts
+`0` files installed. `python tests/test_packaged_smoke.py` under `SKEER_PACKAGED_EXE`, pointed at a
+hand-copied relocated payload, PASSed with `built from c520d03eed51 clean at
+2026-11-18T14:43:09+00:00`, `session protected: True`, `keep-alive` 403→200 and 415→200 and
+`orphan workers []`. What remains unproven is only what this shell cannot let Setup do: the
+Add/Remove Programs entry, the shortcuts, the first launch of the *registered* executable and the
+uninstall comparison.
 
 ## Classification evaluation
 
