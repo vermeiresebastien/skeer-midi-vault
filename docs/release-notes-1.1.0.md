@@ -221,7 +221,15 @@ the run reports `orphan workers []`, prints PASS, and the stage exits 0.
    failed; code 5` for the uninstall entry — before `Rolling back changes` emptied the folder
    again. It could not even extract first: Setup is refused its `is-XXXX.tmp` under `%TEMP%`
    unless the child's `TMP`/`TEMP` are redirected into the workspace, which the check already does
-   and a hand-run Setup is not told. So `-Dir` buys the payload leg and nothing more: no
+   and a hand-run Setup is not told. So `-Dir` buys the payload leg and nothing more, and the
+   reason is in the script, not in the argument list: `packaging/skeer-midi-vault.iss:93` puts the
+   Start Menu entry under `{autoprograms}\SKEER AUDIO\` with **no `Tasks:` flag** — only the
+   desktop icon at `:94` is conditional — so every Setup run, whatever it is handed, has one
+   mandatory write outside the workspace. Re-measured 2026-11-18 on the final bundle's Setup
+   (25,668,238 bytes, hash matching the manifest): `install_cycle_check.ps1 -FilesOnly -Dir`
+   pointed inside the workspace copied all 198 payload files, then Setup raised exactly that
+   refusal — `unable to create the directory "…Start Menu\Programs\SKEER AUDIO". Error 5` —
+   exited 4 and rolled the folder back, leaving 0 uninstall keys, no shortcut and no group. No
    combination of arguments from this shell finishes the cycle. Run
    `powershell -File packaging\install_cycle_check.ps1` from a normal user terminal once — the
    three sibling SKEER installs already registered on this machine are proof the same installer

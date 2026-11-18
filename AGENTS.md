@@ -100,6 +100,10 @@ a **hand-run** Setup will not open its wizard until its own `TMP`/`TEMP` point i
 — it is refused the `is-XXXX.tmp` it makes under `%TEMP%` and `/TMPDIR` is not accepted on this
 command line (exit 1, no log), while the check itself has redirected them since
 [packaging/install_cycle_check.ps1:198](packaging/install_cycle_check.ps1).
+And no `-Dir` can finish the cycle from here: the Start Menu entry at
+[packaging/skeer-midi-vault.iss:93](packaging/skeer-midi-vault.iss) carries no `Tasks:` flag — only
+the desktop icon at `:94` is conditional — so every Setup run has one mandatory write outside the
+workspace, whichever folder it was handed.
 `stamp` decides the order of a release's last two actions — it compares the bundle's commit
 to `HEAD`, so **build after you commit**, or the gate rightly reports a bundle that no
 longer matches the tree.
