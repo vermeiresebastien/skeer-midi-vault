@@ -228,7 +228,10 @@ alike. Three things are left, and none of them can be settled from a shell:
    also writes `C:\Program Files\Common Files\VST3`. That switch is honoured, not rejected: the
    script sets `PrivilegesRequired=lowest` with `PrivilegesRequiredOverridesAllowed=commandline`
    (`packaging/skeer-midi-vault.iss:35-36`), which is what lets a command-line install choose
-   all-users mode. Either way the plug-in should be listed as
+   all-users mode. One command grades that leg instead of asking you to read a log: `packaging\install_cycle_check.ps1 -AllUsers`,
+   from an elevated prompt — it refuses in preflight when the terminal is not admin, so it cannot
+   half-install, and it requires both the `VST3: installing into` line and a shared folder whose
+   only new entries are inside `SKEER MIDI VAULT.vst3`. Either way the plug-in should be listed as
    *SKEER MIDI VAULT* **1.1.0**: that number comes from the staged bundle's `moduleinfo.json`, is
    what a host displays, and the build refuses to ship a bundle whose copy disagrees with the
    release. The same `moduleinfo.json` declares the class under `Sub Categories: ["Fx"]` on

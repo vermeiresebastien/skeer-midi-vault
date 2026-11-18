@@ -243,7 +243,16 @@ the run reports `orphan workers []`, prints PASS, and the stage exits 0.
    `Common Files\VST3` now (`Test-Path` false), which is also why no host on this machine can see
    it yet. That leg needs an elevated terminal and a consent prompt only the owner can answer:
    `Setup.exe /ALLUSERS`, after which the Setup log line `VST3: installing into …` — not the
-   README — says where the bundle landed.
+   README — says where the bundle landed. That leg now has a harness rather than only an
+   instruction: `packaging\install_cycle_check.ps1 -AllUsers` passes `/ALLUSERS` to Setup, demands
+   the `VST3: installing into` line in the Setup log, demands that the shared folder gained files
+   **and** that every added entry sits inside `SKEER MIDI VAULT.vst3` — nothing else in
+   `Common Files\VST3` may move — and the existing uninstall comparison then requires the folder
+   back exactly as it was censused. The uninstaller gets no switch: it inherits the install mode
+   from its own registration. Measured 2026-11-18 in this shell, `-AllUsers` refuses in preflight
+   with `CYCLE NOT RUN - preflight refused; nothing was installed` and exit 1 (and the same with
+   `-FilesOnly`, which contradicts it), so the refusal path is proven and the elevated path —
+   like `-Sign` — has never executed from here.
 4. **The installer is unsigned.** `Get-AuthenticodeSignature` reports `NotSigned` for both
    `SKEER-MIDI-VAULT-Setup-1.1.0.exe` and the bundled app executable. `-Sign` exists and is
    inert by default; it has never executed, because there is no Authenticode certificate

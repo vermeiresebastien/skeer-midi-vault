@@ -21,6 +21,14 @@
 #   powershell -File packaging\install_cycle_check.ps1
 #   powershell -File packaging\install_cycle_check.ps1 -KeepInstall   # leave it installed to poke at
 #   powershell -File packaging\install_cycle_check.ps1 -FilesOnly -Dir D:\somewhere\empty
+#   powershell -File packaging\install_cycle_check.ps1 -AllUsers      # elevated prompt only
+#
+# -AllUsers runs the machine-wide leg: Setup gets /ALLUSERS (the script allows the override at
+# packaging\skeer-midi-vault.iss:36), the shared-folder phase then requires the bundle to appear in
+# C:\Program Files\Common Files\VST3 and requires that nothing else in that folder moved, and the
+# uninstall phase already requires the folder back exactly as it was found. It refuses in preflight
+# rather than half-installing when the terminal is not elevated, and it refuses alongside -FilesOnly
+# because grading a copy this shell is not allowed to make is not evidence of anything.
 #
 # -FilesOnly is for a shell whose child processes are refused the writes an installer must make -
 # the uninstall key in HKCU, a folder in %LOCALAPPDATA%. It grades the [Files] section from the
@@ -36,6 +44,7 @@ param(
     [switch] $KeepInstall,
     [switch] $Existing,
     [switch] $FilesOnly,
+    [switch] $AllUsers,
     [string] $Dir
 )
 
@@ -318,6 +327,27 @@ if (-not (Test-Path -LiteralPath $Setup)) {
     }
 }
 
+if ($AllUsers) {
+    # Elevation is checked here, not discovered halfway through an install that already copied
+    # 198 files: a machine-wide Setup refused its VST3 folder would leave a registered install
+    # with no plug-in in it, which is the worst artifact this check could produce.
+    $principal = New-Object Security.Principal.WindowsPrincipal(
+        [Security.Principal.WindowsIdentity]::GetCurrent())
+    if ($principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+        Add-Row 'preflight' 'PASS' ('-AllUsers: this terminal is elevated, so the machine-wide ' +
+            'leg may run and the shared VST3 copy will be graded')
+    } else {
+        Add-Row 'preflight' 'FAIL' ('-AllUsers needs an elevated terminal - this one is not admin, ' +
+            "so Setup would be refused $SystemVst3 after it had already written elsewhere. Run this " +
+            'check from an elevated prompt; the per-user leg needs no switch.')
+    }
+    if ($FilesOnly) {
+        Add-Row 'preflight' 'FAIL' ('-AllUsers and -FilesOnly contradict each other: one asks for ' +
+            'the shared machine-wide copy, the other grades a copy made without writing outside a ' +
+            'folder it was handed.')
+    }
+}
+
 if ((Failed-Count) -gt 0) {
     Write-Host ''
     Write-Host 'CYCLE NOT RUN - preflight refused; nothing was installed'
@@ -353,6 +383,9 @@ Write-Host ('before: install dir ' + $before.install_dir + ', desktop shortcut '
 $setupLog = Join-Path $Evidence 'setup-install.log'
 $installArgs = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART',
                  ('/DIR="' + $InstallDir + '"'), ('/LOG="' + $setupLog + '"'))
+# /ALLUSERS is legal because the script sets PrivilegesRequiredOverridesAllowed=commandline; the
+# uninstaller inherits the install mode from its own registration, so it gets no switch.
+if ($AllUsers) { $installArgs = @('/ALLUSERS') + $installArgs }
 $setupExit = Invoke-Installer $Setup $installArgs
 $installedExe = Join-Path $InstallDir $ExeName
 $cause = if ($setupExit -ne 0) { Setup-Cause $setupLog } else { '' }
@@ -530,7 +563,26 @@ if (-not (Test-Path -LiteralPath $setupLog)) {
     Add-Row 'shared-folder' 'FAIL' 'no Setup log, so the plug-in placement claim cannot be read'
 } else {
     $setupText = [System.IO.File]::ReadAllText($setupLog)
-    if ($setupText -notmatch 'per-user install; the all-users plug-in folder was not touched') {
+    if ($AllUsers) {
+        $vst3After = Census $SystemVst3
+        $diff = @(Census-Diff $vst3Before $vst3After)
+        $ours = @($diff | Where-Object { $_ -match '^SKEER MIDI VAULT\.vst3[\\/]' })
+        $foreign = @($diff | Where-Object { $_ -notmatch '^SKEER MIDI VAULT\.vst3[\\/]' })
+        if ($setupText -notmatch 'VST3: installing into ') {
+            Add-Row 'shared-folder' 'FAIL' ('the Setup log carries no "VST3: installing into" line, ' +
+                'so Setup did not take the machine-wide branch - the /ALLUSERS leg did not run')
+        } elseif ($ours.Count -eq 0) {
+            Add-Row 'shared-folder' 'FAIL' ("the log claims a machine-wide copy but $SystemVst3 has " +
+                'no bundle of ours in it')
+        } elseif ($foreign.Count) {
+            Add-Row 'shared-folder' 'FAIL' ('the install moved ' + $foreign.Count +
+                ' entr(ies) outside our bundle in the shared folder: ' + (($foreign |
+                Select-Object -First 4) -join '; '))
+        } else {
+            Add-Row 'shared-folder' 'PASS' ($ours.Count.ToString() + ' file(s) placed under ' +
+                "$SystemVst3, every one inside our own bundle, and nothing else in that folder moved")
+        }
+    } elseif ($setupText -notmatch 'per-user install; the all-users plug-in folder was not touched') {
         Add-Row 'shared-folder' 'FAIL' 'the Setup log does not carry the per-user VST3 line'
     } else {
         $vst3After = Census $SystemVst3

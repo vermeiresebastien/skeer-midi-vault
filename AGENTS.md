@@ -75,6 +75,7 @@ powershell -File scripts/release_check.ps1              # the release gate; exit
 powershell -File scripts/release_check.ps1 -Fast        # gate, suite, licence, checksums only
 python scripts/check_release_gate.py    # falsifies that gate and the build script: 33 cases on a copied tree
 powershell -File packaging/install_cycle_check.ps1      # Setup → run installed exe → uninstall, compared to before
+powershell -File packaging/install_cycle_check.ps1 -AllUsers   # elevated only: the machine-wide VST3 leg
 ```
 
 `scripts/release_check.ps1` is the one command whose exit code means "ship it": it
