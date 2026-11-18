@@ -217,8 +217,9 @@ powershell -File scripts\release_check.ps1 -Stages stamp,smoke
 Exit 0 prints `READY`, exit 1 prints `NOT READY`, and exit 2 prints `INCOMPLETE` — a stage that
 could not run is never allowed to count as a pass, which is the difference between a gate and a
 cheerleader. Each stage writes its own log under `build\work\release-check-<utc>\`, and the summary
-row names the cause in the words the stage itself used ("2 unfilled field(s):
-`<<<FILL: contact>>> <<<FILL: jurisdiction>>>`"), not just an exit number.
+row names the cause in the words the stage itself used, not just an exit number: on the run that
+filled this licence, the `licence` row changed from "2 unfilled field(s):
+`<<<FILL: contact>>> <<<FILL: jurisdiction>>>`" to "no placeholders, licence page states 1.1.0".
 
 `python scripts\check_release_gate.py` is its falsifier. It copies the ten files a release touches into
 `build\work\release-gate-falsifier\`, fabricates a `launch/` with a correct manifest, stubs the
@@ -237,10 +238,11 @@ that set is red. The full eleven-stage set, run on 2026-11-17 against a clean bu
 commit, reports `NOT READY - 9 passed, 2 failed, 0 skipped, of 11 stages`: `licence` FAIL on those
 same two fields, and `installed` FAIL because Setup cannot make a folder in this shell. `stamp` is
 **not** one of the failures — it passes on a bundle built from a committed tree, which is the only
-state in which these artifacts should be published. Of those two reds, one has since been
-discharged from the tree — the licence fields were filled on 2026-11-18 and `-Stages licence` was
-seen to pass — so what is left is the cycle a normal user terminal has still not run, plus a
-rebuild so the filled page reaches the Setup that is actually shipped.
+state in which these artifacts should be published. Run again on 2026-11-18 against the
+deliverables rebuilt after the licence fill — commit `c520d03eed51`, `stamp PASS - clean` — the set
+reports `NOT READY - 10 passed, 1 failed, 0 skipped, of 11 stages`: every stage green except
+`installed`, which is still Setup being refused a folder by this shell. One red is left and it is
+not this machine's to finish.
 
 ## What not to ship
 
@@ -309,9 +311,11 @@ They are ordinary text now, not tokens. The guard that kept them from shipping u
 marker, and `scripts/check_release_gate.py` plants one in a shadow copy to prove that stage still
 reddens — the falsifier no longer depends on the real page being unfinished. To change an answer,
 edit `packaging/EULA.txt:42` or `:45` and rebuild, because Inno compiles the file into the Setup
-(`skeer-midi-vault.iss:45`): the installer stamped on 2026-11-17, before the fill, still shows both
-tokens, and nothing in `build_installer.ps1` checks or strips one. The gate is therefore the only
-guard, and the rebuild is not optional before a sale. The version line in §6 is still a checked
+(`skeer-midi-vault.iss:45`): the installer stamped 2026-11-17 carried both tokens and was replaced
+on 2026-11-18 by one compiled after the fill, and that is the artifact the sizes and digests in
+`docs/release-notes-1.1.0.md` now name. Nothing in `build_installer.ps1` checks or strips a token,
+so the gate is the only guard, and any later change to these two lines is just text until a build
+carries it. The version line in §6 is still a checked
 literal — `scripts/check_version_consistency.py` reads it, so a bump that misses the licence page
 fails the gate instead of shipping an installer whose licence names last release.
 

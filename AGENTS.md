@@ -159,7 +159,9 @@ against the **installed** executable through `SKEER_PACKAGED_EXE`, because the
 bundle beside `launch/` is not the artifact a user ends up running. Its shutdown
 prints an `OSError: [WinError 10038]` traceback from the frozen HTTP thread — a
 known race between the quit path and the socket close, printed on an otherwise
-passing run; do not "fix" it by deleting the print. SQLite suites open their temp dir with
+passing run; in a redirected log it lands *above* the script's own PASS line, because the frozen
+child's stderr is unbuffered while the parent's stdout flushes at exit, so the file's order is not
+the console's. Do not "fix" it by deleting the print. SQLite suites open their temp dir with
 `ignore_cleanup_errors=True`: Windows can hold a just-closed WAL file for a beat
 and fail `tearDown` on a run where every assertion passed — ~1 suite in 6 before
 that, and the flake is in the harness, not the code.

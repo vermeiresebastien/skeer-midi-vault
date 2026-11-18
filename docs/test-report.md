@@ -301,6 +301,14 @@ eleven-stage gate `NOT READY - 9 passed, 2 failed, 0 skipped, of 11 stages`, wit
 `stamp PASS - commit 766aa311c5d0, clean, web/dist dafc8187f542` and the two FAILs being
 `licence` (two unfilled fields) and `installed` (the folder refusals above).
 
+Re-run 2026-11-18 against the deliverables the gate itself rebuilt after the licence fill — commit
+`c520d03eed51`, `built_at 2026-11-18T14:43:09Z`, Setup 25,671,112 bytes, ZIP 34,693,765 bytes —
+the same eleven stages report `NOT READY - 10 passed, 1 failed, 0 skipped, of 11 stages`: `licence`
+now `PASS - no placeholders, licence page states 1.1.0`, `stamp PASS - commit c520d03eed51, clean`,
+`smoke` exit 0 printing `built from c520d03eed51`, and the one FAIL still `installed` at the same
+folder refusal. The payload leg did not run against those bytes, so the 198-file row above belongs
+to the `766aa311c5d0` Setup.
+
 ## Classification evaluation
 
 Command:

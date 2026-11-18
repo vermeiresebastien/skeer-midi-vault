@@ -98,7 +98,7 @@ out explicitly.
       quit, no orphan workers).
 - [x] Per-user Windows installer (`SKEER-MIDI-VAULT-Setup-1.1.0.exe`) that stages the
       app, the interface, the provenance stamp and the VST3 bundle, with the EULA page
-      (both seller fields filled in the tree on 2026-11-18) and the application icon and
+      (both fields filled and compiled in on 2026-11-18) and the application icon and
       version metadata; no Python, Node.js or admin rights required. The Start Menu
       shortcut, the uninstall entry and the first launch of the installed executable are
       implemented in `packaging/skeer-midi-vault.iss` and are graded by
@@ -166,7 +166,8 @@ out explicitly.
 - **Installer verification.** The payload is proven and the registration legs are not.
   `packaging/install_cycle_check.ps1` ran against the real
   `SKEER-MIDI-VAULT-Setup-1.1.0.exe` on 2026-11-17, and again on 2026-11-18 against the clean
-  `766aa311c5d0` build: Setup copied **all 198 payload
+  `766aa311c5d0` build — the last build this leg has covered, since the `c520d03eed51` rebuild
+  after the licence fill never got Setup past a refused folder: Setup copied **all 198 payload
   files** — app exe, `BUILDINFO.json`, `web/dist/index.html`, both checked VST3 files and
   everything else — with nothing missing and nothing written outside the requested
   directory, and that row goes red when one file is added to `launch/`. Setup then exited 4
@@ -180,11 +181,10 @@ out explicitly.
   `powershell -File packaging\install_cycle_check.ps1` from a normal user terminal. The
   `/ALLUSERS` leg — including the `Common Files\VST3` copy — has never run at all, because
   elevation is not available in this environment.
-- **Licence page, shipped bytes.** Both fields were filled in the tree on 2026-11-18 —
-  `sebastienvermeire@gmail.com` at `packaging/EULA.txt:42`, `Belgium` at `:45` — and the gate's
-  `licence` stage passes on that page. What is still partial is the artifact: Inno compiles the
-  file into the Setup at build time, so the installer stamped 2026-11-17 shows a buyer both
-  `<<<FILL:` tokens. A rebuild is what puts the answer in front of them.
+- **Licence page, as rendered.** Both fields hold answers (`packaging/EULA.txt:42` and `:45`) and
+  the Setup now in `launch/` was compiled after the fill, so a token cannot reach a buyer. What is
+  still unproven is the page as a customer reads it: the gate's `licence` stage judges the file's
+  text, not the rendered dialog, and no Setup has ever been seen on this machine.
 - **Installer signing.** The Setup EXE is unsigned (`NotSigned`). Windows SmartScreen
   warning is expected until an Authenticode certificate is applied. `build_installer.ps1`
   is signing-ready through an inert-by-default `-Sign` switch that signs the app before

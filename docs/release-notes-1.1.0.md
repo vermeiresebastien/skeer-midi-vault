@@ -1,26 +1,29 @@
 # SKEER MIDI VAULT 1.1.0 — release notes
 
-Built 2026-11-17T23:09:47Z from commit `766aa311c5d0`, and the tree was clean when it was
-stamped (`dirty: false`), so the gate's `stamp` stage passes on it. The last full eleven-stage
-run against exactly those bytes reported NOT READY. One of those two reds is now a stale
-artifact rather than a missing answer: the licence page Inno embedded in that Setup still holds
-both seller placeholders, which were filled in `packaging/EULA.txt` on 2026-11-18 and cannot
-reach a buyer without a rebuild. See **What still blocks this release**.
+Built 2026-11-18T14:43:09Z from commit `c520d03eed51`, by the release gate's own `installer`
+stage, and the tree was clean when it was stamped (`dirty: false`) — so `stamp` passes on these
+bytes and the licence page inside the Setup is the filled one. The gate still reports NOT READY,
+on one stage: see **What still blocks this release**. Numbers below that belong to the earlier
+2026-11-17T23:09:47Z build from `766aa311c5d0` say so.
 
 `launch/` is gitignored, so `launch/SHA256SUMS.txt` is the authority for whatever is in that
-folder right now. Every byte count and digest below belongs to the build named above. They are a
-record, not a checksum of the folder: the build is not byte-reproducible, measured on the two
-clean `766aa311c5d0` builds stamped here at 23:05:07Z and 23:09:47Z, which came out 25,671,546
-and 25,669,100 bytes.
+folder right now, and re-running `sha256sum -c` there beats anything written here. The build is
+not byte-reproducible: two clean `766aa311c5d0` builds stamped at 23:05:07Z and 23:09:47Z came out
+25,671,546 and 25,669,100 bytes, and on 2026-11-18 the same `c520d03eed51` tree built 25,670,855
+bytes by hand and 25,671,112 through the gate four minutes later.
 
 ## Standalone distribution
 
-- Windows per-user installer: `launch/SKEER-MIDI-VAULT-Setup-1.1.0.exe` — 25,669,100 bytes,
-  `d7ef9f2d05ab0fa9b5a570bca2d7fb362a24156c6abeccaeb609c047fcfb6f7e`
-- Portable ZIP: `launch/SKEER-MIDI-VAULT-Portable-1.1.0.zip` — 34,695,007 bytes,
-  `b056e9aa765b42dcd72def7e1d3c23584ed10b895b18b020d382a2e65a1392ec`
+- Windows per-user installer: `launch/SKEER-MIDI-VAULT-Setup-1.1.0.exe` — 25,671,112 bytes,
+  `abf5c4a7b4fc02c3290a4798bb0018750268eee5dce13d9c56d0c4e172cee1a6`
+- Portable ZIP: `launch/SKEER-MIDI-VAULT-Portable-1.1.0.zip` — 34,693,765 bytes,
+  `b08d5bcb2c286c40187ec5536fafb8b14af19c598c51b125fc7894ed1bbb0d7c`
 - Checksums: `launch/SHA256SUMS.txt` — 201 bytes, two rows, LF-only terminators, so
-  `sha256sum -c SHA256SUMS.txt` run inside `launch/` exits 0.
+  `sha256sum -c SHA256SUMS.txt` run inside `launch/` exits 0; re-verified against exactly the two
+  rows above on 2026-11-18.
+- The 2026-11-17T23:09:47Z build from `766aa311c5d0` was Setup 25,669,100 bytes
+  (`d7ef9f2d05ab0fa9…`) and ZIP 34,695,007 bytes (`b056e9aa765b42dc…`); it carried the unfilled
+  licence page and is superseded by the two rows above.
 
 Both deliverables carry the **same 198 files**: the app tree (196) and the VST3 bundle
 (2). The ZIP lists 213 entries because it also records the 15 directories.
@@ -130,7 +133,7 @@ reads it, not in the customer's copy.
 - The scan test that raced itself: the recording spy is installed before the worker starts,
   and the assertion is exact equality against the fixture rather than a floor.
 
-## Verification, measured 2026-11-17
+## Verification, measured 2026-11-17 and re-run 2026-11-18
 
 | Check | Result |
 | --- | --- |
@@ -142,30 +145,34 @@ reads it, not in the customer's copy.
 | Packaged smoke (`python tests/test_packaged_smoke.py`) | exit 0, health reports **1.1.0**, 36 files indexed / 1 failed / 0 issues, `keep-alive` 403→200 and 415→200, **no orphan `--multiprocessing-fork` workers** |
 | Checksums | `sha256sum -c SHA256SUMS.txt` exit 0, 0 CR bytes in the manifest |
 | Installer payload | real Setup installed **all 198 payload files** (199 log destinations, the extra being Inno's own uninstaller), **nothing missing and nothing extra**; proven red by adding one file to `launch/` and restored. Re-run against the `766aa311c5d0` Setup: `CYCLE INCOMPLETE`, `files` PASS, 3 phases skipped |
-| Release gate, all eleven stages | last full run (2026-11-17, against the `766aa311c5d0` bytes): `NOT READY - 9 passed, 2 failed, 0 skipped, of 11 stages` (exit 1): `licence` FAIL on the two unfilled fields, `installed` FAIL because this shell is refused Setup's writes. **`stamp` PASS** — `commit 766aa311c5d0, clean, web/dist dafc8187f542`. `licence` re-measured on 2026-11-18 after the fill: `-Stages licence` exit 0, `PASS - no placeholders, licence page states 1.1.0`. The eleven-stage set has **not** been re-run since — the fill changed a file the gate reads, so that full run is owed, and it has to be the last action before publishing. |
+| Release gate, all eleven stages | **2026-11-18, against the rebuilt `c520d03eed51` deliverables: `NOT READY - 10 passed, 1 failed, 0 skipped, of 11 stages` (exit 1)** — every stage green except `installed`, which is the folder refusal in item 2. `licence PASS - no placeholders, licence page states 1.1.0`, `stamp PASS - commit c520d03eed51, clean, web/dist dafc8187f542`, `smoke PASS - exit 0, bundle built from c520d03eed51`, `installer` rebuilt Setup 25,671,112 B and ZIP 34,693,765 B, `checksums` 2 rows OK. The previous full run (2026-11-17, against the `766aa311c5d0` bytes) was `NOT READY - 9 passed, 2 failed`; its `licence` red was the two fields that are now filled. |
 
-The `WinError 10038` traceback the smoke log prints at shutdown is the known interpreter
-teardown race in the HTTP thread. It is after `PASS packaged smoke test` and before exit 0;
-it is documented in `AGENTS.md` and deliberately not silenced.
+The 2026-11-18 eleven-stage run re-ran every check in that table **except** the installer payload:
+its `installed` stage is refused a folder before Setup copies anything, so the 198-file proof still
+belongs to the `766aa311c5d0` bytes and the rebuilt Setup has not been through that leg.
+
+The `WinError 10038` traceback the smoke run prints at shutdown is the known interpreter teardown
+race in the HTTP thread, documented in `AGENTS.md` and deliberately not silenced. Where it sits in
+a redirected log is not when it happened: in every gate log read here it is written at lines 8-14,
+*above* the script's own `exit 0` and `PASS packaged smoke test` lines, because the frozen child's
+stderr is unbuffered while the parent's stdout flushes at exit. What the file does carry is that
+the run reports `orphan workers []`, prints PASS, and the stage exits 0.
 
 ## What still blocks this release
 
-1. **The licence page inside the built Setup is still the unfilled one.** The two fields were
-   filled on 2026-11-18 — `sebastienvermeire@gmail.com` at `packaging/EULA.txt:42`, `Belgium` at
-   `:45` — so the `licence` stage now passes on the tree, and the falsifier no longer depends on
-   the page staying unfinished. It is the *artifact* that lags: Inno compiles
-   `packaging\EULA.txt` into the Setup (`skeer-midi-vault.iss:45`), so the `766aa311c5d0`
-   installer stamped before the fill still shows both tokens to anyone who runs it. A rebuild is
-   the only way the answer reaches a buyer. The values came from the machine and the git identity,
-   not from thin air: the address is `git config user.email`, the country is this machine's geo
-   (`HKCU\Control Panel\International\Geo` → `Name BE`). Either can be changed by editing those
-   two lines and rebuilding; the guard against shipping a token is the gate's `licence` stage —
-   nothing in `build_installer.ps1` checks or strips one. What the choice of values means is in
-   `packaging/README.md`: the seller is one person trading as SKEER AUDIO, not a company, so the
-   contact line is the only place a buyer can see who grants the licence, and the jurisdiction is
-   that person's own country rather than a registered office. Whether an individual selling
-   software for money is a *trader* — with the 14-day withdrawal right and refund path that
-   follows — is a question for counsel, not for this file.
+1. **The licence is filled and shipped; nobody has read it as a customer does.** Both answers are
+   in the page — `sebastienvermeire@gmail.com` at `packaging/EULA.txt:42`, `Belgium` at `:45`, the
+   address read from `git config user.email` and the country from this machine's geo
+   (`HKCU\Control Panel\International\Geo` → `Name BE`). Nothing was invented, including no legal
+   name, because a personal name with an accent in it could not be verified from here. The gate's
+   `licence` stage exits 0 on it, and the Setup now in `launch/` was compiled after the fill —
+   ISCC logged `Reading file (LicenseFile)` in the run that produced these bytes — so a `<<<FILL:`
+   token cannot reach a buyer from this build. Two things that green row does not prove: the stage
+   judges the file's text, not the rendered dialog, and no Setup has ever shown this page here;
+   and the drafting has still **not been reviewed by counsel**. The question a personal seller
+   should settle before the first sale — whether selling software for money makes you a *trader*,
+   with the 14-day withdrawal right and refund path that follow, neither of which this EULA
+   mentions — is written out in `packaging/README.md`.
 2. **The full install → run → uninstall cycle has not completed anywhere, and this shell cannot
    complete it.** The payload copy is proven (row above), but the host's policy refuses **Setup**
    every write outside the workspace: first at creating its target under `%LOCALAPPDATA%` and

@@ -173,7 +173,8 @@ general-purpose classification accuracy.
   icon needs an interactive Windows desktop session.
 - The installer's payload is proven and its registration is not.
   `packaging/install_cycle_check.ps1` ran the real Setup on 2026-11-17 — again against the
-  `766aa311c5d0` build on 2026-11-18 — and confirmed **all 198 payload
+  `766aa311c5d0` build on 2026-11-18; the `c520d03eed51` rebuild after the licence fill has not
+  been through this leg — and confirmed **all 198 payload
   files** land with nothing missing and nothing written outside the target directory — that
   row goes red when one file is added to `launch/`. Setup then exited 4 and rolled back, because
   this shell's policy refuses **Setup** every write outside the workspace — first seen as the
