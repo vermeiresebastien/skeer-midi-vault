@@ -225,10 +225,23 @@ alike. Three things are left, and none of them can be settled from a shell:
    `%LOCALAPPDATA%\Programs\SKEER MIDI VAULT\VST3`, which no host scans by default. Setup's own log
    says which folder it used — `VST3: installing into …` or `VST3: installed only in …` — and the
    choices are to point the host at that folder or re-run Setup elevated with `/ALLUSERS`, which
-   also writes `C:\Program Files\Common Files\VST3`. Either way the plug-in should be listed as
+   also writes `C:\Program Files\Common Files\VST3`. That switch is honoured, not rejected: the
+   script sets `PrivilegesRequired=lowest` with `PrivilegesRequiredOverridesAllowed=commandline`
+   (`packaging/skeer-midi-vault.iss:35-36`), which is what lets a command-line install choose
+   all-users mode. Either way the plug-in should be listed as
    *SKEER MIDI VAULT* **1.1.0**: that number comes from the staged bundle's `moduleinfo.json`, is
    what a host displays, and the build refuses to ship a bundle whose copy disagrees with the
-   release.
+   release. The same `moduleinfo.json` declares the class under `Sub Categories: ["Fx"]` on
+   VST 3.7.12, so a host that groups by category files it with the effects, not with the
+   instruments.
+   Which bytes you are loading matters for what a session proves: the two JUCE trees build
+   different binaries, and only one of them ships. Measured 2026-11-18 against the tip bundle,
+   `launch/VST3/…/Contents/x86_64-win/SKEER MIDI VAULT.vst3` is byte-identical to the copy under
+   `plugin/build/…` — the 8.0.4 tree — and that copy is what `vault-host-test` loaded in the same
+   gate run; the `build/tag-808` bundle differs — different size, different SHA-256 — and is
+   source-compatibility evidence only. So a DAW session ratifies the 8.0.4 binary; nothing you
+   hear in a host speaks for the 8.0.8 build. Recompute the two hashes rather than trusting this
+   sentence after any rebuild.
 2. **Does the panel behave by hand?** The filter box takes typing, the library list scrolls, the
    three exported controls stay visible, and nothing touches the index until **Connect** is clicked.
    Then confirm the two promises the code makes about failure: a query that *fails* keeps the index

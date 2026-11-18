@@ -256,7 +256,14 @@ the run reports `orphan workers []`, prints PASS, and the stage exits 0.
    back, at the price of a search box that sometimes ignores typing. The layout is a proposal
    in C++, not an approved design. No suite here can see either: no window is created.
 6. **A real host session (step 8) has not happened**: a real OLE drag, the OS overwrite
-   prompt, and focus inside a host window all remain unproven.
+   prompt, and focus inside a host window all remain unproven. One fact decided before that
+   session, so it is not wasted: the bundle a host would load is the **8.0.4** build. Measured
+   2026-11-18 against the tip, the staged `launch/VST3` binary is byte-identical to the one under
+   `plugin/build` that `vault-host-test` loaded in the same gate run, while `plugin/build/tag-808`
+   holds a different binary — so a session ratifies those bytes and says nothing about the 8.0.8
+   build, which is compile-and-suite compatibility evidence only. `packaging/README.md` says the
+   same, with the host-list detail that `moduleinfo.json` files the class under
+   `Sub Categories: ["Fx"]`.
 
 ## Order of work
 
