@@ -307,4 +307,16 @@ version line in §6 is a checked literal — `scripts/check_version_consistency.
 bump that misses the licence page fails the gate instead of shipping an installer whose licence
 names last release.
 
+Said out loud because it shapes both fields: **the seller is one person, not a company** —
+decided 2026-11-18. `SKEER AUDIO` is a trading name with no legal entity behind it, so the
+licence identifies its counterparty only through the contact line. That makes `contact` carry
+more than an address: it is the place where a buyer can see who is granting the licence, and
+`jurisdiction` is the law of the country that person lives in, because there is no registered
+office to point at. The consequence worth knowing before the first sale, and the reason the
+paragraph above exists: whether an individual selling software for money is a *trader* for
+consumer-protection purposes is a question this file cannot answer, and it decides duties the
+EULA does not currently mention at all — a 14-day withdrawal right and refund path among them.
+A company would have had those by default; a personal seller should ask counsel whether they
+apply before assuming they do not.
+
 The installer shows this EULA before installation, and accepting it is what enables Install.

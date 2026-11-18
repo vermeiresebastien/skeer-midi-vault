@@ -147,10 +147,15 @@ it is documented in `AGENTS.md` and deliberately not silenced.
 
 ## What still blocks this release
 
-1. **Two licence fields are unfilled** — `<<<FILL: contact>>>` and
-   `<<<FILL: jurisdiction>>>`. Until the seller fills them, the `licence` stage is FAIL and
+1. **Two licence fields are unfilled** — `<<<FILL: contact>>>` at `packaging/EULA.txt:42` and
+   `<<<FILL: jurisdiction>>>` at `:45`. Until the seller fills them, the `licence` stage is FAIL and
    the gate is NOT READY. That is deliberate: the gate reads the same placeholder markers the
-   build script refuses to strip.
+   build script refuses to strip. Decided 2026-11-18, and it shapes what the two strings have to
+   be: the seller is one person trading as SKEER AUDIO, not a company, so the contact line is the
+   only place a buyer can see who grants the licence, and the jurisdiction is that person's own
+   country rather than a registered office. `packaging/README.md` states the question a personal
+   seller should settle with counsel before the first sale — trader status, and the withdrawal and
+   refund duties that follow from it.
 2. **The full install → run → uninstall cycle has not completed anywhere, and this shell cannot
    complete it.** The payload copy is proven (row above), but the host's policy refuses **Setup**
    every write outside the workspace: first at creating its target under `%LOCALAPPDATA%` and
