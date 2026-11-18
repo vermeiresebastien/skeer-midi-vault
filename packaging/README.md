@@ -265,7 +265,9 @@ commit, reports `NOT READY - 9 passed, 2 failed, 0 skipped, of 11 stages`: `lice
 same two fields, and `installed` FAIL because Setup cannot make a folder in this shell. `stamp` is
 **not** one of the failures — it passes on a bundle built from a committed tree, which is the only
 state in which these artifacts should be published. Run again on 2026-11-18 against the
-deliverables rebuilt after the licence fill — commit `c520d03eed51`, `stamp PASS - clean` — the set
+deliverables rebuilt after the licence fill — commit `c520d03eed51`, `stamp PASS - clean` — and a
+third time that evening at 16:22:24Z against the deliverables the gate rebuilt from
+`a4708a87ec6d`, the set
 reports `NOT READY - 10 passed, 1 failed, 0 skipped, of 11 stages`: every stage green except
 `installed`, which is still Setup being refused a folder by this shell. One red is left and it is
 not this machine's to finish.

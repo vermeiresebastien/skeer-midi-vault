@@ -306,9 +306,16 @@ Re-run 2026-11-18 against the deliverables the gate itself rebuilt after the lic
 the same eleven stages report `NOT READY - 10 passed, 1 failed, 0 skipped, of 11 stages`: `licence`
 now `PASS - no placeholders, licence page states 1.1.0`, `stamp PASS - commit c520d03eed51, clean`,
 `smoke` exit 0 printing `built from c520d03eed51`, and the one FAIL still `installed` at the same
-folder refusal.
+folder refusal. A third run that evening, 16:22:24Z, judged the deliverables its own `installer`
+stage rebuilt from commit `a4708a87ec6d` — Setup 25,671,363 bytes, ZIP 34,694,358,
+`stamp PASS - commit a4708a87ec6d, clean`, `plugin` and `plugin808` both 6/6 — and reported the
+same `NOT READY - 10 passed, 1 failed, 0 skipped, of 11 stages`, the one FAIL again `installed`.
+`-FilesOnly` was then pointed at that Setup too: `preflight PASS - Setup 25671363 bytes, hash
+matches the manifest` and `files PASS - 199 file(s) installed … all 198 payload file(s), nothing
+extra` (`install-cycle-20261118-162825`), so the payload leg now covers every artifact `launch/`
+has held today.
 
-Later the same afternoon that last sentence was no longer true, on those exact bytes.
+Later that afternoon, against the `c520d03eed51` bytes, the payload leg did run.
 `install_cycle_check.ps1 -FilesOnly -Dir <a folder inside the workspace>` reported
 `CYCLE INCOMPLETE - 3 phase(s) skipped, of 8` with
 `files - 199 file(s) installed, including the app, the stamp, the interface and the VST3 bundle -

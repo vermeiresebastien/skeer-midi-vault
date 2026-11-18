@@ -170,7 +170,9 @@ out explicitly.
 - **Installer verification.** The payload is proven on the shipped bytes and the registration
   legs are not. `packaging/install_cycle_check.ps1` ran against the real
   `SKEER-MIDI-VAULT-Setup-1.1.0.exe` on 2026-11-17 (the `766aa311c5d0` build) and again on
-  2026-11-18 against the `c520d03eed51` rebuild that carries the filled licence page, so this leg
+  2026-11-18 against the `c520d03eed51` rebuild that carries the filled licence page, and once
+  more at 16:28 against the `a4708a87ec6d` Setup the final gate built (`hash matches the
+  manifest`), so this leg
   now covers the artifact that is in `launch/`: with `-FilesOnly -Dir` pointed inside the
   workspace it graded `files PASS - 199 file(s) installed, including the app, the stamp, the
   interface and the VST3 bundle - all 198 payload file(s), nothing extra, and Setup could not

@@ -1,26 +1,31 @@
 # SKEER MIDI VAULT 1.1.0 — release notes
 
-Built 2026-11-18T14:43:09Z from commit `c520d03eed51`, by the release gate's own `installer`
-stage, and the tree was clean when it was stamped (`dirty: false`) — so `stamp` passes on those
-bytes and the licence page inside that Setup is the filled one, which is the page a customer then
-saw (§6 and §7 read in the wizard, 2026-11-18). The gate still reports NOT READY,
-on one stage: see **What still blocks this release**. Numbers below that belong to the earlier
-2026-11-17T23:09:47Z build from `766aa311c5d0` say so, and so does every number that belongs to
-the 14:43:09Z build — `launch/` holds whatever the most recent build put there, which is what
-`SHA256SUMS.txt` is for.
+Built 2026-11-18T16:23:54Z from commit `a4708a87ec6d`, by the release gate's own `installer`
+stage, with `dirty: false` — so `stamp` passes on those bytes and the licence page inside that
+Setup is the filled one a customer then saw (§6 and §7 read in the wizard, 2026-11-18). That
+eleven-stage run reported `NOT READY - 10 passed, 1 failed, 0 skipped, of 11 stages` (evidence
+`build\work\release-check-20261118-162224`), its single FAIL being `installed`; and the payload
+leg was re-run against those exact bytes minutes later — `Setup 25671363 bytes, hash matches the
+manifest` and `files PASS - 199 file(s) installed … all 198 payload file(s), nothing extra`
+(`build\work\install-cycle-20261118-162825`). Both numbers below that belong to an earlier build —
+the 2026-11-17T23:09:47Z `766aa311c5d0` bytes or the 14:43:09Z `c520d03eed51` ones — say so, and
+so does the fact that this page moved HEAD after the build it describes; `launch/` holds whatever
+the most recent build put there, which is what `SHA256SUMS.txt` is for.
 
 `launch/` is gitignored, so `launch/SHA256SUMS.txt` is the authority for whatever is in that
 folder right now, and re-running `sha256sum -c` there beats anything written here. The build is
 not byte-reproducible: two clean `766aa311c5d0` builds stamped at 23:05:07Z and 23:09:47Z came out
 25,671,546 and 25,669,100 bytes, and on 2026-11-18 the same `c520d03eed51` tree built 25,670,855
-bytes by hand and 25,671,112 through the gate four minutes later.
+bytes by hand and 25,671,112 through the gate four minutes later; the `a4708a87ec6d` tree built
+25,671,363 through the gate at 16:23:54Z.
 
 ## Standalone distribution
 
-- Windows per-user installer: `launch/SKEER-MIDI-VAULT-Setup-1.1.0.exe` — 25,671,112 bytes,
-  `abf5c4a7b4fc02c3290a4798bb0018750268eee5dce13d9c56d0c4e172cee1a6`
-- Portable ZIP: `launch/SKEER-MIDI-VAULT-Portable-1.1.0.zip` — 34,693,765 bytes,
-  `b08d5bcb2c286c40187ec5536fafb8b14af19c598c51b125fc7894ed1bbb0d7c`
+- Windows per-user installer: `launch/SKEER-MIDI-VAULT-Setup-1.1.0.exe` — 25,671,363 bytes,
+  `ba49d61b4d7a4af6ed40f53108fccb8450e03c06a2c1b9e6c160391961b31734` (the `a4708a87ec6d` build
+  above; `sha256sum -c launch/SHA256SUMS.txt` exit 0 against it on 2026-11-18)
+- Portable ZIP: `launch/SKEER-MIDI-VAULT-Portable-1.1.0.zip` — 34,694,358 bytes,
+  `c5caac5276b978c47e50794f607022a31b97328488abbcd4e9dbccc7821a38f3`
 - Checksums: `launch/SHA256SUMS.txt` — 201 bytes, two rows, LF-only terminators, so
   `sha256sum -c SHA256SUMS.txt` run inside `launch/` exits 0; re-verified against exactly the two
   rows above on 2026-11-18.
@@ -147,11 +152,13 @@ reads it, not in the customer's copy.
 | Plug-in, JUCE 8.0.8 tree (`-BuildDir build/tag-808`) | exit 0, **ctest 6/6** |
 | Packaged smoke (`python tests/test_packaged_smoke.py`) | exit 0, health reports **1.1.0**, 36 files indexed / 1 failed / 0 issues, `keep-alive` 403→200 and 415→200, **no orphan `--multiprocessing-fork` workers** |
 | Checksums | `sha256sum -c SHA256SUMS.txt` exit 0, 0 CR bytes in the manifest |
-| Installer payload | real Setup installed **all 198 payload files** (199 log destinations, the extra being Inno's own uninstaller), **nothing missing and nothing extra**; proven red by adding one file to `launch/` and restored. Re-run against the `766aa311c5d0` Setup: `CYCLE INCOMPLETE`, `files` PASS, 3 phases skipped. **Re-run again on 2026-11-18 against the rebuilt `c520d03eed51` Setup** — `-FilesOnly -Dir` inside the workspace: `CYCLE INCOMPLETE - 3 phase(s) skipped, of 8`, `files PASS - 199 file(s) installed … all 198 payload file(s), nothing extra, and Setup could not finish registering`; and the same Setup driven in GUI mode copied all 199 destinations into a workspace folder before the identical refusal rolled it back to 0 files |
-| Release gate, all eleven stages | **2026-11-18, against the rebuilt `c520d03eed51` deliverables: `NOT READY - 10 passed, 1 failed, 0 skipped, of 11 stages` (exit 1)** — every stage green except `installed`, which is the folder refusal in item 2. `licence PASS - no placeholders, licence page states 1.1.0`, `stamp PASS - commit c520d03eed51, clean, web/dist dafc8187f542`, `smoke PASS - exit 0, bundle built from c520d03eed51`, `installer` rebuilt Setup 25,671,112 B and ZIP 34,693,765 B, `checksums` 2 rows OK. The previous full run (2026-11-17, against the `766aa311c5d0` bytes) was `NOT READY - 9 passed, 2 failed`; its `licence` red was the two fields that are now filled. |
+| Installer payload | real Setup installed **all 198 payload files** (199 log destinations, the extra being Inno's own uninstaller), **nothing missing and nothing extra**; proven red by adding one file to `launch/` and restored. Re-run against the `766aa311c5d0` Setup: `CYCLE INCOMPLETE`, `files` PASS, 3 phases skipped. **Re-run again on 2026-11-18 against the rebuilt `c520d03eed51` Setup** — `-FilesOnly -Dir` inside the workspace: `CYCLE INCOMPLETE - 3 phase(s) skipped, of 8`, `files PASS - 199 file(s) installed … all 198 payload file(s), nothing extra, and Setup could not finish registering`; and the same Setup driven in GUI mode copied all 199 destinations into a workspace folder before the identical refusal rolled it back to 0 files. **And again at 16:28 against the `a4708a87ec6d` Setup the final gate itself rebuilt**: `preflight PASS - Setup 25671363 bytes, hash matches the manifest`, `files PASS - 199 file(s) installed … all 198 payload file(s), nothing extra`, `CYCLE INCOMPLETE - 3 phase(s) skipped, of 8` (`build\work\install-cycle-20261118-162825`) |
+| Release gate, all eleven stages | **2026-11-18T16:22:24Z, against the `a4708a87ec6d` deliverables: `NOT READY - 10 passed, 1 failed, 0 skipped, of 11 stages` (exit 1, evidence `build\work\release-check-20261118-162224`)** — `gate` 8 files / 11 values, `suite` 104 OK, `licence` no placeholders, `checksums` 2 rows, `web` tsc+vite, `plugin` and `plugin808` both ctest 6/6, `installer` Setup 25,671,363 B and ZIP 34,694,358 B, `stamp PASS - commit a4708a87ec6d, clean, web/dist dafc8187f542`, `smoke PASS - exit 0, bundle built from a4708a87ec6d`; the one FAIL is `installed`, the folder refusal in item 2. The run before it (14:43:09Z, `c520d03eed51`) reported the same 10 of 11 on the same single stage; the run before that (2026-11-17, `766aa311c5d0`) was `NOT READY - 9 passed, 2 failed`, its second red being the two licence fields that are now filled. |
 
-That earlier caveat is now discharged: the 2026-11-18 rebuild **has** been through the payload leg,
-twice — once through `-FilesOnly` and once through the real wizard. What still has not run anywhere
+That earlier caveat is discharged for every build `launch/` has held today: the `c520d03eed51`
+rebuild went through the payload leg twice — once through `-FilesOnly` and once through the real
+wizard — and the `a4708a87ec6d` Setup that the last gate built went through it once, against the
+manifest hash. What still has not run anywhere
 is everything Setup must do *outside* the install folder (Start Menu, `HKCU\...\Uninstall`, the
 first launch of the registered executable, the uninstall comparison), because the refusal follows
 the Setup executable rather than the path, in silent and interactive mode alike.
