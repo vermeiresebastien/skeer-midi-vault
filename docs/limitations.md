@@ -196,6 +196,24 @@ general-purpose classification accuracy.
 - Third-party npm packages are used to build/serve the interface
   (React, Vite, font packages, Playwright only for tests). Runtime Python is
   standard-library only; the standalone build bundles the Python runtime.
+- **One open Dependabot alert on the default branch, with no fix available to take.**
+  `picomatch@4.0.7` — GHSA-fc5q-39xc-vjpf / CVE-2026-112366, a ReDoS through a
+  single-branch repeated extglob **pattern** — reaches this project transitively and in
+  `development` scope only, through `vite@7.3.7`, `fdir`, `tinyglobby` and `vitest`.
+  There is nothing newer to install: `npm view picomatch dist-tags` is `latest: 4.0.7`,
+  the advisory's `first_patched_version` is null, and upstream has the fix in a pull
+  request, not a release. What was measured here on 2026-11-18 instead of assumed: no
+  `picomatch` file exists anywhere under `launch/` or `web/dist`, so nothing the customer
+  runs carries it; and instrumenting the module for one real `npm --prefix web run build`
+  (exit 0, module restored and hash-checked afterwards) shows that build compiling exactly
+  five patterns — `**/.env`, `**/.env.*`, `**/.env,**/.env.*,**/*.{crt,pem},**/.git/**`,
+  `**/*.{crt,pem}` and `**/.git/**` — every one a literal inside vite's own dist, none of
+  them an extglob, and none derived from `web/vite.config.ts`, which sets no alias,
+  `optimizeDeps` or `ssr` entry that could feed one. The vector therefore needs someone to
+  hand the tooling a repeated-extglob pattern; hostile *file names* are the other input and
+  cost 0.1 ms against an ordinary glob at 4,805 characters. Re-check with
+  `npm view picomatch dist-tags`, and when a publish newer than 4.0.7 exists run
+  `npm --prefix web update picomatch` followed by the release gate.
 
 ## The VST3 plug-in
 

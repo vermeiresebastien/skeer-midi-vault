@@ -237,5 +237,10 @@ which literals are probed.
   devDependency (`^5.0.5`) — measured 2026-11-17 it exits 1 with `No test files
   found`, because no `src/**/*.test.ts` spec exists. There are no frontend unit
   tests; frontend verification is the browser harnesses under `tests/`.
+- GitHub Dependabot reports one open high alert on `master` (`picomatch@4.0.7`,
+  GHSA-fc5q-39xc-vjpf). Do not go looking for a version bump: 4.0.7 **is** the newest
+  publish and the advisory has no patched release yet, so the only honest action is the
+  disposition in [docs/limitations.md](docs/limitations.md), which records what was measured
+  rather than what was assumed.
 
 Check a documented path against the real tree before acting on it.
