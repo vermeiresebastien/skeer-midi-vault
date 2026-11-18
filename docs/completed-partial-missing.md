@@ -195,7 +195,10 @@ out explicitly.
   `/ALLUSERS` leg — including the `Common Files\VST3` copy — has never run at all: this shell is
   not elevated (`IsAdmin=False`, measured 2026-11-18), the bundle is not in
   `Common Files\VST3`, and the consent prompt that leg needs is the owner's to answer, not the
-  agent's. The closest this machine can reach is running a *relocated* copy of that payload:
+  agent's. It is no longer an instruction without a test, though: `install_cycle_check.ps1 -AllUsers`
+passes the switch, demands the `VST3: installing into` line in the Setup log, and fails if anything
+in that shared folder outside our own bundle moved — the refusal path is measured, the elevated
+path is not. The closest this machine can reach is running a *relocated* copy of that payload:
   `python tests/test_packaged_smoke.py` under `SKEER_PACKAGED_EXE` PASSed against a hand-copied
   install tree with `built from c520d03eed51 clean`, so the executable does run from somewhere
   other than `launch/` — it just has never been run from a Setup-registered location.

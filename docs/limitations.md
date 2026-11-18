@@ -242,7 +242,9 @@ paths or re-run Setup with `/ALLUSERS`, which also copies it to
 `%ProgramFiles%\Common Files\VST3` where every host looks. The Setup log names which of the
 two happened. Either way nothing in the installer edits, adds or removes a host's own scan
 path, and the `/ALLUSERS` leg has never been executed here because elevation is not
-available in this environment — see `packaging/README.md`.
+available in this environment — `packaging\install_cycle_check.ps1 -AllUsers` is the command that
+grades it, and it refuses rather than half-installs when the terminal is not elevated; see
+`packaging/README.md`.
 
 - It has a browser panel over the app's own index — filter box, one list, the three
   exported controls (Follow Host Tempo, Transpose, Loop), and a status strip that says
