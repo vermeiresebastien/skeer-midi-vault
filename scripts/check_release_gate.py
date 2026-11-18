@@ -123,14 +123,18 @@ def build_tree(*, ctest: str = "", build_exit: int = 0) -> None:
     (LAUNCH / SETUP).write_bytes(b"\x00" * 4096)
     (LAUNCH / PORTABLE).write_bytes(b"\x00" * 8192)
     write_manifest()
-    # Filled here so the control can reach PASS. The real page waits for a human answer, which
-    # is why the real tree reports licence FAIL until someone supplies contact and law.
+    # The control's licence page must be green whatever the real page holds, so the two
+    # human-answer lines are pinned to sentinels here rather than by replacing a placeholder
+    # marker. Pinning by marker left the control dependent on a defect: the day a seller filled
+    # EULA.txt, this assert failed and case F's plant found nothing to redden.
     eula = SHADOW / "packaging/EULA.txt"
     text = eula.read_text(encoding="utf-8")
-    assert "<<<FILL:" in text, "expected the real EULA to still hold unfilled fields"
-    eula.write_text(
-        text.replace("<<<FILL: contact>>>", "legal@example.test")
-        .replace("<<<FILL: jurisdiction>>>", "the Netherlands"), encoding="utf-8")
+    text = re.sub(r"(?m)^([ \t]*Licence and support enquiries:).*$",
+                  r"\1 legal@example.test", text)
+    text = re.sub(r"(?m)^([ \t]*This agreement is governed by the law of).*$",
+                  r"\1 the Netherlands", text)
+    assert "<<<FILL:" not in text, "the control EULA must hold no unfilled field"
+    eula.write_text(text, encoding="utf-8")
 
     # The stubs the expensive stages drive. The plug-in stub takes the same parameters as the
     # real script, because release_check passes them positionally by name.

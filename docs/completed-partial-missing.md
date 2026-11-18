@@ -98,7 +98,7 @@ out explicitly.
       quit, no orphan workers).
 - [x] Per-user Windows installer (`SKEER-MIDI-VAULT-Setup-1.1.0.exe`) that stages the
       app, the interface, the provenance stamp and the VST3 bundle, with the EULA page
-      (two seller fields still unfilled — see **Partial**) and the application icon and
+      (both seller fields filled in the tree on 2026-11-18) and the application icon and
       version metadata; no Python, Node.js or admin rights required. The Start Menu
       shortcut, the uninstall entry and the first launch of the installed executable are
       implemented in `packaging/skeer-midi-vault.iss` and are graded by
@@ -180,10 +180,11 @@ out explicitly.
   `powershell -File packaging\install_cycle_check.ps1` from a normal user terminal. The
   `/ALLUSERS` leg — including the `Common Files\VST3` copy — has never run at all, because
   elevation is not available in this environment.
-- **Licence page fields.** `packaging/EULA.txt` section 6 and section 7 still hold
-  `<<<FILL: contact>>>` and `<<<FILL: jurisdiction>>>`. The gate treats a placeholder as a
-  failed stage, so `licence` is FAIL and `scripts/release_check.ps1` reports NOT READY
-  until the seller fills both.
+- **Licence page, shipped bytes.** Both fields were filled in the tree on 2026-11-18 —
+  `sebastienvermeire@gmail.com` at `packaging/EULA.txt:42`, `Belgium` at `:45` — and the gate's
+  `licence` stage passes on that page. What is still partial is the artifact: Inno compiles the
+  file into the Setup at build time, so the installer stamped 2026-11-17 shows a buyer both
+  `<<<FILL:` tokens. A rebuild is what puts the answer in front of them.
 - **Installer signing.** The Setup EXE is unsigned (`NotSigned`). Windows SmartScreen
   warning is expected until an Authenticode certificate is applied. `build_installer.ps1`
   is signing-ready through an inert-by-default `-Sign` switch that signs the app before

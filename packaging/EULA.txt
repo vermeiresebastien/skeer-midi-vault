@@ -39,13 +39,13 @@ Copyright (C) 2026 SKEER AUDIO. All rights reserved.
 6. SUPPORT, UPDATES AND CONTACT
    Support, updates and upgrade terms are provided separately by the seller.
    This version is 1.1.0.
-   Licence and support enquiries: <<<FILL: contact>>>
+   Licence and support enquiries: sebastienvermeire@gmail.com
 
 7. GOVERNING LAW
-   This agreement is governed by the law of <<<FILL: jurisdiction>>>, and any
-   dispute arising out of it is subject to the exclusive jurisdiction of the
-   courts of that place. Nothing in this agreement limits a right you cannot
-   lawfully waive, including rights that cannot be excluded in your own country.
+   This agreement is governed by the law of Belgium, and any dispute arising
+   out of it is subject to the exclusive jurisdiction of the courts of that
+   place. Nothing in this agreement limits a right you cannot lawfully waive,
+   including rights that cannot be excluded in your own country.
 
 8. TERMINATION
    Your licence ends if you break these terms and do not remedy the breach

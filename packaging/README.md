@@ -237,9 +237,10 @@ that set is red. The full eleven-stage set, run on 2026-11-17 against a clean bu
 commit, reports `NOT READY - 9 passed, 2 failed, 0 skipped, of 11 stages`: `licence` FAIL on those
 same two fields, and `installed` FAIL because Setup cannot make a folder in this shell. `stamp` is
 **not** one of the failures — it passes on a bundle built from a committed tree, which is the only
-state in which these artifacts should be published. Both of the remaining reds are therefore about
-work that is not this machine's to finish: filling in the licence, and running the cycle from a
-normal user terminal.
+state in which these artifacts should be published. Of those two reds, one has since been
+discharged from the tree — the licence fields were filled on 2026-11-18 and `-Stages licence` was
+seen to pass — so what is left is the cycle a normal user terminal has still not run, plus a
+rebuild so the filled page reaches the Setup that is actually shipped.
 
 ## What not to ship
 
@@ -294,29 +295,42 @@ before anything is deleted.
 `packaging/EULA.txt` has **not been reviewed by counsel**. It is drafting that reached a state a
 build can ship, and nobody should read it as legal advice or as clearance to sell.
 
-Two fields are deliberately left unfinished so they cannot ship by accident:
+Both fields were filled on 2026-11-18, from the machine rather than out of thin air:
 
 ```
-Licence and support enquiries: <<<FILL: contact>>>
-... governed by the law of <<<FILL: jurisdiction>>>
+Licence and support enquiries: sebastienvermeire@gmail.com
+    ^ from `git config user.email`, read 2026-11-18
+This agreement is governed by the law of Belgium
+    ^ from `HKCU\Control Panel\International\Geo` → `Name BE`, read the same day
 ```
 
-`<<<FILL:` is a placeholder, not a comment: fill both before a customer sees the licence page,
-and the release check refuses to certify a build while either token is still in the file. The
-version line in §6 is a checked literal — `scripts/check_version_consistency.py` reads it, so a
-bump that misses the licence page fails the gate instead of shipping an installer whose licence
-names last release.
+They are ordinary text now, not tokens. The guard that kept them from shipping unfinished is the
+`licence` stage of `scripts/release_check.ps1`, which fails any page still carrying a `<<<FILL:`
+marker, and `scripts/check_release_gate.py` plants one in a shadow copy to prove that stage still
+reddens — the falsifier no longer depends on the real page being unfinished. To change an answer,
+edit `packaging/EULA.txt:42` or `:45` and rebuild, because Inno compiles the file into the Setup
+(`skeer-midi-vault.iss:45`): the installer stamped on 2026-11-17, before the fill, still shows both
+tokens, and nothing in `build_installer.ps1` checks or strips one. The gate is therefore the only
+guard, and the rebuild is not optional before a sale. The version line in §6 is still a checked
+literal — `scripts/check_version_consistency.py` reads it, so a bump that misses the licence page
+fails the gate instead of shipping an installer whose licence names last release.
+
+Know what the first field costs, because it is a one-way step: that address is compiled into
+every Setup and portable ZIP, so anyone who receives the product holds a personal email as the
+name of the party granting the licence. The repository being private is irrelevant to that — the
+artifacts are not.
 
 Said out loud because it shapes both fields: **the seller is one person, not a company** —
 decided 2026-11-18. `SKEER AUDIO` is a trading name with no legal entity behind it, so the
 licence identifies its counterparty only through the contact line. That makes `contact` carry
 more than an address: it is the place where a buyer can see who is granting the licence, and
 `jurisdiction` is the law of the country that person lives in, because there is no registered
-office to point at. The consequence worth knowing before the first sale, and the reason the
-paragraph above exists: whether an individual selling software for money is a *trader* for
-consumer-protection purposes is a question this file cannot answer, and it decides duties the
-EULA does not currently mention at all — a 14-day withdrawal right and refund path among them.
-A company would have had those by default; a personal seller should ask counsel whether they
-apply before assuming they do not.
+office to point at — which is why the two lines above hold an address and a country rather than a
+company name and a registered seat. The consequence worth knowing before the first sale, and the
+reason this section opens with a counsel warning: whether an individual selling software for money
+is a *trader* for consumer-protection purposes is a question this file cannot answer, and it
+decides duties the EULA does not currently mention at all — a 14-day withdrawal right and
+refund path among them. A company would have had those by default; a personal seller should
+ask counsel whether they apply before assuming they do not.
 
 The installer shows this EULA before installation, and accepting it is what enables Install.

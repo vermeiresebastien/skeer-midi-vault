@@ -1,8 +1,11 @@
 # SKEER MIDI VAULT 1.1.0 — release notes
 
 Built 2026-11-17T23:09:47Z from commit `766aa311c5d0`, and the tree was clean when it was
-stamped (`dirty: false`), so the gate's `stamp` stage passes on it. The gate is still NOT READY:
-see **What still blocks this release** for the two stages that say so and what they need.
+stamped (`dirty: false`), so the gate's `stamp` stage passes on it. The last full eleven-stage
+run against exactly those bytes reported NOT READY. One of those two reds is now a stale
+artifact rather than a missing answer: the licence page Inno embedded in that Setup still holds
+both seller placeholders, which were filled in `packaging/EULA.txt` on 2026-11-18 and cannot
+reach a buyer without a rebuild. See **What still blocks this release**.
 
 `launch/` is gitignored, so `launch/SHA256SUMS.txt` is the authority for whatever is in that
 folder right now. Every byte count and digest below belongs to the build named above. They are a
@@ -133,13 +136,13 @@ reads it, not in the customer's copy.
 | --- | --- |
 | Python suite (`python -m unittest discover -s tests`) | **104 tests, OK** in 19.9 s |
 | Version gate | **8 files, 11 values, one version 1.1.0** |
-| Release-gate falsifier | **FALSIFIER OK**, 31 of 33 cases executed |
+| Release-gate falsifier | **FALSIFIER OK**, 31 of 33 cases executed — re-run 2026-11-18 on both states of `packaging/EULA.txt` (placeholders present, then filled), and case F still reddens `licence` either way |
 | Plug-in, JUCE 8.0.4 tree (`plugin/build.ps1`) | exit 0, **ctest 6/6** |
 | Plug-in, JUCE 8.0.8 tree (`-BuildDir build/tag-808`) | exit 0, **ctest 6/6** |
 | Packaged smoke (`python tests/test_packaged_smoke.py`) | exit 0, health reports **1.1.0**, 36 files indexed / 1 failed / 0 issues, `keep-alive` 403→200 and 415→200, **no orphan `--multiprocessing-fork` workers** |
 | Checksums | `sha256sum -c SHA256SUMS.txt` exit 0, 0 CR bytes in the manifest |
 | Installer payload | real Setup installed **all 198 payload files** (199 log destinations, the extra being Inno's own uninstaller), **nothing missing and nothing extra**; proven red by adding one file to `launch/` and restored. Re-run against the `766aa311c5d0` Setup: `CYCLE INCOMPLETE`, `files` PASS, 3 phases skipped |
-| Release gate, all eleven stages | `NOT READY - 9 passed, 2 failed, 0 skipped, of 11 stages` (exit 1): `licence` FAIL on the two unfilled fields, `installed` FAIL because this shell is refused Setup's writes. **`stamp` PASS** — `commit 766aa311c5d0, clean, web/dist dafc8187f542` |
+| Release gate, all eleven stages | last full run (2026-11-17, against the `766aa311c5d0` bytes): `NOT READY - 9 passed, 2 failed, 0 skipped, of 11 stages` (exit 1): `licence` FAIL on the two unfilled fields, `installed` FAIL because this shell is refused Setup's writes. **`stamp` PASS** — `commit 766aa311c5d0, clean, web/dist dafc8187f542`. `licence` re-measured on 2026-11-18 after the fill: `-Stages licence` exit 0, `PASS - no placeholders, licence page states 1.1.0`. The eleven-stage set has **not** been re-run since — the fill changed a file the gate reads, so that full run is owed, and it has to be the last action before publishing. |
 
 The `WinError 10038` traceback the smoke log prints at shutdown is the known interpreter
 teardown race in the HTTP thread. It is after `PASS packaged smoke test` and before exit 0;
@@ -147,15 +150,22 @@ it is documented in `AGENTS.md` and deliberately not silenced.
 
 ## What still blocks this release
 
-1. **Two licence fields are unfilled** — `<<<FILL: contact>>>` at `packaging/EULA.txt:42` and
-   `<<<FILL: jurisdiction>>>` at `:45`. Until the seller fills them, the `licence` stage is FAIL and
-   the gate is NOT READY. That is deliberate: the gate reads the same placeholder markers the
-   build script refuses to strip. Decided 2026-11-18, and it shapes what the two strings have to
-   be: the seller is one person trading as SKEER AUDIO, not a company, so the contact line is the
-   only place a buyer can see who grants the licence, and the jurisdiction is that person's own
-   country rather than a registered office. `packaging/README.md` states the question a personal
-   seller should settle with counsel before the first sale — trader status, and the withdrawal and
-   refund duties that follow from it.
+1. **The licence page inside the built Setup is still the unfilled one.** The two fields were
+   filled on 2026-11-18 — `sebastienvermeire@gmail.com` at `packaging/EULA.txt:42`, `Belgium` at
+   `:45` — so the `licence` stage now passes on the tree, and the falsifier no longer depends on
+   the page staying unfinished. It is the *artifact* that lags: Inno compiles
+   `packaging\EULA.txt` into the Setup (`skeer-midi-vault.iss:45`), so the `766aa311c5d0`
+   installer stamped before the fill still shows both tokens to anyone who runs it. A rebuild is
+   the only way the answer reaches a buyer. The values came from the machine and the git identity,
+   not from thin air: the address is `git config user.email`, the country is this machine's geo
+   (`HKCU\Control Panel\International\Geo` → `Name BE`). Either can be changed by editing those
+   two lines and rebuilding; the guard against shipping a token is the gate's `licence` stage —
+   nothing in `build_installer.ps1` checks or strips one. What the choice of values means is in
+   `packaging/README.md`: the seller is one person trading as SKEER AUDIO, not a company, so the
+   contact line is the only place a buyer can see who grants the licence, and the jurisdiction is
+   that person's own country rather than a registered office. Whether an individual selling
+   software for money is a *trader* — with the 14-day withdrawal right and refund path that
+   follows — is a question for counsel, not for this file.
 2. **The full install → run → uninstall cycle has not completed anywhere, and this shell cannot
    complete it.** The payload copy is proven (row above), but the host's policy refuses **Setup**
    every write outside the workspace: first at creating its target under `%LOCALAPPDATA%` and
