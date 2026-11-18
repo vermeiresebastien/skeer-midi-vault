@@ -234,10 +234,12 @@ alike. Three things are left, and none of them can be settled from a shell:
    Then confirm the two promises the code makes about failure: a query that *fails* keeps the index
    path and says "not read this time" — only **Disconnect** forgets it and **Rescan** retries — and
    the status strip names both the file that is playing and the file the project asked for.
-3. **Keyboard focus is your decision, not a test.** `EDITOR_WANTS_KEYBOARD_FOCUS` is TRUE so the
-   filter box can receive keystrokes, which also means the host's own shortcuts do not fire while
-   the panel has focus. Say which behaviour you want shipped; the other answer is one line in
-   `plugin/Source/`, and no suite can prefer either because none of them creates a window.
+3. **Keyboard focus is your decision, not a test.** `EDITOR_WANTS_KEYBOARD_FOCUS` is TRUE at
+   `plugin/CMakeLists.txt:106` so the filter box can receive keystrokes, which also means the host's
+   own shortcuts do not fire while the panel has focus — and the host gets its keys back as soon as
+   focus leaves. Say which behaviour you want shipped: the other answer is that same line set FALSE,
+   which is a CMake change and therefore a rebuilt bundle, and no suite can prefer either because
+   none of them creates a window.
 
 While a host is open, exercise the two paths that end on a real filesystem: drag a clip out into the
 arrange page, and **Save clip as…** onto a file that already exists — the *operating system's* own
