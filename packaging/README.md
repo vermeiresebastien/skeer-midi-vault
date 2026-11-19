@@ -258,8 +258,30 @@ alike. Three things are left, and none of them can be settled from a shell:
    host loaded (and its path, when it shows one) before answering any of the three questions.
    This does not block the `/ALLUSERS` leg: `install_cycle_check.ps1 -AllUsers` requires that the
    new entries in the shared folder sit inside `SKEER MIDI VAULT.vst3`, so a foreign bundle already
-   there is neither a refusal nor a false pass. Retiring it is the owner's call, and only he knows
-   which project installed it.
+   there is neither a refusal nor a false pass. It is not a stranger either: the string comes from
+   the sibling repo in this family — `sample-vault/vst/CMakeLists.txt:117` sets
+   `PRODUCT_NAME "SKEER Vault"`, and that project's installer deploys exactly that bundle name into
+   exactly that shared scan folder (`sample-vault/installer/SKEER_Sample_Vault.iss:23-24`). So it is
+   one of your own two products living where the other one's Setup puts it — what placed it there,
+   a Setup run or a hand copy, the file alone cannot say, but retiring it is a decision between your
+   two plug-ins and not about a third party.
+
+   What that session will be operating on, measured on this machine 2026-11-19 so nobody has to
+   guess it mid-take:
+   `%LOCALAPPDATA%\Skeer\MIDI Vault\midivault.sqlite3` is 449,347,584 bytes with
+   `PRAGMA user_version = 1` — read from the header bytes at offset 60, so nothing was opened and
+   no `-shm`/`-wal` was created by the reading. The sidecars that are already there are a 32,768-byte
+   `-shm` and a **0-byte** `-wal`: a write-ahead log with no frames has nothing to replay, which is
+   why the plug-in's read-only open is safe beside them (and why the absence of a checkpoint is not
+   evidence of an unclean shutdown). This is not a defect to fix before the session, and the
+   session does not have to come after an app run: `supportedSchemaVersion` is 2
+   (`plugin/Source/VaultIndexReader.h:15`) so a schema-1 index is accepted, the only column the
+   one migration adds is `files.fingerprint_version` (`midivault/db.py:1782-1799`), and that name
+   does not appear anywhere under `plugin/Source/` — every column the plug-in selects or filters on
+   was already in the schema-1 `files` table. Migrate first or connect first; the plug-in reads the
+   same rows either way. The locator's four roots match what the service writes
+   (`plugin/Source/VaultIndexLocator.cpp:81-85`, `%LOCALAPPDATA%` + `Skeer\MIDI Vault` at `:32-43`
+   and `:77`), so **Connect** should list this library without you pointing at the file.
 2. **Does the panel behave by hand?** The filter box takes typing, the library list scrolls, the
    three exported controls stay visible, and nothing touches the index until **Connect** is clicked.
    Then confirm the two promises the code makes about failure: a query that *fails* keeps the index
