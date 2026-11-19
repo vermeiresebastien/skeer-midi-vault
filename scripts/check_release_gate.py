@@ -399,6 +399,35 @@ sys.exit(1)
     check("T2 installed: the cycle script reddens on its own exit code",
           STAGES + ["installed"], {"installed": "FAIL"}, 1, ("exit 1",))
 
+    # The gate's restricted-shell path: when the full cycle cannot run, it asks the same script for
+    # the payload-only pass inside the workspace. That pass may downgrade FAIL to SKIP -- never to a
+    # PASS, and never when the payload itself is broken. Both directions are required: the branch is
+    # only worth having if a red payload row still reddens the stage.
+    refused = (
+        "param([switch]$FilesOnly, [string]$Dir)\n"
+        "if ($FilesOnly) {\n"
+        "  Write-Output '[ok  ] files - 199 file(s) installed, all 198 payload file(s), nothing extra'\n"
+        "  Write-Output 'CYCLE INCOMPLETE - 3 phase(s) skipped, of 8'\n"
+        "  exit 2\n"
+        "}\n"
+        "Write-Output 'CYCLE FAILED - Setup did not install: Error 5 creating the uninstall key'\n"
+        "exit 1\n"
+    )
+    build_tree()
+    stub("packaging/install_cycle_check.ps1", refused)
+    check("T3 installed: registration refused but the payload graded intact is a SKIP, not a FAIL",
+          STAGES + ["installed"], {"installed": "SKIP"}, 2,
+          ("payload intact", "198 payload file(s)"))
+
+    broken = refused.replace("[ok  ] files - 199 file(s) installed, all 198 payload file(s),"
+                             " nothing extra",
+                             "[FAIL] files - 3 of 198 payload file(s) are missing")
+    build_tree()
+    stub("packaging/install_cycle_check.ps1", broken)
+    check("T4 installed: a broken payload cannot be softened into a SKIP",
+          STAGES + ["installed"], {"installed": "FAIL"}, 1,
+          ("payload pass exit 2", "3 of 198 payload file(s) are missing"))
+
     if NPM:
         # The shadow has a package.json and no node_modules, so the real npm run fails and the
         # stage must follow the exit code. Its PASS branch is a bare `$code -eq 0` and is covered

@@ -405,7 +405,35 @@ if ($Stages -contains 'installed') {
             Add-Result 'installed' 'SKIP' ("partial: $headline - full cycle needs a normal user " +
                 "terminal; see $log")
         } else {
-            Add-Result 'installed' 'FAIL' "$headline (exit $code, log $log)"
+            # The full cycle asks Setup for writes a restricted shell refuses it (the default install
+            # folder lives under %LOCALAPPDATA%, and the uninstall key is refused per-binary), so the
+            # stage used to report one fatal exception and nothing else -- not even whether the
+            # payload relocates. Ask the same script for the pass it CAN grade: payload only, into a
+            # folder beside this run's own evidence. A `files` row that grades clean makes the
+            # residual exactly what it is -- an unreachable registration -- while anything short of
+            # that stays a FAIL, so a broken installer can never be softened into a SKIP by this path.
+            $payloadLog = Join-Path $stampDir 'installed-payload.log'
+            $payloadCode = Invoke-Step $payloadLog 'powershell' @('-NoProfile', '-ExecutionPolicy',
+                'Bypass', '-File', 'packaging\install_cycle_check.ps1', '-FilesOnly',
+                '-Dir', (Join-Path $stampDir 'install-target'))
+            $filesRow = ''
+            if (Test-Path -LiteralPath $payloadLog) {
+                $filesRow = @(@(Get-Content -LiteralPath $payloadLog -ErrorAction SilentlyContinue) |
+                    Where-Object { $_ -match '^\[[a-z ]+\] files -' }) | Select-Object -Last 1
+            }
+            # Re-shaped rather than echoed: a row that starts `[FAIL] ` would read as a stage the
+            # caller never selected, in the same output as the gate's own stage table.
+            $filesText = if ($filesRow -match '^\[([a-z ]+)\]\s*files\s*-\s*(.*)$') {
+                ($matches[1].Trim() + ': ' + $matches[2].Trim())
+            } else { 'no files row printed' }
+            if ($payloadCode -eq 2 -and $filesRow -match '^\[ok') {
+                Add-Result 'installed' 'SKIP' ("payload intact, registration unreachable here - " +
+                    "$($filesRow.Substring($filesRow.IndexOf('files -') + 7).Trim()) - full cycle " +
+                    "needs a normal user terminal (Setup: $headline; logs $log, $payloadLog)")
+            } else {
+                Add-Result 'installed' 'FAIL' ("$headline (exit $code, log $log; payload pass exit " +
+                    "$payloadCode - files row $filesText, log $payloadLog)")
+            }
         }
     }
 }
