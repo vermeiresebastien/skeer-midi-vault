@@ -10,6 +10,7 @@ What this page can state truthfully is each gate **run**, labelled with the comm
 
 | Gate run (UTC) | Judged | Eleven-stage verdict | Payload leg against those same bytes |
 | --- | --- | --- | --- |
+| 2026-11-19T19:35:19Z | `855516d5bbee`, clean | **`INCOMPLETE - 10 passed, 0 failed, 1 skipped, of 11 stages`** — the first run of this release with no `FAIL` row at all (`release-check-20261119-193519`) | `installer PASS - Setup 25670588 bytes, ZIP 34693494 bytes`, `checksums PASS - 2 row(s) … sha256sum -c exit 0` immediately after it, `stamp PASS - commit 855516d5bbee, clean, web/dist dafc8187f542`, `smoke PASS - bundle built from 855516d5bbee`, `suite PASS - 104 tests`, plugin and plugin808 `ctest 6/6` each. `installed` is the skip: `payload intact, registration unreachable here - 199 file(s) installed … all 198 payload file(s), nothing extra`, with the `%LOCALAPPDATA%` cycle-folder refusal named underneath it — the same wall, now reported as the unreachable leg it is instead of a failure of the artifact. The two plug-in stages re-ran **incrementally**: no file under `plugin/` differs since the 19:00:06Z run, so this certifies the same binaries re-tested, not a from-scratch compile |
 | 2026-11-19T19:00:06Z | `f50940283f57`, clean | `NOT READY - 10 passed, 1 failed, 0 skipped` — only `installed` (`release-check-20261119-190006`) | **the first run where the checksum stage judged its own build.** Execution order in that log is `installer → checksums → stamp → smoke`: `installer PASS - Setup 25671032 bytes, ZIP 34695228 bytes`, then `checksums PASS - 2 row(s), 2 release file(s) in launch/, sha256sum -c exit 0` against exactly those bytes, `stamp PASS - commit f50940283f57, clean, web/dist dafc8187f542`, `smoke PASS - exit 0, bundle built from f50940283f57` (and `plugin` plus `plugin808` each `ctest 6/6`). `installed` refused at its first write, creating `C:\Users\Sebastien\AppData\Local\SKEER MIDI VAULT cycle` — Error 5, the same boundary as every row below |
 | 2026-11-19T18:22:39Z | `25a7ccd0d562`, clean | `NOT READY - 10 passed, 1 failed, 0 skipped` — only `installed` (`release-check-20261119-182239`) | **the publish run.** `installer PASS - Setup 25671169 bytes, ZIP 34693150 bytes`, `stamp PASS - commit 25a7ccd0d562, clean, web/dist dafc8187f542`, `smoke PASS`. Then, by hand against those bytes: `sha256sum -c SHA256SUMS.txt` exit 0 in `launch/`, Setup `2f11401d…460abc`, ZIP `1ca58426…894916`. Tag `v1.1.0` pushed on `25a7ccd`, release created, and `gh release download` of the published assets re-run through `sha256sum -c` → both `OK`, sizes equal to the `installer` row |
 | 2026-11-19T18:16:59Z | `10b53bf27d52`, clean | `NOT READY - 10 passed, 1 failed, 0 skipped` — only `installed` (`release-check-20261119-181659`) | `installer PASS - Setup 25671638 bytes, ZIP 34693734 bytes`, `stamp PASS - commit 10b53bf27d52, clean`, `smoke PASS - bundle built from 10b53bf27d52`; `installed` died at the `%LOCALAPPDATA%` directory refusal, Error 5 |
@@ -33,26 +34,29 @@ drift apart silently.
 **The page and today's `launch/` are not the same bytes, and that is intended.** Reading the asset
 metadata back from GitHub on 2026-11-19, the release serves the `25a7ccd` build — Setup
 `2f11401d509b…00460abc` at 25,671,169 B, ZIP `1ca58426b7b1…96894916` at 34,693,150 B — while
-`launch/` now holds the `f50940283f57` rebuild that the certification run below produced, Setup
-`db8727a86341…e1f34c49` at 25,671,032 B and ZIP `1682fed1ec3f…3d32668a` at 34,695,228 B. The
-`1c17f6a` pair recorded an hour earlier (`a0374baed6ea…` 25,671,593 B, `8fb23860732c…` 34,692,377 B)
-was superseded by that run. Two builds an hour apart share every install input and still differ in
-size, which is why no size on this page is load-bearing. So `launch/SHA256SUMS.txt` is the manifest
+`launch/` now holds the `855516d5bbee` rebuild that the certification run above produced: Setup
+`57fdd5f49704…01fc00e3` at 25,670,588 B and ZIP `5af6667fcc7b…5be53005` at 34,693,494 B, the rows
+in `launch/SHA256SUMS.txt` as of that run. The `f50940283f57` pair (`db8727a86341…e1f34c49`
+25,671,032 B, `1682fed1ec3f…3d32668a` 34,695,228 B) was superseded by it, and the `1c17f6a` pair
+before that (`a0374baed6ea…` 25,671,593 B, `8fb23860732c…` 34,692,377 B) by the `f50940283f57` run.
+Three builds a few hours apart share every install input and still differ in size, which is why no
+size on this page is load-bearing. So `launch/SHA256SUMS.txt` is the manifest
 for the local build and **will not verify a download**;
 compare a download to the `SHA256SUMS.txt` published beside it. Nothing a user runs differs
-between the two: the seven paths that moved since `25a7ccd` are `.github/social-preview.png`,
-`AGENTS.md`, `docs/limitations.md`, this file, `packaging/README.md`, `scripts/release_check.ps1`
+between the two: the nine paths that moved since `25a7ccd` are `.github/social-preview.png`,
+`AGENTS.md`, `docs/limitations.md`, this file, `packaging/README.md`,
+`packaging/install_cycle_check.ps1`, `scripts/check_release_gate.py`, `scripts/release_check.ps1`
 and `tests/test_packaged_smoke.py`, and
 none of them is an install input — Setup reads `launch\SKEER MIDI VAULT\*`, `launch\VST3\*` and
 `packaging\EULA.txt` ([skeer-midi-vault.iss:88,93](../packaging/skeer-midi-vault.iss), `:45` for
 the licence), and the frozen app carries only `desktop.py`'s import graph plus
 `web/dist` ([SKEER MIDI VAULT.spec:12](../SKEER MIDI VAULT.spec)). The interface is provably the
-same file set: the two runs that publish one — `25a7ccd` and `f50940283f57` — both stamp
-`web_dist dafc8187f542…`. What differs is the build stamp itself, and the size it lands at.
+same file set: the three runs that publish one — `25a7ccd`, `f50940283f57` and `855516d5bbee` —
+all stamp `web_dist dafc8187f542…`. What differs is the build stamp itself, and the size it lands at.
 
 That run also exposed an ordering defect in the gate, and it is worth stating plainly because it
 undermines every `checksums PASS` recorded from before the fix — which is every row in that table
-except the `f50940283f57` one. The checksum stage used to sit with the gates that cost
+except the `f50940283f57` and `855516d5bbee` ones. The checksum stage used to sit with the gates that cost
 seconds, which is *before* `installer` rewrites `launch/` and regenerates `SHA256SUMS.txt` at
 [packaging/build_installer.ps1:301](packaging/build_installer.ps1) — so it hashed the *previous*
 build's artifacts, and the bytes a release actually shipped were never hashed by the gate that
@@ -168,9 +172,9 @@ pass. `-Fast` runs the four cheap gates. Per-stage logs go to
 
 Its falsifier, `python scripts/check_release_gate.py`, copies the release files into
 `build/work/release-gate-falsifier/`, stubs the child commands and plants one defect per
-case — 33 cases defined, 31 of which ran on this machine (the two `web` branches are
-mutually exclusive, and the no-second-JUCE case cannot fire where the second tree exists).
-It is the only place the gate's PASS rows are ever seen, and it printed
+case — 34 cases defined, 33 of which ran here when it was last executed (the no-second-JUCE
+case `O` cannot fire where the 8.0.8 tree exists, and `U` has two mutually exclusive
+branches). It is the only place the gate's PASS rows are ever seen, and it printed
 `FALSIFIER OK: every row moved for its own reason and the exit codes are as documented`.
 
 `packaging/install_cycle_check.ps1` is the installer's own end-to-end check: preflight →
@@ -218,12 +222,12 @@ reads it, not in the customer's copy.
 | --- | --- |
 | Python suite (`python -m unittest discover -s tests`) | **104 tests, OK** in 19.9 s |
 | Version gate | **8 files, 11 values, one version 1.1.0** |
-| Release-gate falsifier | **FALSIFIER OK**, 31 of 33 cases executed — re-run 2026-11-18 on both states of `packaging/EULA.txt` (placeholders present, then filled), and case F still reddens `licence` either way |
+| Release-gate falsifier | **FALSIFIER OK**, 33 of 34 cases executed — re-run 2026-11-19 against `855516d5bbee` (the tree that carries the `installed` three-state logic and cases T3/T4), and earlier on 2026-11-18 on both states of `packaging/EULA.txt` (placeholders present, then filled), with case F still reddening `licence` either way |
 | Plug-in, JUCE 8.0.4 tree (`plugin/build.ps1`) | exit 0, **ctest 6/6** |
 | Plug-in, JUCE 8.0.8 tree (`-BuildDir build/tag-808`) | exit 0, **ctest 6/6** |
 | Packaged smoke (`python tests/test_packaged_smoke.py`) | exit 0, health reports **1.1.0**, 36 files indexed / 1 failed / 0 issues, `keep-alive` 403→200 and 415→200, **no orphan `--multiprocessing-fork` workers** |
 | Checksums | `sha256sum -c SHA256SUMS.txt` exit 0, 0 CR bytes in the manifest |
-| Installer payload | real Setup installed **all 198 payload files** (199 log destinations, the extra being Inno's own uninstaller), **nothing missing and nothing extra**; proven red by adding one file to `launch/` and restored. Re-run against every Setup in the table at the top of this page — each reported `hash matches the manifest` and a `files` PASS — and the `c520d03eed51` one went through the real wizard as well, which copied all 199 destinations before the refusal rolled them back to 0 |
+| Installer payload | real Setup installed **all 198 payload files** (199 log destinations, the extra being Inno's own uninstaller), **nothing missing and nothing extra**; proven red by adding one file to `launch/` and restored. Seven of the builds named in the table at the top of this page have that `files` PASS on their own bytes — `766aa31`, `c520d03`, `a4708a8`, `52a16fd`, `76f7b21`, `9b61e95`, and `855516d5bbee`, whose leg ran inside the gate this time (`preflight PASS - Setup 25670588 bytes, hash matches the manifest`, then `files - 199 file(s) installed … all 198 payload file(s), nothing extra`) — and the `c520d03eed51` one went through the real wizard as well, which copied all 199 destinations before the refusal rolled them back to 0. The four rows without that line are not part of it: `10b53bf` and `f509402` stopped at the cycle-folder refusal before Setup copied anything, `c3b56df`'s payload evidence is a real-wizard run rather than a `-FilesOnly` row (its own table row says so), and the publish run `25a7ccd` was checked against the manifest by hand rather than by an install |
 | Release gate, all eleven stages | the runs are in that table; the 2026-11-18T16:51:30Z leg against `9b61e95f9055` is the stage detail to read (evidence `build\work\release-check-20261118-165130`) — `gate` 8 files / 11 values, `suite` 104 tests OK, `licence` no placeholders and the page states 1.1.0, `checksums` 2 rows and `sha256sum -c` exit 0, `web` tsc --noEmit and vite build, `plugin` and `plugin808` ctest 6/6 each, `installer` rebuilt both deliverables (Setup 25,673,024 B, ZIP 34,694,410 B), `stamp PASS - commit 9b61e95f9055, clean, web/dist dafc8187f542`, `smoke PASS - exit 0, bundle built from 9b61e95f9055`; the one FAIL is `installed`, the folder refusal in item 2. Only the 2026-11-17 run differed, at 9 of 11: its second red was the two licence fields that are now filled. |
 
 That earlier caveat is discharged for every Setup `launch/` has held today: each went through the
@@ -318,9 +322,10 @@ the run reports `orphan workers []`, prints PASS, and the stage exits 0.
    gives `files PASS - 199 file(s) installed … all 198 payload file(s), nothing extra` with Setup
    stopping at `HKCU\...\Uninstall\{B7E2D5A8-…}_is1` (exit 4), and the same command without `-Dir`
    still stops one step earlier at the default `%LOCALAPPDATA%` cycle folder — which is what the
-   gate's `installed` row reports, because [scripts/release_check.ps1:391](scripts/release_check.ps1)
-   calls the check with no arguments, so that stage dies in its install phase and never reaches a
-   payload line. Either way the payload relocation is now proven
+   gate's `installed` stage still hits first, because
+   [scripts/release_check.ps1:391](scripts/release_check.ps1) calls the check with no arguments;
+   before the fix described next, that ended the stage there, so a full run's `installed` row
+   carried no payload line at all. Either way the payload relocation is now proven
    against the shipping binary, and the residual is exactly one registry write.
    The gate now says the same thing in its own row. `installed` used to call the cycle check with no
    arguments, take the fatal exception, and report FAIL — which made the payload's integrity

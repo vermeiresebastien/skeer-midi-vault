@@ -73,7 +73,7 @@ node tests/deck-broken-row.mjs          # the deck walks past a row whose detail
 node tests/scan-settings.mjs            # Settings → Scanning re-hash guard: PATCH, reload, re-arm
 powershell -File scripts/release_check.ps1              # the release gate; exit 0 READY / 1 NOT READY / 2 INCOMPLETE
 powershell -File scripts/release_check.ps1 -Fast        # gate, suite, licence, checksums only
-python scripts/check_release_gate.py    # falsifies that gate and the build script: 35 cases on a copied tree
+python scripts/check_release_gate.py    # falsifies that gate and the build script: 34 cases on a copied tree
 powershell -File packaging/install_cycle_check.ps1      # Setup → run installed exe → uninstall, compared to before
 powershell -File packaging/install_cycle_check.ps1 -AllUsers   # elevated only: the machine-wide VST3 leg
 ```
