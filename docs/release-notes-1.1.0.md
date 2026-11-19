@@ -29,6 +29,22 @@ against the manifest the build wrote, both `OK`, sizes equal to the `installer P
 `README.md` links these three by their release download URLs, so the page and the assets cannot
 drift apart silently.
 
+**The page and today's `launch/` are not the same bytes, and that is intended.** Reading the asset
+metadata back from GitHub on 2026-11-19, the release serves the `25a7ccd` build — Setup
+`2f11401d509b…00460abc` at 25,671,169 B, ZIP `1ca58426b7b1…96894916` at 34,693,150 B — while
+`launch/` now holds the `1c17f6a` rebuild that the checksums-ordering fix below needed, Setup
+`a0374baed6ea…1e64787d` at 25,671,593 B and ZIP `8fb23860732c…69eea1d1d1` at 34,692,377 B. So
+`launch/SHA256SUMS.txt` is the manifest for the local build and **will not verify a download**;
+compare a download to the `SHA256SUMS.txt` published beside it. Nothing a user runs differs
+between the two: the six paths that moved since `25a7ccd` are `.github/social-preview.png`,
+`AGENTS.md`, two docs files, `scripts/release_check.ps1` and `tests/test_packaged_smoke.py`, and
+none of them is an install input — Setup reads `launch\SKEER MIDI VAULT\*`, `launch\VST3\*` and
+`packaging\EULA.txt` ([skeer-midi-vault.iss:88,93](../packaging/skeer-midi-vault.iss), `:45` for
+the licence), and the frozen app carries only `desktop.py`'s import graph plus
+`web/dist` ([SKEER MIDI VAULT.spec:12](../SKEER MIDI VAULT.spec)). The interface is provably the
+same file set: both stamps record `web_dist dafc8187f542…`. What differs is the stamp itself, and
+the size it happens to land at.
+
 That run also exposed an ordering defect in the gate, and it is worth stating plainly because it
 undermines every `checksums PASS` above it. The checksum stage used to sit with the gates that cost
 seconds, which is *before* `installer` rewrites `launch/` and regenerates `SHA256SUMS.txt` at
