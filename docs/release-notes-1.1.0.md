@@ -10,6 +10,7 @@ What this page can state truthfully is each gate **run**, labelled with the comm
 
 | Gate run (UTC) | Judged | Eleven-stage verdict | Payload leg against those same bytes |
 | --- | --- | --- | --- |
+| 2026-11-19T19:00:06Z | `f50940283f57`, clean | `NOT READY - 10 passed, 1 failed, 0 skipped` — only `installed` (`release-check-20261119-190006`) | **the first run where the checksum stage judged its own build.** Execution order in that log is `installer → checksums → stamp → smoke`: `installer PASS - Setup 25671032 bytes, ZIP 34695228 bytes`, then `checksums PASS - 2 row(s), 2 release file(s) in launch/, sha256sum -c exit 0` against exactly those bytes, `stamp PASS - commit f50940283f57, clean, web/dist dafc8187f542`, `smoke PASS - exit 0, bundle built from f50940283f57` (and `plugin` plus `plugin808` each `ctest 6/6`). `installed` refused at its first write, creating `C:\Users\Sebastien\AppData\Local\SKEER MIDI VAULT cycle` — Error 5, the same boundary as every row below |
 | 2026-11-19T18:22:39Z | `25a7ccd0d562`, clean | `NOT READY - 10 passed, 1 failed, 0 skipped` — only `installed` (`release-check-20261119-182239`) | **the publish run.** `installer PASS - Setup 25671169 bytes, ZIP 34693150 bytes`, `stamp PASS - commit 25a7ccd0d562, clean, web/dist dafc8187f542`, `smoke PASS`. Then, by hand against those bytes: `sha256sum -c SHA256SUMS.txt` exit 0 in `launch/`, Setup `2f11401d…460abc`, ZIP `1ca58426…894916`. Tag `v1.1.0` pushed on `25a7ccd`, release created, and `gh release download` of the published assets re-run through `sha256sum -c` → both `OK`, sizes equal to the `installer` row |
 | 2026-11-19T18:16:59Z | `10b53bf27d52`, clean | `NOT READY - 10 passed, 1 failed, 0 skipped` — only `installed` (`release-check-20261119-181659`) | `installer PASS - Setup 25671638 bytes, ZIP 34693734 bytes`, `stamp PASS - commit 10b53bf27d52, clean`, `smoke PASS - bundle built from 10b53bf27d52`; `installed` died at the `%LOCALAPPDATA%` directory refusal, Error 5 |
 | 2026-11-19T18:09:04Z | `c3b56dfe5576`, clean | `NOT READY - 10 passed, 1 failed, 0 skipped` — only `installed` (`release-check-20261119-180904`) | `installer PASS - Setup 25671438 bytes, ZIP 34694178 bytes`, `stamp PASS - commit c3b56dfe5576, clean`; that Setup re-run differentially: 199 files with 3 Start Menu and 2 desktop `.lnk` attempts by default, the same 199 with **neither** under `/MERGETASKS=!startmenuicon,!desktopicon`, both legs then dying only at the `HKCU\...\Uninstall` refusal |
@@ -32,18 +33,22 @@ drift apart silently.
 **The page and today's `launch/` are not the same bytes, and that is intended.** Reading the asset
 metadata back from GitHub on 2026-11-19, the release serves the `25a7ccd` build — Setup
 `2f11401d509b…00460abc` at 25,671,169 B, ZIP `1ca58426b7b1…96894916` at 34,693,150 B — while
-`launch/` now holds the `1c17f6a` rebuild that the checksums-ordering fix below needed, Setup
-`a0374baed6ea…1e64787d` at 25,671,593 B and ZIP `8fb23860732c…69eea1d1d1` at 34,692,377 B. So
-`launch/SHA256SUMS.txt` is the manifest for the local build and **will not verify a download**;
+`launch/` now holds the `f50940283f57` rebuild that the certification run below produced, Setup
+`db8727a86341…e1f34c49` at 25,671,032 B and ZIP `1682fed1ec3f…3d32668a` at 34,695,228 B. The
+`1c17f6a` pair recorded an hour earlier (`a0374baed6ea…` 25,671,593 B, `8fb23860732c…` 34,692,377 B)
+was superseded by that run. Two builds an hour apart share every install input and still differ in
+size, which is why no size on this page is load-bearing. So `launch/SHA256SUMS.txt` is the manifest
+for the local build and **will not verify a download**;
 compare a download to the `SHA256SUMS.txt` published beside it. Nothing a user runs differs
-between the two: the six paths that moved since `25a7ccd` are `.github/social-preview.png`,
-`AGENTS.md`, two docs files, `scripts/release_check.ps1` and `tests/test_packaged_smoke.py`, and
+between the two: the seven paths that moved since `25a7ccd` are `.github/social-preview.png`,
+`AGENTS.md`, `docs/limitations.md`, this file, `packaging/README.md`, `scripts/release_check.ps1`
+and `tests/test_packaged_smoke.py`, and
 none of them is an install input — Setup reads `launch\SKEER MIDI VAULT\*`, `launch\VST3\*` and
 `packaging\EULA.txt` ([skeer-midi-vault.iss:88,93](../packaging/skeer-midi-vault.iss), `:45` for
 the licence), and the frozen app carries only `desktop.py`'s import graph plus
 `web/dist` ([SKEER MIDI VAULT.spec:12](../SKEER MIDI VAULT.spec)). The interface is provably the
-same file set: both stamps record `web_dist dafc8187f542…`. What differs is the stamp itself, and
-the size it happens to land at.
+same file set: the two runs that publish one — `25a7ccd` and `f50940283f57` — both stamp
+`web_dist dafc8187f542…`. What differs is the build stamp itself, and the size it lands at.
 
 That run also exposed an ordering defect in the gate, and it is worth stating plainly because it
 undermines every `checksums PASS` above it. The checksum stage used to sit with the gates that cost
