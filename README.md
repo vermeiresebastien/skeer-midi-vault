@@ -22,18 +22,18 @@ sequence without opening a DAW. Files stay where they are and are never modified
 
 ## Install (Windows 10/11, recommended)
 
-The standalone builds all land in one folder, **`launch/`**:
+The standalone builds all land in one local folder, **`launch/`**, and the same files are published
+as assets on the **[v1.1.0 release](https://github.com/vermeiresebastien/skeer-midi-vault/releases/tag/v1.1.0)**:
 
-- **[`SKEER MIDI VAULT/`](launch/SKEER%20MIDI%20VAULT/)** — the standalone
-  application. Double-click `SKEER MIDI VAULT.exe` inside it; keep `_internal/`
-  beside the exe, it holds the Python runtime and the interface bundle.
-- **[SKEER-MIDI-VAULT-Setup-1.1.0.exe](launch/SKEER-MIDI-VAULT-Setup-1.1.0.exe)** —
+- **[SKEER-MIDI-VAULT-Setup-1.1.0.exe](https://github.com/vermeiresebastien/skeer-midi-vault/releases/download/v1.1.0/SKEER-MIDI-VAULT-Setup-1.1.0.exe)** —
   per-user installer, the file to send to customers. No Python, Node.js, terminal
   or admin rights required. It also carries the VST3 plug-in (see below).
-- **[SKEER-MIDI-VAULT-Portable-1.1.0.zip](launch/SKEER-MIDI-VAULT-Portable-1.1.0.zip)** —
-  extract and run; app bundle and the staged `VST3/` folder.
-- **[SHA256SUMS.txt](launch/SHA256SUMS.txt)** — SHA-256 checksums for
-  release distribution.
+- **[SKEER-MIDI-VAULT-Portable-1.1.0.zip](https://github.com/vermeiresebastien/skeer-midi-vault/releases/download/v1.1.0/SKEER-MIDI-VAULT-Portable-1.1.0.zip)** —
+  extract and run: the app bundle plus the staged `VST3/` folder. Double-click
+  `SKEER MIDI VAULT.exe` inside the bundle; keep `_internal/` beside the exe, it holds the Python
+  runtime and the interface bundle.
+- **[SHA256SUMS.txt](https://github.com/vermeiresebastien/skeer-midi-vault/releases/download/v1.1.0/SHA256SUMS.txt)** —
+  SHA-256 checksums for release distribution.
 
 `launch/` is gitignored and refreshed by `packaging/build_installer.ps1`, which
 writes every one of these deliverables there.
