@@ -382,7 +382,17 @@ Write-Host ('before: install dir ' + $before.install_dir + ', desktop shortcut '
 # ---------------------------------------------------------------------------
 $setupLog = Join-Path $Evidence 'setup-install.log'
 $installArgs = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART',
+                 '/MERGETASKS=!startmenuicon,!desktopicon',
                  ('/DIR="' + $InstallDir + '"'), ('/LOG="' + $setupLog + '"'))
+# The two shortcut tasks are declined because this is a throwaway install that the script uninstalls
+# again: a Start Menu entry and a desktop icon would be written into the user's real shell, point at
+# a folder this run is about to delete, and the uninstaller's own "left nothing behind" comparison
+# would then be grading shortcuts it had to clean up after a test that never needed them. It also
+# happens to remove the two out-of-workspace writes that a restricted shell refuses Setup -- measured
+# 2026-11-19 on the shipped Setup, the payload copied 198/198 into a -Dir inside the repo and Setup
+# then died at Start Menu (Error 5, exit 4) before it ever reached the uninstall key. The [Icons]
+# entries stay declared in packaging\skeer-midi-vault.iss:98-99, and a wizard run still makes its own
+# choice about them; a silent install of a throwaway copy simply declines them.
 # /ALLUSERS is legal because the script sets PrivilegesRequiredOverridesAllowed=commandline; the
 # uninstaller inherits the install mode from its own registration, so it gets no switch.
 if ($AllUsers) { $installArgs = @('/ALLUSERS') + $installArgs }

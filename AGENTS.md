@@ -107,10 +107,18 @@ carries the `startmenuicon` task (`:98`), the desktop icon the `desktopicon` tas
 `/MERGETASKS=!startmenuicon,!desktopicon` — or declining the checkboxes in the wizard — removes
 both out-of-workspace icon writes (re-measured on the rebuilt deliverable's own Setup: 199 files
 install either way, 3 Start Menu + 2 desktop `.lnk` attempts by default and **0 of each** with both
-declined, first refusal moving to the registry key). What remains is the one write no argument can
+declined, first refusal moving to the registry key). The check now passes that flag itself at
+[packaging/install_cycle_check.ps1:385](packaging/install_cycle_check.ps1) — a throwaway install the
+script is about to uninstall has no business putting shortcuts in the user's real shell — and the
+flag is honoured rather than assumed: with it, `-FilesOnly -Dir <inside the repo>` reports
+`files PASS - 199 file(s) installed … all 198 payload file(s), nothing extra` and Setup dies at the
+registry (exit **4**, not 1), while the same command without it died one step earlier at
+`%APPDATA%\…\Start Menu\Programs\SKEER AUDIO`. Both legs measured 2026-11-19 against the
+`f50940283f57` deliverable. What remains is the one write no argument can
 decline, `HKCU\...\Uninstall\{B7E2D5A8-…}_is1`, which this shell refuses to the Setup binary while
-a child powershell writes it freely. `BUILDINFO.json` in the bundle says which commit built it —
-that, not a byte count here, is the authority.
+a child powershell writes it freely — the preflight probes it through a child and passes, so the
+refusal is per-binary and no preflight can predict it. `BUILDINFO.json` in the bundle says which
+commit built it — that, not a byte count here, is the authority.
 `stamp` decides the order of a release's last two actions — it compares the bundle's commit
 to `HEAD`, so **build after you commit**, or the gate rightly reports a bundle that no
 longer matches the tree.
