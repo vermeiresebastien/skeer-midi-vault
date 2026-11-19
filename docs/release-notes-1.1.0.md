@@ -10,6 +10,8 @@ What this page can state truthfully is each gate **run**, labelled with the comm
 
 | Gate run (UTC) | Judged | Eleven-stage verdict | Payload leg against those same bytes |
 | --- | --- | --- | --- |
+| 2026-11-19T18:22:39Z | `25a7ccd0d562`, clean | `NOT READY - 10 passed, 1 failed, 0 skipped` — only `installed` (`release-check-20261119-182239`) | **the publish run.** `installer PASS - Setup 25671169 bytes, ZIP 34693150 bytes`, `stamp PASS - commit 25a7ccd0d562, clean, web/dist dafc8187f542`, `smoke PASS`. Then, by hand against those bytes: `sha256sum -c SHA256SUMS.txt` exit 0 in `launch/`, Setup `2f11401d…460abc`, ZIP `1ca58426…894916`. Tag `v1.1.0` pushed on `25a7ccd`, release created, and `gh release download` of the published assets re-run through `sha256sum -c` → both `OK`, sizes equal to the `installer` row |
+| 2026-11-19T18:16:59Z | `10b53bf27d52`, clean | `NOT READY - 10 passed, 1 failed, 0 skipped` — only `installed` (`release-check-20261119-181659`) | `installer PASS - Setup 25671638 bytes, ZIP 34693734 bytes`, `stamp PASS - commit 10b53bf27d52, clean`, `smoke PASS - bundle built from 10b53bf27d52`; `installed` died at the `%LOCALAPPDATA%` directory refusal, Error 5 |
 | 2026-11-19T18:09:04Z | `c3b56dfe5576`, clean | `NOT READY - 10 passed, 1 failed, 0 skipped` — only `installed` (`release-check-20261119-180904`) | `installer PASS - Setup 25671438 bytes, ZIP 34694178 bytes`, `stamp PASS - commit c3b56dfe5576, clean`; that Setup re-run differentially: 199 files with 3 Start Menu and 2 desktop `.lnk` attempts by default, the same 199 with **neither** under `/MERGETASKS=!startmenuicon,!desktopicon`, both legs then dying only at the `HKCU\...\Uninstall` refusal |
 | 2026-11-18T16:51:30Z | `9b61e95f9055`, clean | `NOT READY - 10 passed, 1 failed, 0 skipped` — only `installed` (`release-check-20261118-165130`) | `-FilesOnly`: `Setup 25673024 bytes, hash matches the manifest`, `files PASS - 199 file(s) installed … all 198 payload file(s), nothing extra`, `CYCLE INCOMPLETE - 3 phase(s) skipped, of 8` (`install-cycle-20261118-165355`) |
 | 2026-11-18T16:43:41Z | `76f7b2169835`, clean | `NOT READY - 10 passed, 1 failed, 0 skipped` — only `installed` (`release-check-20261118-164341`) | `-FilesOnly`: `Setup 25671511 bytes, hash matches the manifest`, `files PASS - 199 file(s) installed … all 198 payload file(s), nothing extra`, `CYCLE INCOMPLETE - 3 phase(s) skipped, of 8` (`install-cycle-20261118-164637`) |
@@ -17,6 +19,33 @@ What this page can state truthfully is each gate **run**, labelled with the comm
 | 2026-11-18T16:22:24Z | `a4708a87ec6d`, clean | same 10 of 11, same single FAIL | same row on `Setup 25671363 bytes` (`install-cycle-20261118-162825`) |
 | 2026-11-18T14:43:09Z | `c520d03eed51`, clean | same 10 of 11, same single FAIL | `-FilesOnly` PASS, then that Setup through the real wizard: 199 destinations copied, refused the shortcut and the uninstall key, rolled back to 0 files |
 | 2026-11-17T23:09:47Z | `766aa311c5d0`, clean | `NOT READY - 9 passed, 2 failed` — `licence` (the two then-unfilled fields) and `installed` | `files PASS`, all 198 payload files, nothing extra |
+
+## Published as v1.1.0
+
+The tag `v1.1.0` points at `25a7ccd0d562b2f90ec4eaaf028f4ad59abc08dd` and the release carries three
+assets — `SKEER-MIDI-VAULT-Setup-1.1.0.exe`, `SKEER-MIDI-VAULT-Portable-1.1.0.zip`,
+`SHA256SUMS.txt` — which are those bytes: downloaded back and re-verified with `sha256sum -c`
+against the manifest the build wrote, both `OK`, sizes equal to the `installer PASS` row above.
+`README.md` links these three by their release download URLs, so the page and the assets cannot
+drift apart silently.
+
+That run also exposed an ordering defect in the gate, and it is worth stating plainly because it
+undermines every `checksums PASS` above it. The checksum stage used to sit with the gates that cost
+seconds, which is *before* `installer` rewrites `launch/` and regenerates `SHA256SUMS.txt` at
+[packaging/build_installer.ps1:301](packaging/build_installer.ps1) — so it hashed the *previous*
+build's artifacts, and the bytes a release actually shipped were never hashed by the gate that
+called them READY. It is why the publish run's hashes were taken by hand rather than quoted from
+the stage. The fix is in these notes' commit: the block is now `Test-Checksums`, defined where it
+was and called immediately after the `installer` stage, so a full run judges what the build just
+wrote. Nothing about the fast lane changes — `-Fast` and `-Stages` subsets that skip `installer`
+fall through to the same call and check whatever `launch/` holds, exactly as before — and
+`python scripts/check_release_gate.py` still reddens the CRLF, mismatched-hash, unnamed-artifact and
+previous-release rows on that stage (measured on this tree, `FALSIFIER OK`).
+
+Recording the publish run at all is possible because a tag pins it. **Order of work** below says the
+last gate run of a release is the one nobody records, since the commit that records it invalidates
+the bundle; that argument depends on `HEAD` being the only handle on the judged commit. Once the
+release is built, tagged and hashed, the run can be written down.
 
 In every one of those runs the only stage that has never gone green is `installed`, and that is
 this shell refusing Setup any write outside the workspace — item 2 of **What still blocks this

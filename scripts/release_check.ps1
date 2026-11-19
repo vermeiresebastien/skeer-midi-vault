@@ -168,7 +168,10 @@ if ($Stages -contains 'licence') {
     }
 }
 
-if ($Stages -contains 'checksums') {
+# Costs seconds, but its call site sits after the installer stage on purpose: build_installer.ps1
+# rewrites SHA256SUMS.txt, so running this with the other fast gates only ever certifies the
+# previous build's artifacts while the verdict below reports READY on bytes nobody has hashed.
+function Test-Checksums {
     $manifest = Join-Path $Repo 'launch\SHA256SUMS.txt'
     if (-not (Test-Path -LiteralPath $manifest)) {
         Add-Result 'checksums' 'FAIL' "launch\SHA256SUMS.txt does not exist"
@@ -317,6 +320,10 @@ if ($Stages -contains 'installer') {
             "ZIP $(Test-Path -LiteralPath $zip) - see $log")
     }
 }
+
+# The one call site. With -Fast or -Stages the installer block above is skipped and this still
+# runs, against whatever launch/ holds - the same thing the old position checked.
+if ($Stages -contains 'checksums') { Test-Checksums }
 
 if ($Stages -contains 'stamp') {
     $file = Join-Path $Repo 'build\BUILDINFO.json'
