@@ -101,10 +101,16 @@ a **hand-run** Setup will not open its wizard until its own `TMP`/`TEMP` point i
 — it is refused the `is-XXXX.tmp` it makes under `%TEMP%` and `/TMPDIR` is not accepted on this
 command line (exit 1, no log), while the check itself has redirected them since
 [packaging/install_cycle_check.ps1:198](packaging/install_cycle_check.ps1).
-And no `-Dir` can finish the cycle from here: the Start Menu entry at
-[packaging/skeer-midi-vault.iss:93](packaging/skeer-midi-vault.iss) carries no `Tasks:` flag — only
-the desktop icon at `:94` is conditional — so every Setup run has one mandatory write outside the
-workspace, whichever folder it was handed.
+And no `-Dir` can finish the cycle from here, though the script fixed its part on 2026-11-19:
+the Start Menu entry at [packaging/skeer-midi-vault.iss:98](packaging/skeer-midi-vault.iss) now
+carries the `startmenuicon` task (`:98`), the desktop icon the `desktopicon` task (`:99`), so
+`/MERGETASKS=!startmenuicon,!desktopicon` — or declining the checkboxes in the wizard — removes
+both out-of-workspace icon writes (measured differentially on a probe compile: 197 payload
+copies, 0 icon lines, first refusal moves to the registry key). What remains is the one write no
+argument can decline, `HKCU\...\Uninstall\{B7E2D5A8-…}_is1`, which this shell refuses to the
+Setup binary while a child powershell writes it freely — the shipped Setup at `launch/`
+(25,671,160 B, 2026-11-18 18:24:29) predates the edit, so the task flags take effect on the next
+build.
 `stamp` decides the order of a release's last two actions — it compares the bundle's commit
 to `HEAD`, so **build after you commit**, or the gate rightly reports a bundle that no
 longer matches the tree.

@@ -34,7 +34,7 @@ The installed app:
   install. A per-user install never writes to a shared folder, and the Setup log records which
   of the two happened, so a producer who cannot see the plug-in has an explanation to read.
   Nothing in the installer edits a host's plug-in scan paths.
-- creates Start Menu and optionally Desktop shortcuts
+- optionally creates Start Menu and Desktop shortcuts (each is a checkbox; `/MERGETASKS=!startmenuicon,!desktopicon` declines both on the command line)
 - starts a loopback-only service, opens the interface in the user's browser and
   runs a tray icon
 - stores the library at `%LOCALAPPDATA%\Skeer\MIDI Vault` (never removed by the
@@ -196,8 +196,8 @@ Two mechanics that were worth finding out rather than guessing at, both now hand
 `CreateProcess` instead; and SetupLdr cannot create its extraction directory in this `%TEMP%`, so
 the child is given a `TMP`/`TEMP` inside the evidence folder.
 
-**Still unverified, and only you can verify it:** the Add/Remove Programs entry, the Start Menu and
-optional desktop shortcut, the first launch of the installed executable with its tray icon, and that
+**Still unverified, and only you can verify it:** the Add/Remove Programs entry, the optional Start
+Menu and desktop shortcuts, the first launch of the installed executable with its tray icon, and that
 the uninstaller leaves the machine as it found it. Run the
 first command above from a normal user terminal — Setup and the uninstaller both write the
 registry and the user profile, which this agent's shell is not permitted to do on your behalf — and

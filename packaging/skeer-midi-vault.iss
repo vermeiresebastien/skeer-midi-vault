@@ -57,6 +57,11 @@ UsePreviousAppDir=yes
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
+; The Start Menu entry is a task so that it can be declined. With no Tasks flag it is created on
+; every install, which lets a folder Setup is not allowed to write abort the whole installation
+; after the payload is already copied - and /NOICONS does not help a {autoprograms} path, only a
+; {group} one. Measured on Inno Setup 6.7.4.
+Name: "startmenuicon"; Description: "Create a Start Menu shortcut"; GroupDescription: "Additional shortcuts:"
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: checkedonce
 
 [Code]
@@ -90,7 +95,7 @@ Source: "{#SourceRoot}\launch\VST3\*"; DestDir: "{commonpf64}\VST3"; Flags: recu
 #endif
 
 [Icons]
-Name: "{autoprograms}\SKEER AUDIO\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Comment: "SKEER MIDI VAULT local MIDI library"
+Name: "{autoprograms}\SKEER AUDIO\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Tasks: startmenuicon; Comment: "SKEER MIDI VAULT local MIDI library"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon; Comment: "SKEER MIDI VAULT local MIDI library"
 
 [Run]

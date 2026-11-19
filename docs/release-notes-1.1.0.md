@@ -221,19 +221,34 @@ the run reports `orphan workers []`, prints PASS, and the stage exits 0.
    failed; code 5` for the uninstall entry — before `Rolling back changes` emptied the folder
    again. It could not even extract first: Setup is refused its `is-XXXX.tmp` under `%TEMP%`
    unless the child's `TMP`/`TEMP` are redirected into the workspace, which the check already does
-   and a hand-run Setup is not told. So `-Dir` buys the payload leg and nothing more, and the
-   reason is in the script, not in the argument list: `packaging/skeer-midi-vault.iss:93` puts the
-   Start Menu entry under `{autoprograms}\SKEER AUDIO\` with **no `Tasks:` flag** — only the
-   desktop icon at `:94` is conditional — so every Setup run, whatever it is handed, has one
-   mandatory write outside the workspace. Re-measured 2026-11-18 on the final bundle's Setup
-   (25,668,238 bytes, hash matching the manifest): `install_cycle_check.ps1 -FilesOnly -Dir`
-   pointed inside the workspace copied all 198 payload files, then Setup raised exactly that
-   refusal — `unable to create the directory "…Start Menu\Programs\SKEER AUDIO". Error 5` —
-   exited 4 and rolled the folder back, leaving 0 uninstall keys, no shortcut and no group. No
-   combination of arguments from this shell finishes the cycle. Run
+   and a hand-run Setup is not told. So `-Dir` buys the payload leg and nothing more — for the
+   build as released, the reason was in the script rather than the argument list: the Start Menu
+   entry sat under `{autoprograms}\SKEER AUDIO\` with **no `Tasks:` flag** (line 93 then), so only
+   the desktop icon was conditional and every Setup run, whatever it was handed, had one mandatory
+   write outside the workspace. Measured 2026-11-18 on that day's Setup build (25,668,238 bytes;
+   the shipped exe was rebuilt the same day and is 25,671,160): `install_cycle_check.ps1 -FilesOnly
+   -Dir` pointed inside the workspace copied all 198 payload files, then Setup raised exactly that
+   refusal —
+   `unable to create the directory "…Start Menu\Programs\SKEER AUDIO". Error 5` — exited 4 and
+   rolled the folder back, leaving 0 uninstall keys, no shortcut and no group.
+   **That entry carries a `Tasks:` flag as of 2026-11-19** (`startmenuicon` at
+   `packaging/skeer-midi-vault.iss:64`, used at `:98`; `desktopicon` at `:65`, used at `:99`), so a
+   customer can decline a shortcut the installer is not allowed to write instead of losing the
+   install. Proven by differential on a probe compile of the edited script (23,373,436 bytes,
+   `iscc` exit 0, `[Files]` plug-in lines excluded, so its 197 successful-install lines are not the
+   certified build's 198): default `/VERYSILENT` still attempts both icons — 3 Start Menu lines, 2
+   desktop lines — and exits 4; `/MERGETASKS=!startmenuicon,!desktopicon` copies the same 197 and
+   attempts **neither** (0 and 0), so the first refusal moves to
+   `Error creating registry key: …\Uninstall\{B7E2D5A8-…}_is1`; `/MERGETASKS=!startmenuicon` alone
+   keeps the 2 desktop lines, which is each task governing its own entry. The registry key is the
+   one write no argument can decline, so **no combination of arguments from this shell finishes the
+   cycle** — the uninstall entry is the whole residual now, not a folder. Run
    `powershell -File packaging\install_cycle_check.ps1` from a normal user terminal once — the
    three sibling SKEER installs already registered on this machine are proof the same installer
-   family registers and uninstalls correctly here — and the `installed` stage can go PASS.
+   family registers and uninstalls correctly here, and this shell's own preflight shows a child
+   process writing that same `HKCU\...\Uninstall` succeeds — and the `installed` stage can go PASS.
+   The shipped `launch\SKEER-MIDI-VAULT-Setup-1.1.0.exe` (25,671,160 bytes, unchanged at
+   2026-11-18 18:24:29) predates that script edit: it takes effect on the next build.
    The nearest this shell can reach is the executable running from a *relocated* copy of the
    payload rather than a registered location: `python tests/test_packaged_smoke.py` under
    `SKEER_PACKAGED_EXE` PASSed against a hand-copied tree with `built from c520d03eed51 clean`,
