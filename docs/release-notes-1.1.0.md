@@ -51,17 +51,26 @@ same file set: the two runs that publish one — `25a7ccd` and `f50940283f57` �
 `web_dist dafc8187f542…`. What differs is the build stamp itself, and the size it lands at.
 
 That run also exposed an ordering defect in the gate, and it is worth stating plainly because it
-undermines every `checksums PASS` above it. The checksum stage used to sit with the gates that cost
+undermines every `checksums PASS` recorded from before the fix — which is every row in that table
+except the `f50940283f57` one. The checksum stage used to sit with the gates that cost
 seconds, which is *before* `installer` rewrites `launch/` and regenerates `SHA256SUMS.txt` at
 [packaging/build_installer.ps1:301](packaging/build_installer.ps1) — so it hashed the *previous*
 build's artifacts, and the bytes a release actually shipped were never hashed by the gate that
 called them READY. It is why the publish run's hashes were taken by hand rather than quoted from
-the stage. The fix is in these notes' commit: the block is now `Test-Checksums`, defined where it
+the stage, and it is visible in that run's own evidence: `checksums.log` is finished at 19:23:01
+while `installer.log` keeps writing until 19:24:25, eighty seconds later. The fix is in these notes' commit: the block is now `Test-Checksums`, defined where it
 was and called immediately after the `installer` stage, so a full run judges what the build just
 wrote. Nothing about the fast lane changes — `-Fast` and `-Stages` subsets that skip `installer`
 fall through to the same call and check whatever `launch/` holds, exactly as before — and
 `python scripts/check_release_gate.py` still reddens the CRLF, mismatched-hash, unnamed-artifact and
 previous-release rows on that stage (measured on this tree, `FALSIFIER OK`).
+
+The published release page carried the bare `checksums PASS` row too, so it was edited on
+2026-11-19 to say what that row does and does not attest to, in the same words as here. Only the
+notes were touched: the three assets read back afterwards hold the sizes and `sha256` digests they
+had before the edit, and for the two deliverables GitHub's own computed digest equals the
+`SHA256SUMS.txt` row printed on the page — a server-side check that does not go through anything this
+shell hashed.
 
 Recording the publish run at all is possible because a tag pins it. **Order of work** below says the
 last gate run of a release is the one nobody records, since the commit that records it invalidates
