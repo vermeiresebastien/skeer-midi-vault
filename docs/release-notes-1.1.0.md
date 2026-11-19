@@ -322,6 +322,15 @@ the run reports `orphan workers []`, prints PASS, and the stage exits 0.
    calls the check with no arguments, so that stage dies in its install phase and never reaches a
    payload line. Either way the payload relocation is now proven
    against the shipping binary, and the residual is exactly one registry write.
+   The gate now says the same thing in its own row. `installed` used to call the cycle check with no
+   arguments, take the fatal exception, and report FAIL — which made the payload's integrity
+   invisible in the very run that certifies a release. It now follows a refused registration with the
+   pass the shell can grade, and on 2026-11-19 at 19:34:46Z `release_check.ps1 -Stages installed`
+   printed `SKIP - payload intact, registration unreachable here - 199 file(s) installed … all 198
+   payload file(s), nothing extra` with the Setup refusal quoted beneath it, and the verdict came out
+   **INCOMPLETE, 0 passed, 0 failed, 1 skipped**. A skip cannot become READY — that rule was already
+   in the gate — and `check_release_gate.py` cases T3 and T4 hold both edges of the new branch, so a
+   payload that does not grade clean still reddens the stage.
    The nearest this shell can reach is the executable running from a *relocated* copy of the
    payload rather than a registered location: `python tests/test_packaged_smoke.py` under
    `SKEER_PACKAGED_EXE` PASSed against a hand-copied tree with `built from c520d03eed51 clean`,

@@ -73,7 +73,7 @@ node tests/deck-broken-row.mjs          # the deck walks past a row whose detail
 node tests/scan-settings.mjs            # Settings → Scanning re-hash guard: PATCH, reload, re-arm
 powershell -File scripts/release_check.ps1              # the release gate; exit 0 READY / 1 NOT READY / 2 INCOMPLETE
 powershell -File scripts/release_check.ps1 -Fast        # gate, suite, licence, checksums only
-python scripts/check_release_gate.py    # falsifies that gate and the build script: 33 cases on a copied tree
+python scripts/check_release_gate.py    # falsifies that gate and the build script: 35 cases on a copied tree
 powershell -File packaging/install_cycle_check.ps1      # Setup → run installed exe → uninstall, compared to before
 powershell -File packaging/install_cycle_check.ps1 -AllUsers   # elevated only: the machine-wide VST3 leg
 ```
@@ -82,6 +82,15 @@ powershell -File packaging/install_cycle_check.ps1 -AllUsers   # elevated only: 
 owns eleven stages (`gate, suite, web, plugin, plugin808, installer, stamp, smoke,
 checksums, licence, installed`), writes one log per stage under
 `build\work\release-check-<utc>\`, and never reports READY on a stage it skipped.
+That list is the array, not the order you will read in a log: execution puts `licence`
+third and `checksums` immediately after `installer`, and that position is the
+certification fix rather than a formatting choice. The `installed` stage has three
+outcomes, and the middle one exists for this shell: exit 0 is a cycle that really ran,
+a refused registration whose follow-up `-FilesOnly -Dir` pass graded the payload clean
+is **SKIP** with the files row quoted, and a payload that did not grade clean stays
+**FAIL** whatever the registration leg did — so the row says what was proven without
+ever turning a broken installer into a skip; falsifier cases T3 and T4 are those two
+directions.
 `scripts/check_release_gate.py` is its falsifier — it copies the real files into
 `build\work\release-gate-falsifier\`, stubs the child commands, and requires each
 defect to redden the stage that names it, with a green control case that reaches
