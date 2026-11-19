@@ -245,6 +245,21 @@ alike. Three things are left, and none of them can be settled from a shell:
    source-compatibility evidence only. So a DAW session ratifies the 8.0.4 binary; nothing you
    hear in a host speaks for the 8.0.8 build. Recompute the two hashes rather than trusting this
    sentence after any rebuild.
+
+   A second name confusion is live on this machine, and it is not ours. Census 2026-11-19:
+   `C:\Program Files\Common Files\VST3\SKEER Vault.vst3` is installed — module
+   `Contents/x86_64-win/SKEER Vault.vst3`, 5,475,328 bytes, stamped 12:54:42 that day, with
+   `moduleinfo.json` saying `Name = SKEER Vault` and `Version = 1.1.0`. Same brand, same version,
+   different product: `git log -S "SKEER Vault" --all` finds that string nowhere in this repo's
+   history, so it is not an earlier name of this bundle, and ours is `SKEER MIDI VAULT` at
+   7,566,336 bytes. Both declare `Sub Categories: ["Fx"]`, so a host that scans the shared folder
+   files the two side by side in the same menu as same-version effects — and a session spent on the
+   wrong one proves nothing about these bytes. Check the exact name the
+   host loaded (and its path, when it shows one) before answering any of the three questions.
+   This does not block the `/ALLUSERS` leg: `install_cycle_check.ps1 -AllUsers` requires that the
+   new entries in the shared folder sit inside `SKEER MIDI VAULT.vst3`, so a foreign bundle already
+   there is neither a refusal nor a false pass. Retiring it is the owner's call, and only he knows
+   which project installed it.
 2. **Does the panel behave by hand?** The filter box takes typing, the library list scrolls, the
    three exported controls stay visible, and nothing touches the index until **Connect** is clicked.
    Then confirm the two promises the code makes about failure: a query that *fails* keeps the index
