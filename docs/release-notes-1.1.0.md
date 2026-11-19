@@ -311,7 +311,17 @@ the run reports `orphan workers []`, prints PASS, and the stage exits 0.
    the build. Re-proved differentially on that rebuilt Setup (`release-check-20261119-180904`'s own
    installer output): default `/VERYSILENT` installs 199 files and attempts 3 Start Menu and 2
    desktop `.lnk` writes; `/MERGETASKS=!startmenuicon,!desktopicon` installs the same 199 with **0
-   and 0**, dying only at the registry key this shell refuses.
+   and 0**, dying only at the registry key this shell refuses. The check now passes that flag
+   itself ([packaging/install_cycle_check.ps1:385](packaging/install_cycle_check.ps1)), because a
+   throwaway copy it is about to uninstall should not put shortcuts in the user's shell — re-run
+   through the check against the `f50940283f57` Setup, both routes: `-FilesOnly -Dir <in the repo>`
+   gives `files PASS - 199 file(s) installed … all 198 payload file(s), nothing extra` with Setup
+   stopping at `HKCU\...\Uninstall\{B7E2D5A8-…}_is1` (exit 4), and the same command without `-Dir`
+   still stops one step earlier at the default `%LOCALAPPDATA%` cycle folder — which is what the
+   gate's `installed` row reports, because [scripts/release_check.ps1:391](scripts/release_check.ps1)
+   calls the check with no arguments, so that stage dies in its install phase and never reaches a
+   payload line. Either way the payload relocation is now proven
+   against the shipping binary, and the residual is exactly one registry write.
    The nearest this shell can reach is the executable running from a *relocated* copy of the
    payload rather than a registered location: `python tests/test_packaged_smoke.py` under
    `SKEER_PACKAGED_EXE` PASSed against a hand-copied tree with `built from c520d03eed51 clean`,
