@@ -171,6 +171,28 @@ general-purpose classification accuracy.
   opens the interface in the **system default browser**. It is not a custom
   Electron/WinUI window. A browser (Edge/Chrome) is therefore required; the tray
   icon needs an interactive Windows desktop session.
+- **A second instance calls the first one dead, and a headless launch can stop on a
+  modal.** Measured 2026-11-19 against the `1c17f6a` bundle: while one instance was
+  answering `/api/health` on `127.0.0.1:8937`, a second `SKEER MIDI VAULT.exe --server-only
+  --no-open --port 8941 --data-dir <another folder>` raised "SKEER MIDI VAULT is already
+  running, but its local service is not responding." The sentence was false. `MUTEX_NAME`
+  ([desktop.py:41](../desktop.py)) is a fixed `Local\SkeerMidiVaultDesktopV1`, so the
+  single-instance lock is per session and ignores `--data-dir` and `--port`, while
+  `_show_existing_instance()` then reads `runtime.json` from **its own** data directory
+  ([desktop.py:148](../desktop.py)) — a second library therefore cannot see the first one's
+  runtime file, waits five seconds, and concludes the service is dead. Worse, that branch's
+  `_message_box` ([desktop.py:163](../desktop.py)) is not gated on `open_browser` the way the
+  two branches above it are, and it calls `MessageBoxW(0, …)`: a launch asked to be headless
+  blocks on a dialog with no owner. **This is a live hazard for the release gate**, because
+  `tests/test_packaged_smoke.py` starts the packaged exe with its own `--data-dir` and a free
+  port — if the app is already running, the `smoke` stage waits on a dialog nobody can see
+  instead of exiting non-zero. It passed on every 2026-11-19 run only because no other
+  instance was up. The remedy is not decided: key the mutex to the resolved data directory
+  (which lets two instances each own a tray icon), or stop treating the mutex as evidence
+  about a service whose runtime file lives elsewhere — and in either case print to stderr and
+  exit non-zero when `--server-only`/`--no-open` was requested. Until then, run the gate with
+  no other MIDI VAULT instance open.
+
 - The installer's payload is proven on every build in `launch/`; its registration is not.
   `packaging/install_cycle_check.ps1` ran the real Setup on 2026-11-17, against the
   `766aa311c5d0` build, against the `c520d03eed51` rebuild and against the `a4708a87ec6d`
