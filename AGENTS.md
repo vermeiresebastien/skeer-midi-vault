@@ -105,12 +105,12 @@ And no `-Dir` can finish the cycle from here, though the script fixed its part o
 the Start Menu entry at [packaging/skeer-midi-vault.iss:98](packaging/skeer-midi-vault.iss) now
 carries the `startmenuicon` task (`:98`), the desktop icon the `desktopicon` task (`:99`), so
 `/MERGETASKS=!startmenuicon,!desktopicon` — or declining the checkboxes in the wizard — removes
-both out-of-workspace icon writes (measured differentially on a probe compile: 197 payload
-copies, 0 icon lines, first refusal moves to the registry key). What remains is the one write no
-argument can decline, `HKCU\...\Uninstall\{B7E2D5A8-…}_is1`, which this shell refuses to the
-Setup binary while a child powershell writes it freely — the shipped Setup at `launch/`
-(25,671,160 B, 2026-11-18 18:24:29) predates the edit, so the task flags take effect on the next
-build.
+both out-of-workspace icon writes (re-measured on the rebuilt deliverable's own Setup: 199 files
+install either way, 3 Start Menu + 2 desktop `.lnk` attempts by default and **0 of each** with both
+declined, first refusal moving to the registry key). What remains is the one write no argument can
+decline, `HKCU\...\Uninstall\{B7E2D5A8-…}_is1`, which this shell refuses to the Setup binary while
+a child powershell writes it freely. `BUILDINFO.json` in the bundle says which commit built it —
+that, not a byte count here, is the authority.
 `stamp` decides the order of a release's last two actions — it compares the bundle's commit
 to `HEAD`, so **build after you commit**, or the gate rightly reports a bundle that no
 longer matches the tree.

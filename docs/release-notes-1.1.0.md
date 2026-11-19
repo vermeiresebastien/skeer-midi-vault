@@ -10,6 +10,7 @@ What this page can state truthfully is each gate **run**, labelled with the comm
 
 | Gate run (UTC) | Judged | Eleven-stage verdict | Payload leg against those same bytes |
 | --- | --- | --- | --- |
+| 2026-11-19T18:09:04Z | `c3b56dfe5576`, clean | `NOT READY - 10 passed, 1 failed, 0 skipped` — only `installed` (`release-check-20261119-180904`) | `installer PASS - Setup 25671438 bytes, ZIP 34694178 bytes`, `stamp PASS - commit c3b56dfe5576, clean`; that Setup re-run differentially: 199 files with 3 Start Menu and 2 desktop `.lnk` attempts by default, the same 199 with **neither** under `/MERGETASKS=!startmenuicon,!desktopicon`, both legs then dying only at the `HKCU\...\Uninstall` refusal |
 | 2026-11-18T16:51:30Z | `9b61e95f9055`, clean | `NOT READY - 10 passed, 1 failed, 0 skipped` — only `installed` (`release-check-20261118-165130`) | `-FilesOnly`: `Setup 25673024 bytes, hash matches the manifest`, `files PASS - 199 file(s) installed … all 198 payload file(s), nothing extra`, `CYCLE INCOMPLETE - 3 phase(s) skipped, of 8` (`install-cycle-20261118-165355`) |
 | 2026-11-18T16:43:41Z | `76f7b2169835`, clean | `NOT READY - 10 passed, 1 failed, 0 skipped` — only `installed` (`release-check-20261118-164341`) | `-FilesOnly`: `Setup 25671511 bytes, hash matches the manifest`, `files PASS - 199 file(s) installed … all 198 payload file(s), nothing extra`, `CYCLE INCOMPLETE - 3 phase(s) skipped, of 8` (`install-cycle-20261118-164637`) |
 | 2026-11-18T16:33:02Z | `52a16fd71c8b`, clean | `NOT READY - 10 passed, 1 failed, 0 skipped` — only `installed` | `-FilesOnly`: `Setup 25673369 bytes, hash matches the manifest`, `files PASS - 199 file(s) installed … all 198 payload file(s), nothing extra` (`install-cycle-20261118-163739`) |
@@ -225,8 +226,7 @@ the run reports `orphan workers []`, prints PASS, and the stage exits 0.
    build as released, the reason was in the script rather than the argument list: the Start Menu
    entry sat under `{autoprograms}\SKEER AUDIO\` with **no `Tasks:` flag** (line 93 then), so only
    the desktop icon was conditional and every Setup run, whatever it was handed, had one mandatory
-   write outside the workspace. Measured 2026-11-18 on that day's Setup build (25,668,238 bytes;
-   the shipped exe was rebuilt the same day and is 25,671,160): `install_cycle_check.ps1 -FilesOnly
+   write outside the workspace. Measured 2026-11-18 on that day's Setup build: `install_cycle_check.ps1 -FilesOnly
    -Dir` pointed inside the workspace copied all 198 payload files, then Setup raised exactly that
    refusal —
    `unable to create the directory "…Start Menu\Programs\SKEER AUDIO". Error 5` — exited 4 and
@@ -247,8 +247,12 @@ the run reports `orphan workers []`, prints PASS, and the stage exits 0.
    three sibling SKEER installs already registered on this machine are proof the same installer
    family registers and uninstalls correctly here, and this shell's own preflight shows a child
    process writing that same `HKCU\...\Uninstall` succeeds — and the `installed` stage can go PASS.
-   The shipped `launch\SKEER-MIDI-VAULT-Setup-1.1.0.exe` (25,671,160 bytes, unchanged at
-   2026-11-18 18:24:29) predates that script edit: it takes effect on the next build.
+   The edit is **in the shipped bytes now**: the deliverables were rebuilt on 2026-11-19 after the
+   commit that carries it, and `BUILDINFO.json` in the bundle is the authority for which commit did
+   the build. Re-proved differentially on that rebuilt Setup (`release-check-20261119-180904`'s own
+   installer output): default `/VERYSILENT` installs 199 files and attempts 3 Start Menu and 2
+   desktop `.lnk` writes; `/MERGETASKS=!startmenuicon,!desktopicon` installs the same 199 with **0
+   and 0**, dying only at the registry key this shell refuses.
    The nearest this shell can reach is the executable running from a *relocated* copy of the
    payload rather than a registered location: `python tests/test_packaged_smoke.py` under
    `SKEER_PACKAGED_EXE` PASSed against a hand-copied tree with `built from c520d03eed51 clean`,
