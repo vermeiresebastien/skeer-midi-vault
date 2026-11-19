@@ -42,6 +42,36 @@ def free_port() -> int:
         return int(sock.getsockname()[1])
 
 
+def running_instances() -> list[str]:
+    """PIDs of a packaged app that already holds the session-wide single-instance mutex.
+
+    desktop.py's mutex is a fixed `Local\\SkeerMidiVaultDesktopV1`, so it is held no matter
+    which --data-dir and --port a second launch asks for. That second launch cannot find the
+    first one's runtime.json in its own data directory, waits five seconds, and raises a
+    MessageBoxW that --server-only does not suppress - so this harness would sit on a dialog
+    nobody can see and report nothing. Refuse before spawning, and say which process to quit.
+    """
+    try:
+        out = subprocess.run(
+            ["tasklist", "/FI", "IMAGENAME eq SKEER MIDI VAULT.exe", "/NH"],
+            capture_output=True, text=True, timeout=10, check=False,
+        ).stdout
+    except (OSError, subprocess.SubprocessError):
+        return []
+    pids = []
+    image = "SKEER MIDI VAULT.exe"
+    for line in out.splitlines():
+        line = line.strip()
+        if not line.startswith(image):
+            continue
+        # The image name itself contains spaces, so split() would put the PID at a
+        # position that depends on the number of words in it. Cut the name off first.
+        fields = line[len(image):].split()
+        if fields and fields[0].isdigit():
+            pids.append(fields[0])
+    return pids
+
+
 _session: dict[str, object] = {}
 
 
@@ -115,6 +145,19 @@ def framing_roundtrip(port: int, first: bytes, second: bytes) -> tuple[int, int,
 def main() -> int:
     if not EXE.exists():
         print(f"FAIL: packaged executable missing: {EXE}")
+        return 1
+    already = running_instances()
+    if already:
+        print(
+            "FAIL: a packaged app is already running (pid "
+            + ", ".join(already)
+            + ") and holds the session-wide single-instance mutex."
+        )
+        print(
+            "Refusing to launch: the second instance would wait five seconds, then raise "
+            "the \"already running\" MessageBox that --server-only does not suppress, and "
+            "this harness would block on a dialog nobody can see. Quit that process first."
+        )
         return 1
     smoke_root = Path(os.environ.get(
         "SKEER_SMOKE_DATA",

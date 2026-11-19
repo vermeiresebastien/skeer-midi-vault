@@ -174,14 +174,20 @@ same as a foreign page. `test_packaged_smoke.py` is a standalone script, not a
 never runs it. Two commands do: `scripts/release_check.ps1` runs it against
 `launch\SKEER MIDI VAULT\`, and `packaging\install_cycle_check.ps1` runs it again
 against the **installed** executable through `SKEER_PACKAGED_EXE`, because the
-bundle beside `launch/` is not the artifact a user ends up running. Neither command
-can tell you the app was already open: the packaged exe's single-instance mutex is a
-fixed name per session and ignores `--data-dir` and `--port`, so a second instance
-never finds the first one's `runtime.json`, waits five seconds, and raises a modal that
-`--server-only --no-open` does not suppress — the `smoke` stage then blocks on a dialog
-nobody can see rather than exiting non-zero. Run the gate with no other MIDI VAULT
-instance open; `docs/limitations.md`, "A second instance calls the first one dead",
-carries the measurement and the two candidate fixes. Its shutdown
+bundle beside `launch/` is not the artifact a user ends up running. One hazard there has a
+pre-flight of its own: the packaged exe's single-instance mutex is a fixed name per session
+and ignores `--data-dir` and `--port`, so a second instance never finds the first one's
+`runtime.json`, waits five seconds, and raises a modal that `--server-only --no-open` does
+not suppress. `test_packaged_smoke.py` therefore refuses **before** it spawns
+(`running_instances()`, naming the pid to quit), so a busy machine turns the `smoke` stage
+red, naming the process, instead of hanging on a dialog nobody can see. A `smoke` stage that
+goes red with that message is this and not a build defect: quit the pid it printed and re-run.
+The stage still cannot fix what the
+user sees, because the app really does call a healthy first instance "not responding";
+`docs/limitations.md`, "A second instance calls the first one dead", carries the measurement
+and the two candidate product fixes. When you probe `tasklist` yourself, note that the image
+name contains spaces, so the PID is not at a fixed `split()` index — slice the name off
+first and take what follows, or the check is silently vacuous. The harness's shutdown
 prints an `OSError: [WinError 10038]` traceback from the frozen HTTP thread — a
 known race between the quit path and the socket close, printed on an otherwise
 passing run; in a redirected log it lands *above* the script's own PASS line, because the frozen

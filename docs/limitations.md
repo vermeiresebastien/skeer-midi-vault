@@ -183,15 +183,21 @@ general-purpose classification accuracy.
   runtime file, waits five seconds, and concludes the service is dead. Worse, that branch's
   `_message_box` ([desktop.py:163](../desktop.py)) is not gated on `open_browser` the way the
   two branches above it are, and it calls `MessageBoxW(0, …)`: a launch asked to be headless
-  blocks on a dialog with no owner. **This is a live hazard for the release gate**, because
+  blocks on a dialog with no owner. **The release gate was exposed to exactly that**, because
   `tests/test_packaged_smoke.py` starts the packaged exe with its own `--data-dir` and a free
-  port — if the app is already running, the `smoke` stage waits on a dialog nobody can see
-  instead of exiting non-zero. It passed on every 2026-11-19 run only because no other
-  instance was up. The remedy is not decided: key the mutex to the resolved data directory
-  (which lets two instances each own a tray icon), or stop treating the mutex as evidence
-  about a service whose runtime file lives elsewhere — and in either case print to stderr and
-  exit non-zero when `--server-only`/`--no-open` was requested. Until then, run the gate with
-  no other MIDI VAULT instance open.
+  port — if the app was already running, the `smoke` stage waited on a dialog nobody can see
+  instead of exiting non-zero, and it passed on every earlier 2026-11-19 run only because no
+  other instance was up. That half is now closed in the harness: `running_instances()` lists
+  the image through `tasklist`, and when one holds the mutex the script prints its pid and
+  exits 1 before it spawns anything, so there is no second instance left to raise a dialog.
+  Measured both ways against the same `1c17f6a` bundle on 2026-11-19 — with a probe instance
+  up (pid 30620) the stage went red naming that pid; with none up it still reached
+  `PASS packaged smoke test` and exit 0, which is what proves the new check is not vacuous.
+  **The product is unchanged.** The false sentence and the ungated modal are still what a user
+  gets on a double-launch, and the remedy is not decided: key the mutex to the resolved data
+  directory (which lets two instances each own a tray icon), or stop treating the mutex as
+  evidence about a service whose runtime file lives elsewhere — and in either case print to
+  stderr and exit non-zero when `--server-only`/`--no-open` was requested.
 
 - The installer's payload is proven on every build in `launch/`; its registration is not.
   `packaging/install_cycle_check.ps1` ran the real Setup on 2026-11-17, against the
