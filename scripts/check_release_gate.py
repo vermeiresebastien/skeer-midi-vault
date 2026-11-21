@@ -217,10 +217,21 @@ def cheap() -> None:
 
     build_tree()
     broken = SHADOW / "build/version_info.txt"
-    broken.write_text(broken.read_text(encoding="utf-8").replace("u'1.1.0'", "u'9.9.9'", 1),
-                      encoding="utf-8")
-    check("B gate: one literal out of step", STAGES + ["gate"], {"gate": "FAIL"}, 1,
-          ("build/version_info.txt:19", "FileVersion: 9.9.9"))
+    text = broken.read_text(encoding="utf-8")
+    # Move whatever the tree's own FileVersion literal reads, not a number written here. This
+    # case used to replace the string u'1.1.0', so the day the release moved to 1.1.1 the
+    # substitution changed nothing: the gate correctly read a clean tree, printed its PASS row,
+    # and the case went red as if the gate were blind. A plant that cannot be located has to
+    # say so, or the case is decoration.
+    plant = re.search(r"(StringStruct\(u'FileVersion', u')([^']+)('\))", text)
+    if not plant:
+        PROBLEMS.append("B gate: no FileVersion literal in the form this case plants, so it "
+                        "moved nothing and cannot prove the gate reads the version checker")
+    else:
+        broken.write_text(text[:plant.start(2)] + "9.9.9" + text[plant.end(2):], encoding="utf-8")
+        line = text[:plant.start()].count("\n") + 1
+        check("B gate: one literal out of step", STAGES + ["gate"], {"gate": "FAIL"}, 1,
+              (f"build/version_info.txt:{line}", "FileVersion: 9.9.9"))
 
     build_tree()
     script = SHADOW / "packaging/build_installer.ps1"
