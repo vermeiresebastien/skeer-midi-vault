@@ -608,8 +608,10 @@ if (-not (Test-Path -LiteralPath $setupLog)) {
     if ($AllUsers) {
         $vst3After = Census $SystemVst3
         $diff = @(Census-Diff $vst3Before $vst3After)
-        $ours = @($diff | Where-Object { $_ -match '^SKEER MIDI VAULT\.vst3[\\/]' })
-        $foreign = @($diff | Where-Object { $_ -notmatch '^SKEER MIDI VAULT\.vst3[\\/]' })
+        # Census-Diff labels every entry with its verb ("added: <relative path>"), so the verb is
+        # part of the match: without it nothing classifies as ours and this leg can never pass.
+        $ours = @($diff | Where-Object { $_ -match '^added: SKEER MIDI VAULT\.vst3[\\/]' })
+        $foreign = @($diff | Where-Object { $_ -notmatch '^added: SKEER MIDI VAULT\.vst3[\\/]' })
         if ($setupText -notmatch 'VST3: installing into ') {
             Add-Row 'shared-folder' 'FAIL' ('the Setup log carries no "VST3: installing into" line, ' +
                 'so Setup did not take the machine-wide branch - the /ALLUSERS leg did not run')
