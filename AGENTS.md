@@ -160,7 +160,15 @@ refusal is per-binary and no preflight can predict it. `BUILDINFO.json` in the b
 commit built it — that, not a byte count here, is the authority.
 `stamp` decides the order of a release's last two actions — it compares the bundle's commit
 to `HEAD`, so **build after you commit**, or the gate rightly reports a bundle that no
-longer matches the tree.
+longer matches the tree. That rule has a corollary that only appears once a release is published,
+and it is a hazard rather than a verdict: on any commit past the release tag, a full run's
+`installer` stage rebuilds `launch/` from *that* tree, and since `BUILDINFO.json` inside the bundle
+names the commit, the rebuilt Setup and ZIP cannot hash the way the release page says they do. The
+gate is then honestly READY about a build that is not the published artifact, and the machine has
+quietly stopped holding the published bytes. So after any full run: re-hash against
+`SHA256SUMS.txt` **and** the release page, and read a mismatch as "this is a newer build", never as
+corruption. `-Fast` cannot do this — its stage list is `gate, suite, licence, checksums`, and the
+only block that writes into `launch/` sits behind the `if ($Stages -contains 'installer')` guard.
 
 `tests/midi-output-guard.mjs`, `space-activation.mjs`, `deck-broken-row.mjs` and
 `scan-settings.mjs` need no service: `tests/app-harness.mjs` serves the real
