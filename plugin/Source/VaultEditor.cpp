@@ -351,8 +351,25 @@ void VaultEditor::copyPathToClipboard()
         return;
     }
 
-    juce::SystemClipboard::copyTextToClipboard (clip.file);
-    setNote ("The clip's path is on the clipboard");
+    // Neither leg of juce::SystemClipboard admits it failed: a write whose OpenClipboard is refused
+    // is skipped by a void function, and a refused read comes back as an empty String
+    // (juce_Windowing_windows.cpp:5694 and :5723). The clipboard is one desktop-wide resource with a
+    // queue of viewers on it, so a refusal is ordinary traffic on a producer's machine rather than an
+    // error this panel caused. Write, then believe the read rather than the call, and say which of
+    // the two happened -- the strip is the only place a user can see whether the paste will work.
+    auto copied = false;
+
+    for (int attempt = 0; attempt < 4 && ! copied; ++attempt)
+    {
+        juce::SystemClipboard::copyTextToClipboard (clip.file);
+        copied = (juce::SystemClipboard::getTextFromClipboard() == clip.file);
+
+        if (! copied && attempt < 3)
+            juce::Thread::sleep (15);  // a viewer's hold lasts milliseconds; the next attempt usually lands
+    }
+
+    setNote (copied ? "The clip's path is on the clipboard"
+                    : "Not copied: the clipboard is busy, click Copy path again");
 }
 
 int VaultEditor::saveChooserFlags()

@@ -351,6 +351,26 @@ grades it, and it refuses rather than half-installs when the terminal is not ele
   `handleChosenTarget()` is the dialog-free seam a confirmed replace lands on — and the
   prompt itself is still reachable only by hand, which is step 8.
 - The copy is a new file: the index does not know about it until a scan sees it.
+- **"Copy path" believes the clipboard, not the call.** `SystemClipboard::copyTextToClipboard`
+  returns `void` and skips the whole write when `OpenClipboard` is refused, and
+  `getTextFromClipboard` answers the same refusal with an empty `String` — the two are
+  `juce_gui_basics/native/juce_Windowing_windows.cpp:5694` and `:5723`, re-read 2026-11-21. The
+  clipboard is one desktop-wide resource with a queue of viewers on it, so a refusal is ordinary
+  traffic on a producer's machine rather than a fault this panel caused. Measured here before the
+  fix: **13 of 60** single-shot write→read round trips lost the write — 10 read back empty and 3
+  still held the previous write — while a write verified by readback and retried lost **0 of 30**.
+  So the button writes, reads back, and retries up to four times (45 ms of sleeps), and the strip
+  says either "The clip's path is on the clipboard" or "Not copied: the clipboard is busy, click
+  Copy path again". The sentence that used to print unconditionally is the defect: it named a
+  clipboard it had not written. The rate is not a constant — 13 of 60 isolated probes, but 12 of 20
+  gate runs and 6 of 10 runs of the reverted product while a build was running alongside, so treat
+  the quiet-machine number as the floor and the busy one as what a developer actually hits.
+- **What a refusal is not.** An ownerless `OpenClipboard (nullptr)` — the call JUCE itself makes —
+  locks nobody out: re-opening on the same thread, from a second thread of the same process, and
+  from a second process while a holder had it open all went straight through (each probed
+  2026-11-21). Only a hold taken *with a window* refused the next opener, with `ERROR_ACCESS_DENIED`.
+  `vault-editor-test` arranges that shape by re-running itself with `--hold-clipboard`, so the
+  "Not copied" branch is proven on demand instead of waited for.
 - **Not yet accepted in a real host.** The suites load the bundle through JUCE's own VST3
   wrapper, hand it a saved project state naming a clip, drive a synthetic transport and
   assert MIDI comes out — that is measured, and it is not the same thing as a producer

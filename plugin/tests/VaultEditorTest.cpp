@@ -29,8 +29,11 @@
 //      that fails does not throw away the connection the user asked for: Rescan is the retry and
 //      Disconnect is the only click that forgets.
 //   9. "Copy path" puts the clip's path on the real clipboard, read back through the same API, and
-//      the note a save leaves behind is retired by the next click that changes what it would be
-//      about.
+//      says so only when the readback agrees -- plus the refusal branch, arranged by a child
+//      process holding the clipboard open with a window, because Win32 refuses a copy silently and
+//      a strip that claims a copy it did not make is a lie about a paste a producer is about to
+//      attempt.
+//      The note a save leaves behind is retired by the next click that changes what it would be about.
 //
 // Deliberately absent: showTopLevelWindowOnScreen(), any peer, any desktop. The checks must not
 // depend on a display and must not take focus from whatever the user has running.
@@ -44,6 +47,14 @@
 #include <cstdlib>
 #include <memory>
 #include <vector>
+
+#if JUCE_WINDOWS
+ #define WIN32_LEAN_AND_MEAN
+ #define NOMINMAX
+ #include <windows.h>  // OpenClipboard / CloseClipboard: JUCE keeps its own Win32 includes inside
+                       // the module's amalgamated .cpp, so this TU has to ask for them. Declared
+                       // after the JUCE headers above, so NOMINMAX cannot disturb them.
+#endif
 
 #include "VaultClipExport.h"
 #include "VaultEditor.h"
@@ -148,6 +159,49 @@ T* find (juce::Component& parent, const char* componentID)
 void pumpMessages()
 {
     juce::MessageManager::getInstance()->runDispatchLoopUntil (25);
+}
+
+/** Read the clipboard the way a check has to: until it answers, and counting how long that took.
+    Win32 refuses OpenClipboard while another process holds it open with a window, and JUCE's answer
+    to a refusal is an empty String (juce_Windowing_windows.cpp:5723) -- indistinguishable from a
+    clipboard that genuinely holds nothing. An empty read is therefore retried rather than reported,
+    and the read count comes back with the text so a run can say whether this machine was quiet or
+    contested. */
+juce::String readClipboard (int& readsUsed)
+{
+    for (int read = 1; read <= 8; ++read)
+    {
+        auto text = juce::SystemClipboard::getTextFromClipboard();
+
+        if (text.isNotEmpty())
+        {
+            readsUsed = read;
+            return text;
+        }
+
+        pumpMessages();
+    }
+
+    readsUsed = 8;
+    return juce::SystemClipboard::getTextFromClipboard();
+}
+
+/** Put `text` on the clipboard and confirm it is there. The seed of a clipboard check has the same
+    failure mode as the write it is meant to detect, so it is verified by readback and not by the
+    call returning. */
+bool seedClipboard (const juce::String& text)
+{
+    for (int attempt = 0; attempt < 8; ++attempt)
+    {
+        juce::SystemClipboard::copyTextToClipboard (text);
+
+        if (juce::SystemClipboard::getTextFromClipboard() == text)
+            return true;
+
+        pumpMessages();
+    }
+
+    return false;
 }
 
 /** The strip's note line -- the sentence the save and copy buttons write.
@@ -329,8 +383,46 @@ private:
 } // namespace
 
 //==============================================================================
-int main()
+int main (int argc, char** argv)
 {
+   #if JUCE_WINDOWS
+    // Second mode, used by the clipboard leg below: take the clipboard and sit on it.
+    //
+    // It takes the clipboard *with a window*, because that is the only shape measured to lock
+    // somebody else out. An ownerless open -- the handle-less call JUCE itself makes -- does not
+    // lock: re-opening on the same thread, on a second thread of this process, and from a second
+    // process while this child held it, were all allowed through (each probed, see
+    // docs/limitations.md). A hidden message-only window is what a clipboard viewer on a producer's
+    // desktop is, so the refusal the panel must survive is arranged rather than waited for.
+    if (argc >= 3 && juce::String (argv[1]) == "--hold-clipboard")
+    {
+        WNDCLASS wc {};
+        wc.lpfnWndProc = DefWindowProc;
+        wc.hInstance = GetModuleHandle (nullptr);
+        wc.lpszClassName = "SkeerVaultClipboardHolder";
+        RegisterClass (&wc);
+
+        auto* hwnd = CreateWindowEx (0, wc.lpszClassName, "holder", 0, 0, 0, 0, 0,
+                                     HWND_MESSAGE, nullptr, wc.hInstance, nullptr);
+        const bool took = hwnd != nullptr && OpenClipboard (hwnd) != FALSE;
+
+        std::printf (took ? "held-by-window\n" : "could-not-take-it\n");
+        std::fflush (stdout);
+
+        if (took)
+        {
+            // Nothing is written or emptied here: the point is the open handle, not the content.
+            juce::Thread::sleep (juce::jmax (200, juce::String (argv[2]).getIntValue()));
+            CloseClipboard();
+        }
+
+        if (hwnd != nullptr)
+            DestroyWindow (hwnd);
+
+        return took ? 0 : 2;
+    }
+   #endif
+
     juce::ScopedJuceInitialiser_GUI gui;
 
     std::printf ("SKEER MIDI VAULT editor test\n============================\n\n");
@@ -634,17 +726,84 @@ int main()
     {
         const auto clipPath = clip.getFullPathName();
 
-        // Read back through the same API the panel writes with. The assertion is about the
-        // round trip, not about the call returning: JUCE's clipboard is a Win32 OpenClipboard /
-        // SetClipboardData with a null owner, which needs no window and no message loop, so what
-        // could go wrong here -- a wrong string, an empty clipboard, an early return -- shows up in
-        // the text that comes back.
+        // Seeded with something that is not a path so a failure names its own leg: the sentinel still
+        // there means a write landed nowhere, an empty read means Win32 refused the read, and the text
+        // of the strip says which of the two the panel itself believed.
+        const juce::String sentinel = "<skeer-vault-editor-test-" + juce::Uuid().toString() + ">";
+
+        check (seedClipboard (sentinel),
+               "this machine's clipboard will take a write at all, which the next two checks need");
+
         check (click (*copyPathButton), "the Copy path button carries a click handler");
-        check (juce::SystemClipboard::getTextFromClipboard() == clipPath,
-               "and the clip's own path is what the clipboard now holds: "
-               + juce::SystemClipboard::getTextFromClipboard());
-        check (statusLabel->getText().containsIgnoreCase ("clipboard"),
-               "and the strip says the path went somewhere: " + noteLine (statusLabel->getText()));
+
+        int reads = 0;
+        const auto held = readClipboard (reads);
+
+        check (held == clipPath,
+               "and the clip's own path is what the clipboard now holds after " + juce::String (reads)
+               + " read(s); the strip says \"" + noteLine (statusLabel->getText()) + "\" and the "
+               + (held.isEmpty() ? juce::String ("clipboard refused every read")
+                                 : "clipboard holds \"" + held + "\""));
+
+        check (statusLabel->getText().containsIgnoreCase ("on the clipboard"),
+               "and the strip claims the copy only because the clipboard confirms it: "
+               + noteLine (statusLabel->getText()));
+
+       #if JUCE_WINDOWS
+        // "Not copied" has to be reachable on demand rather than only when a viewer happens to be
+        // awake, so a child running this same executable holds the clipboard. It holds it with a
+        // window: an ownerless open -- the handle-less call JUCE itself makes -- was measured not to
+        // lock anybody out. A re-open on the calling thread, one from a second thread of this
+        // process, and a second process reading while this child held it all went straight through.
+        {
+            juce::StringArray command;
+            // No quoting here: ChildProcess::start escapes and quotes each argument itself, wrapping
+            // the path by hand is what makes CreateProcess refuse it (juce_Threads_windows.cpp:554).
+            command.add (juce::File::getSpecialLocation (juce::File::currentExecutableFile).getFullPathName());
+            command.add ("--hold-clipboard");
+            command.add (juce::String (4000));  // far longer than the panel's 45 ms of retries
+
+            juce::ChildProcess hold;
+            const bool started = hold.start (command);
+
+            // The hold is not believed because the child printed a word: it is believed when this
+            // process's own read stops answering with what the clipboard held a moment ago, which is
+            // the refusal the panel is about to meet. An empty read is that answer -- JUCE's only
+            // report for a clipboard it could not open.
+            int polls = 0;
+
+            while (started && polls < 100 && juce::SystemClipboard::getTextFromClipboard() == clipPath)
+            {
+                pumpMessages();
+                ++polls;
+            }
+
+            const bool blocked = started && juce::SystemClipboard::getTextFromClipboard() != clipPath;
+            check (blocked,
+                   "another process holding the clipboard shuts this one's reads out, which is what a "
+                   "viewer on the user's desktop does (after " + juce::String (polls)
+                   + " polls, child started: " + (started ? "yes" : "no")
+                   + ", spawn line: " + command.joinIntoString (" ") + ")");
+
+            if (blocked)
+            {
+                click (*copyPathButton);
+                const auto refusedNote = noteLine (statusLabel->getText());
+
+                check (refusedNote.containsIgnoreCase ("Not copied"),
+                       "so the strip says the copy did not happen rather than naming a clipboard it "
+                       "never wrote to: " + refusedNote);
+            }
+
+            hold.waitForProcessToFinish (20000);
+            hold.readAllProcessOutput();
+
+            int recovery = 0;
+            check (click (*copyPathButton) && readClipboard (recovery) == clipPath
+                     && noteLine (statusLabel->getText()).containsIgnoreCase ("on the clipboard"),
+                   "and one refusal does not wedge the button: it copies once the clipboard is free");
+        }
+       #endif
     }
 
     //==========================================================================
