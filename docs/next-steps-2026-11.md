@@ -313,8 +313,7 @@ and user-set; never infer the project tempo automatically.
 
 **Step 15 — Verify the DAW handoff, then choose it.** *M, mostly manual.* Drag uses
 Chromium `DownloadURL` (`LibraryView.tsx:86-92`, `DetailsPanel.tsx:251-258`) and the
-**DAW drag target verification** bullet in `docs/completed-partial-missing.md` (under *Missing*, at
-`:154` as this was written) concedes it was never tested against a real DAW
+**DAW drag target verification** bullet in `docs/completed-partial-missing.md` (under *Missing*) concedes it was never tested against a real DAW
 target. Whether a Chromium drag lands a file in Ableton is the question; one session
 with Live open answers it. In parallel test Web MIDI out to a loopback port — Live can
 arm a track from one, which gives audition-through-Live's-own-synths with no audio engine
@@ -364,9 +363,13 @@ index first; the rest only matters past ~5k files.
 
 **Step 20 — Ship 1.0.1 properly.** *M.* Run the installer cycle for real — install,
 shortcut, launch, uninstall — which the **Installer verification** bullet in
-`docs/completed-partial-missing.md` (under *Missing*, at `:170` as this was written) admits has
-never happened, then decide on code signing (SmartScreen is the practical blocker for
-anyone else running this). Decide the soundfont question in §6 before touching
+`docs/completed-partial-missing.md` (under *Missing*) admitted, as this was written, had never
+happened. **That half is done, and this line is the annotation rather than the task:** the
+elevated install -> launch -> installed-smoke -> uninstall cycle closed on 1.1.1 on both
+placement arms - 17 phases per-user, graded by the release gate's own `installed` stage, and 18
+with `/ALLUSERS`, recorded in `docs/release-notes-1.1.1.md` - and the release this step was
+written for shipped as 1.1.1. What is left of it is the code-signing decision (SmartScreen is the
+practical blocker for anyone else running this). Decide the soundfont question in §6 before touching
 packaging. Then the release-notes and AGENTS.md corrections from Step 6 land here.
 
 ---
