@@ -58,7 +58,7 @@ That run also exposed an ordering defect in the gate, and it is worth stating pl
 undermines every `checksums PASS` recorded from before the fix — which is every row in that table
 except the `f50940283f57` and `855516d5bbee` ones. The checksum stage used to sit with the gates that cost
 seconds, which is *before* `installer` rewrites `launch/` and regenerates `SHA256SUMS.txt` at
-[packaging/build_installer.ps1:301](packaging/build_installer.ps1) — so it hashed the *previous*
+[packaging/build_installer.ps1:301](../packaging/build_installer.ps1) — so it hashed the *previous*
 build's artifacts, and the bytes a release actually shipped were never hashed by the gate that
 called them READY. It is why the publish run's hashes were taken by hand rather than quoted from
 the stage, and it is visible in that run's own evidence: `checksums.log` is finished at 19:23:01
@@ -330,14 +330,14 @@ the run reports `orphan workers []`, prints PASS, and the stage exits 0.
    installer output): default `/VERYSILENT` installs 199 files and attempts 3 Start Menu and 2
    desktop `.lnk` writes; `/MERGETASKS=!startmenuicon,!desktopicon` installs the same 199 with **0
    and 0**, dying only at the registry key this shell refuses. The check now passes that flag
-   itself ([packaging/install_cycle_check.ps1:385](packaging/install_cycle_check.ps1)), because a
+   itself ([packaging/install_cycle_check.ps1:402](../packaging/install_cycle_check.ps1)), because a
    throwaway copy it is about to uninstall should not put shortcuts in the user's shell — re-run
    through the check against the `f50940283f57` Setup, both routes: `-FilesOnly -Dir <in the repo>`
    gives `files PASS - 199 file(s) installed … all 198 payload file(s), nothing extra` with Setup
    stopping at `HKCU\...\Uninstall\{B7E2D5A8-…}_is1` (exit 4), and the same command without `-Dir`
    still stops one step earlier at the default `%LOCALAPPDATA%` cycle folder — which is what the
    gate's `installed` stage still hits first, because
-   [scripts/release_check.ps1:391](scripts/release_check.ps1) calls the check with no arguments;
+   [scripts/release_check.ps1:391](../scripts/release_check.ps1) calls the check with no arguments;
    before the fix described next, that ended the stage there, so a full run's `installed` row
    carried no payload line at all. Either way the payload relocation is now proven
    against the shipping binary, and the residual is exactly one registry write.

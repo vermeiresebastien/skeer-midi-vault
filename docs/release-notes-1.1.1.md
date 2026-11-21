@@ -123,7 +123,8 @@ this release exists to fix, and the per-user install that must leave the shared 
 Two things that leg did **not** prove, so they are not claims:
 
 - **No host has loaded the bundle from `Common Files\VST3` yet.** That is a session in a real DAW,
-  which is the owner's to run; the runbook is in [docs/limitations.md](limitations.md). It will
+  which is the owner's to run; the procedure is [packaging/README.md](../packaging/README.md),
+  "A host session — the three questions only a DAW can answer". It will
   list two SKEER plug-ins, because an unrelated `SKEER Vault.vst3` — same family, different
   product, dated 2026-11-19 — already lives in that folder and was counted before and after at
   the same 1317 entries.
@@ -166,4 +167,4 @@ never executed.
 Unchanged from 1.1.0 and stated where it belongs, not here: real-world classification accuracy
 is a regression result on self-authored synthetic fixtures; genre is a low-confidence hint;
 no physical MIDI device round-trip; no archive extraction; no cloud, accounts or telemetry.
-See [docs/limitations.md](docs/limitations.md).
+See [docs/limitations.md](limitations.md).
