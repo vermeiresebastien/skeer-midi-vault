@@ -310,6 +310,23 @@ alike. Three things are left, and none of them can be settled from a shell:
    and the only honest signal was the bridge's own reply: `Could not connect to Ableton. Make sure the
    Remote Script is running.` A process sighting is not the DAW.
 
+   Whether the machine-wide folder is one this host reads is answerable without the DAW, and it was
+   worth answering. Live keeps a scan cache, `PluginScanDb.txt`, under
+   `%APPDATA%\Ableton\Live <version>\Preferences\`, written when it recognises plug-ins. The one
+   this machine's `Live 12.3.2` wrote at 15:49 local on 2026-11-21 holds 3,531 rows. **751** of them
+   name
+   `C:\Program Files\Common Files\VST3`, at the root or in a vendor subfolder, and **0** name
+   `C:\Program Files\VST3` — the folder 1.1.0's `/ALLUSERS` install used. So the destination this
+   release changed was not cosmetic on this host: a bundle in the old folder could not have appeared,
+   and a bundle of exactly our shape does appear from the new one — the sibling
+   `SKEER Vault.vst3` is listed there by full path, as `SKEER Audio`, `1.1.0`, category `Fx`, which
+   matches the `moduleinfo.json` census above rather than lagging it. What the cache does *not*
+   settle is Q1: recognising a bundle is not instantiating one on a track. What it does give a session
+   is a baseline you can attribute — `SKEER MIDI VAULT` appears in **0** rows of all three caches on
+   this machine (`12.3`, `12.3.2`, `12.3.5`), so the first row that names it after an install means the
+   scan found it and nothing else. Re-take the count after installing: a rescan is what rewrites that
+   file, so a stale cache proves only what was true at the previous scan.
+
    What that session will be operating on, measured on this machine 2026-11-19 so nobody has to
    guess it mid-take:
    `%LOCALAPPDATA%\Skeer\MIDI Vault\midivault.sqlite3` is 449,347,584 bytes with

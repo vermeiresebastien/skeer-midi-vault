@@ -125,9 +125,17 @@ Two things that leg did **not** prove, so they are not claims:
 - **No host has loaded the bundle from `Common Files\VST3` yet.** That is a session in a real DAW,
   which is the owner's to run; the procedure is [packaging/README.md](../packaging/README.md),
   "A host session — the three questions only a DAW can answer". It will
-  list two SKEER plug-ins, because an unrelated `SKEER Vault.vst3` — same family, different
-  product, dated 2026-11-19 — already lives in that folder and was counted before and after at
-  the same 1317 entries.
+  not list two tidy candidates. An unrelated `SKEER Vault.vst3` — same family, different product,
+  dated 2026-11-19 — already lives in that folder and was counted before and after at the same 1317
+  entries, and the scan cache says this host knows seven Skeer-family devices in all: `SKEER Vault`,
+  `DRUMGEN`, `DRUMGEN Origin`, `VRAC+`, `SKULPT`, `PulseKit` and `SliceForge`, under three different
+  vendor spellings (`SKEER`, `Skeer Audio`, `SKEER Audio`). So the thing to match in a host's list is
+  the exact string `SKEER MIDI VAULT` at version `1.1.1`, never a brand prefix.
+  What a shell can show, and now does, is that the folder is read at all: this machine's Live wrote a plug-in scan cache at 15:49 local on 2026-11-21 whose 3,531
+  rows include 751 naming `C:\Program Files\Common Files\VST3` and **zero** naming
+  `C:\Program Files\VST3` — the folder 1.1.0 installed into, which this host has never taken a
+  plug-in from. Recognition of a bundle is not the same as a track instantiating it, so the session
+  still owns the answer; the measurement is in the runbook.
 - The machine-wide leg was run once, on the machine that builds these files.
 
 ## Two self-tests that had stopped being able to bite
