@@ -174,8 +174,10 @@ and this is the same class of defect as the two drifted line anchors above.
 
 None of it moves a shipped byte. `packaging/build_installer.ps1` reads none of those eight files as an
 input - its only mentions of `packaging\README.md` are a comment and a log string - and both artifacts
-were re-hashed against `SHA256SUMS.txt` at 20:48Z on 2026-11-21, with the tree past the tag on
-documentation-only commits: Setup `d61324f2…`, ZIP `4a69a841…`, both MATCH. The release page text was
+were re-hashed against `SHA256SUMS.txt` at 21:01Z on 2026-11-21, with the tree seven commits past the
+tag: four documentation files and one read-only diagnostic script, none of them an input to the build,
+and the Setup still stamped 18:55:50Z from the certified run. Setup `d61324f2…`, ZIP `4a69a841…`, both
+MATCH. The release page text was
 corrected to the re-derived numbers. The tag object's message cannot be edited, only rewritten and
 force-pushed, and a second move of a published tag is its owner's call, so this section is where the
 discrepancy is recorded rather than silently patched.
