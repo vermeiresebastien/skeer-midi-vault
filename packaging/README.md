@@ -322,10 +322,17 @@ alike. Three things are left, and none of them can be settled from a shell:
    `SKEER Vault.vst3` is listed there by full path, as `SKEER Audio`, `1.1.0`, category `Fx`, which
    matches the `moduleinfo.json` census above rather than lagging it. What the cache does *not*
    settle is Q1: recognising a bundle is not instantiating one on a track. What it does give a session
-   is a baseline you can attribute — `SKEER MIDI VAULT` appears in **0** rows of all three caches on
-   this machine (`12.3`, `12.3.2`, `12.3.5`), so the first row that names it after an install means the
-   scan found it and nothing else. Re-take the count after installing: a rescan is what rewrites that
-   file, so a stale cache proves only what was true at the previous scan.
+   is a baseline you can attribute — `SKEER MIDI VAULT` appears in **0** rows of every scan cache on
+   this machine — and `scripts/host_scan_check.ps1` walks every one of them, so the figure is a command
+   rather than a transcription: as run 2026-11-21 20:58 local it read **four** caches
+   (`12.3`, `12.3.1`, `12.3.2`, `12.3.5`), each of them 0 rows for `SKEER MIDI VAULT` and 0 rows for
+   `C:\Program Files\VST3`, and 751 / 742 / 430 / 430 rows for the shared folder, newest first. Pass
+   `-BundleName 'SKEER Vault'` and the same counter returns 2 on the two recent caches and flips its
+   verdict — that is the control that makes the zeros a measurement and not a dead filter, which is
+   worth stating because this script's first version had exactly that defect and its guard caught it
+   by going red on a healthy cache. So the first row naming `SKEER MIDI VAULT` after an install means
+   the scan found it and nothing else. Re-take the count after installing: a rescan is what rewrites
+   that file, so a stale cache proves only what was true at the previous scan.
 
    What that session will be operating on, measured on this machine 2026-11-19 so nobody has to
    guess it mid-take:

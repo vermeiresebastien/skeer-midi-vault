@@ -133,8 +133,9 @@ Two things that leg did **not** prove, so they are not claims:
   the exact string `SKEER MIDI VAULT` at version `1.1.1`, never a brand prefix.
   What a shell can show, and now does, is that the folder is read at all: this machine's Live wrote a plug-in scan cache at 15:49 local on 2026-11-21 whose 3,531
   rows include 751 naming `C:\Program Files\Common Files\VST3` and **zero** naming
-  `C:\Program Files\VST3` — the folder 1.1.0 installed into, which this host has never taken a
-  plug-in from. Recognition of a bundle is not the same as a track instantiating it, so the session
+  `C:\Program Files\VST3` — the folder 1.1.0 installed into. `scripts/host_scan_check.ps1` reads all
+  four caches on this machine and every one of them has 0 rows for that folder and 0 for our bundle
+  name, which is the measurement behind saying the placement was never cosmetic on this host. Recognition of a bundle is not the same as a track instantiating it, so the session
   still owns the answer; the measurement is in the runbook.
 - The machine-wide leg was run once, on the machine that builds these files.
 
