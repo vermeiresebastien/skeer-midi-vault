@@ -256,13 +256,24 @@ alike. Three things are left, and none of them can be settled from a shell:
    *SKEER MIDI VAULT* **1.1.1**: that number comes from the staged bundle's `moduleinfo.json`, is
    what a host displays, and the build refuses to ship a bundle whose copy disagrees with the
    release. The same `moduleinfo.json` declares the class under `Sub Categories: ["Fx"]` on
-   VST 3.7.12, so a host that groups by category files it with the effects, not with the
-   instruments.
+   VST 3.7.12. It declares **three** classes in total — one `Audio Module Class` plus Steinberg's
+   `Component Controller Class` and `Plugin Compatibility Class`, all three named
+   `SKEER MIDI VAULT` at `1.1.1` — so a conforming host lists **one** entry, and a second or third
+   copy of the name in a scan is a host bug, not a staging mistake. What is not settled from a
+   shell is *which menu* that entry appears in: `Sub Categories` says `Fx`, while
+   [plugin/Source/VaultMIDIProcessor.h:86](../plugin/Source/VaultMIDIProcessor.h) returns
+   `isMidiEffect() == true`, and a host that reads the MIDI-effect flag files the plug-in with the
+   MIDI effects and restricts it to MIDI tracks. Ask the host which it did, and record the answer —
+   this runbook does not claim it.
    Which bytes you are loading matters for what a session proves: the two JUCE trees build
-   different binaries, and only one of them ships. Measured 2026-11-18 against the tip bundle,
-   `launch/VST3/…/Contents/x86_64-win/SKEER MIDI VAULT.vst3` is byte-identical to the copy under
-   `plugin/build/…` — the 8.0.4 tree — and that copy is what `vault-host-test` loaded in the same
-   gate run; the `build/tag-808` bundle differs — different size, different SHA-256 — and is
+   different binaries, and only one of them ships. Re-measured 2026-11-21 against the bytes the
+   1.1.1 release ships — the earlier figure below was from 2026-11-18 and predates this rebuild,
+   which the note at the end of this paragraph has always told the reader to do:
+   `launch/VST3/…/Contents/x86_64-win/SKEER MIDI VAULT.vst3` is SHA-256
+   `a2f157679dacfd7ae202db7e8d246cc4a85a5e727eb62c4c7a8fd4bd6e9c9bf9`, 7,566,336 bytes, and
+   byte-identical to the copy under `plugin/build/…` — the 8.0.4 tree — and that copy is what
+   `vault-host-test` loaded in the same gate run; the `build/tag-808` bundle is
+   `6b898e83dabcb631…` at 7,694,848 bytes — different size, different SHA-256 — and is
    source-compatibility evidence only. So a DAW session ratifies the 8.0.4 binary; nothing you
    hear in a host speaks for the 8.0.8 build. Recompute the two hashes rather than trusting this
    sentence after any rebuild.
