@@ -79,7 +79,7 @@ python -m midivault.server --open       # run from source; serves web/dist on 12
 npm --prefix web ci                     # frontend deps only; the Python app has ZERO runtime deps
 npm --prefix web run dev                # Vite :5173, proxies /api -> :8737
 npm --prefix web run build              # tsc --noEmit && vite build — this is also the only typecheck
-python -m unittest discover -s tests    # 104 tests, ~22s; framework is unittest, NOT pytest
+python -m unittest discover -s tests    # ~28s, it prints its own test count; framework is unittest, NOT pytest
 powershell -File plugin/build.ps1       # VST3 + 6 headless suites (locator, index, midi source, emit, editor, host)
 powershell -File plugin/build.ps1 -BuildDir build/tag-808 -Juce D:/Projects/skeer-audio/pulsekit/build/_deps/juce-src   # 8.0.8 tree
 python scripts/evaluate_classification.py
@@ -263,7 +263,9 @@ that, and the flake is in the harness, not the code.
 
 - **Engine purity:** `midivault/engine/` must not import `db`, `api`, `scanner` or
   know about SQLite. It takes bytes, returns dataclasses, so future SKEER tools can
-  reuse it. Grep-verified today; keep it that way.
+  reuse it. `tests/test_engine_purity.py` enforces this by walking every import in the
+  package, and it reads the list above out of this bullet to check it still gates what
+  this says — reword or drop a name here and that test goes red rather than gating less.
 - **Never write to a source MIDI file.** No rename, move, delete, edit or archive
   extraction anywhere in the product.
 - **User data survives reprocessing.** Manual corrections, favorites, tags, notes
