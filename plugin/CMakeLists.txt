@@ -86,6 +86,13 @@ endif()
 # ---------------------------------------------------------------------------
 juce_add_plugin(SkeerMidiVaultPlugin
     COMPANY_NAME "Skeer Audio"
+    # The two codes below are the durable half of this file and the name above is not. Both appear in
+    # the VST3 class ID: bytes 9-16 of every CID this bundle publishes are ASCII 'SkAuMvlt', read out
+    # of the shipped moduleinfo.json, and every sibling product's CID is its own two codes the same
+    # way. A host recalls a saved instance by that CID, so changing either code orphans every project
+    # that already holds this plug-in. COMPANY_NAME reaches only the vendor display string, which is
+    # free to change at the cost of one rescan -- PulseKit changed its vendor string and its code stayed.
+    # SkAu is shared with SKULPT (Skpt), so it is the pair, not the manufacturer half, that is unique.
     PLUGIN_MANUFACTURER_CODE SkAu
     PLUGIN_CODE Mvlt
     # Derived from the target name, the default reads 'com.Skeer Audio.SkeerMidiVaultPlugin'

@@ -301,16 +301,39 @@ alike. Three things are left, and none of them can be settled from a shell:
    A running host is reachable from a shell, and that changes who has to answer what. Measured
    2026-11-21 at 21:39Z through this machine's Ableton Live 12 MCP bridge: `plugins` → `VST3` offers
    a vendor folder `SKEER` (BASSGEN, DRUMGEN, DRUMGEN Origin, SliceForge, VRAC+) and one
-   `SKEER Audio` holding exactly `SKEER Vault` — and **no `SKEER MIDI VAULT` entry anywhere in it**.
-   Asking for `Skeer Audio` and `SKEER Audio` returns the same URI, so the host folds the two vendor
-   spellings in this family onto one node. The disk census behind that answer: `C:\Program Files\Common
-   Files\VST3` held 56 bundles with none named for this product, `%LOCALAPPDATA%\Programs\Common\VST3`
-   exists and is empty, and the only copy of the bundle on the machine was `launch\VST3\`. So question
-   1 is still unanswered on the shipped bytes, for the reason the paragraph above gives rather than a
-   new one. What is different now is the cost of answering it: once the bundle sits in a folder this
-   host scans and he has pressed Rescan, the same browser query is a machine-readable yes-or-no for
-   recognition, and a host-side parameter read is the three exported controls counted by the host
-   rather than by `vault-editor-test`. Rescanning has no method on that bridge (none of its 37 tools
+   `SKEER Audio` holding exactly `SKEER Vault`. It offers a third one too, and the first draft of this
+   paragraph got that wrong in a way that mattered: `plugins` → `VST3` lists **three** nodes in this
+   family — `SKEER`, `SKEER Audio` and `Skeer Audio` — as separate entries with separate URIs
+   (`…VST3:SKEER%20Audio` and `…VST3:Skeer%20Audio`), but the bridge's path lookup case-folds, so
+   `Skeer Audio`, `SKEER Audio` and `SKEER AUDIO` all return the contents of the second node and the
+   third cannot be addressed by path at all. Since `Skeer Audio` is exactly our `COMPANY_NAME`, that
+   unreachable node is where our entry would appear, and "no `SKEER MIDI VAULT` in the browser" was
+   therefore never an absence proof: it inspected two of three nodes. The disk census behind that answer: `C:\Program Files\Common
+   Files\VST3` holds 56 bundles at its top level and 222 counting the 16 vendor subfolders inside it
+   (IK Multimedia 64, Eventide 35, Safari 29, Goodhertz 17, seven folders with 2-6 each and eight with
+   one), none of the 222 being ours; `%LOCALAPPDATA%\Programs\Common\VST3` exists and is empty, and the
+   only copy of the bundle on the machine was `launch\VST3\`, whose moduleinfo reads `Version 1.1.1`.
+   That count is the same folder re-read 2026-11-21 at 21:52Z by a recursive scan, and the 56 in the
+   first draft of this paragraph came from a top-level glob — a method flaw, not a smaller number,
+   because 166 of those 222 bundles live in subfolders of the root, not in it. A bundle in a
+   subfolder is invisible to a top-level glob, and "we are not on this disk" is precisely the finding
+   this census is trusted to produce, so identity is now read from the class ID rather than the file
+   name: bytes 9-16 of our CID are ASCII `SkAuMvlt`, and exactly one bundle on the machine reports it.
+   So question 1 is still unanswered on the shipped bytes, for the reason the paragraph above gives
+   rather than a new one — and the browser was never the instrument that could answer it. What can is
+   the host's own scan database, re-read 2026-11-21 at 22:00Z with `scripts/host_scan_check.ps1`
+   (read-only): the newest cache, `Live 12.3.5\Preferences\PluginScanDb.txt`, last written 15 Nov at
+   16:49 with 3510 lines, holds **zero** rows containing our class ID in any of the four groupings that
+   file uses for it (`536b-4175`, `4d766c74`, `536b-41754d766c74`, `41754d766c74`) and zero naming
+   `SKEER MIDI VAULT`. A CID match cannot be fooled by a rename and cannot be missed by a subfolder,
+   which is more than either check above can say. Two facts in the same read change what a rescan will
+   prove: the cache has not been rewritten although Live is running now, so **its mtime moving is
+   itself the machine-readable evidence that a scan happened**; and 656 of the 742 rows under
+   `C:\Program Files\Common Files\VST3` point inside vendor subfolders, so this host scans recursively
+   and a bundle in `…\VST3\Skeer Audio\` would be found as readily as one at the top level — worth
+   knowing before the 1.1.2 placement decision is taken. Once a scan has happened, a host-side
+   parameter read is the three exported controls counted by the host rather than by
+   `vault-editor-test`. Rescanning has no method on that bridge (none of its 37 tools
    rescans), and neither does any of this without a write into a running set, so the two steps that
    remain are the owner's by nature and not by shortage of tooling.
 

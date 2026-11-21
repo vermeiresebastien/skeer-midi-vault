@@ -416,6 +416,50 @@ under `Programs\SKEER MIDI VAULT\VST3`, which Setup will not delete) or sits bes
 squares with your standing rule that a bundle lives in exactly one place. Measurement and the three
 install routes are in `packaging/README.md`, "A host session".
 
+**Which half of the plug-in's identity is allowed to change.** Found while answering question 1 of the
+host runbook, and it is a family decision rather than a midi-vault one. A VST3 has two vendor strings
+and they do not have the same status. `COMPANY_NAME` is a display string: it is what a host shows in
+its Vendor column and what folder it puts the plug-in in. `PLUGIN_MANUFACTURER_CODE` + `PLUGIN_CODE`
+are the first half of the product's permanent identity — measured, not inferred: bytes 9-16 of the
+class ID in `moduleinfo.json` are those four characters each in ASCII, ending in `SkAu` + `Mvlt` for us
+(`ABCDEF019182FAEB536B41754D766C74`). Read across the bundles on this machine and the declarations in the
+sibling repos, seven pairs line up — BASSGEN `SkBgBsgn`↔`bassgen`, DRUMGEN `SkDgDrgn`↔`drumgen`, SKEER
+Vault `SkerSkrv`↔`sample-vault`, PulseKit `WkauPlkt`↔`pulsekit`, SKULPT `SkAuSkpt`↔`skulpt`, VRAC+
+`ErwmVrac`↔`vrac-plus`, MIDI VAULT `SkAuMvlt`↔here. The eighth bundle on disk, `drumgenorigin`
+(`SkDODgOr`), matched no declaration in the four drumgen CMakeLists files that were read. And
+`SliceForge.vst3` carries `ErwmVrac` — VRAC+'s pair rather than its own, which is the reuse hazard
+below already realised once on this disk.
+
+PulseKit is the natural experiment that settles the asymmetry, and this machine's own scan cache
+witnesses it: the row for `PulseKit.vst3` names the vendor **"Workshop Audio"** while the moduleinfo of
+that same bundle on disk reads `Skeer Audio` — the spelling was changed, the host has not rescanned
+since, and the class ID in both is the same `WkauPlkt` (`Wkau` being an abbreviation of the name that
+no longer exists). The display string is stale and a scan fixes it; the code is load-bearing and stays
+forever. VRAC+ shows the cost of getting that backwards: the cache holds **two** devices for that one
+product name, one ending `SkerVrac` and one `ErwmVrac`, so the manufacturer half of its identity was
+changed at some point and the old identity was never reclaimed — a host carrying both is exactly the
+orphaned-project situation the rule prevents. A third data point in the same direction:
+`Eruw` in `groovebox/CMakeLists.txt:96` and `Erwm` in `vrac-plus/native/CMakeLists.txt:110` are one
+transposition apart, and both are now permanent. (Whether the VRAC+ change and that transposition are
+the same decision belongs to those repos; what is measured here is that a code change abandons an
+identity rather than moving it.)
+
+Two things follow, and only the first is free. **Unify the display string** whenever you like: this
+family currently ships three spellings across seven bundles (`SKEER`, `SKEER Audio`, `Skeer Audio`,
+with ours as an eighth using the third), which is why Live's browser carries three separate vendor nodes
+and why the MCP bridge cannot address one of them: its path lookup case-folds, so all three spellings
+return the `SKEER Audio` node and the `Skeer Audio` node — the one ours would appear under — is
+unreachable by query. Unifying the string collapses the nodes; it costs a host rescan and nothing else.
+**Never change our code pair again** — that is the half that would orphan a customer's saved project,
+and it is now stated in `plugin/CMakeLists.txt` where
+somebody would otherwise edit it. Note that `SkAu` is already shared with SKULPT: the *pair* is unique,
+the manufacturer half is not, so a future product must not be handed `Mvlt`. Nothing currently checks
+that, and the cheapest place to check it is the block in `packaging/build_installer.ps1` that already
+refuses to ship a bundle whose `moduleinfo.json` disagrees with the release — have it assert the CID
+tail reads `SkAuMvlt` too, which turns an accidental identity change into a build failure instead of a
+support ticket about projects that lost their plug-in. That is a build-script behaviour change, so it
+wants the gate re-run with it: 1.1.2, filed here rather than done.
+
 ---
 
 ## 7. Explicitly not doing
