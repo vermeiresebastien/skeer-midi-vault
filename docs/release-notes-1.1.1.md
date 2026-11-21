@@ -130,6 +130,29 @@ Two things that leg did **not** prove, so they are not claims:
   the same 1317 entries.
 - The machine-wide leg was run once, on the machine that builds these files.
 
+## Two self-tests that had stopped being able to bite
+
+The red run quoted above was caught by a filter that had never been exercised, and auditing
+that filter turned up two more. `Census-Diff` prefixes every entry it emits with its verb
+(`added: <relpath>`), so an anchor written as `^SKEER MIDI VAULT\.vst3` cannot match — which is
+exactly why the first machine-wide run read `FAIL` on a copy Setup had really made. All 31 call
+sites of that helper were then re-read, and two of them carried the same class of stale
+reference: [AGENTS.md](../AGENTS.md) pointed at `packaging/install_cycle_check.ps1:198` and
+`:385` for code that now sits at `:225` and `:402`. Both repointed, and the lesson — a filter
+that cannot match is not a filter that passes — is written into that file next to the fix,
+because the red row's own witness is a gitignored log and the rule has to outlive it.
+
+The second was in the release gate's falsifier. Its version-defect case planted a fault by
+replacing the literal `u'1.1.0'` in `build/version_info.txt`, so once the tree read `1.1.1` the
+substitution wrote back what it found: the case kept asserting a `FAIL` row against a tree it had
+left clean, and no exit code said so. It now moves whatever the tree's own `FileVersion` reads and
+appends a PROBLEM when it cannot find one, so a disarmed plant is reported instead of skipped.
+Re-run: `FALSIFIER OK`, 33 cases, and the case earns its verdict again —
+`[FAIL] gate - exit 1, says 'build/version_info.txt:19 FileVersion: 9.9.9'`.
+Test infrastructure, not a shipped byte: none of the commits
+after `10fbc15` are read by `packaging/build_installer.ps1`, so `launch/` still holds what that
+certified build wrote, byte for byte.
+
 ## Artifacts
 
 Both carry the same 198 payload files, counted off the artifacts themselves: the ZIP holds 198

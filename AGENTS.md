@@ -115,7 +115,16 @@ directions.
 `build\work\release-gate-falsifier\`, stubs the child commands, and requires each
 defect to redden the stage that names it, with a green control case that reaches
 READY. Run it after touching either script: a gate nobody has seen go red is not
-known to be a gate. `packaging\install_cycle_check.ps1` is destructive by design and
+known to be a gate. A **version bump** counts as one of those touches even though it
+edits neither script: case B planted its defect by replacing the literal `u'1.1.0'` in
+`build/version_info.txt`, so once the tree read `1.1.1` the write put back what it
+found and the case went on asserting a FAIL row against a tree it had left clean. It
+now moves whatever the tree's own `FileVersion` reads, and when it cannot locate one it
+appends a PROBLEM instead — a plant that cannot be located has to be reported, not
+quietly skipped. The rule is general: a falsifier that hardcodes a value out of the
+tree it mutates disarms on a bump, and no exit code tells you. Nor does a READY —
+the gate never invokes `check_release_gate.py`, so `release_check.ps1` says nothing
+about whether the cases can still bite. `packaging\install_cycle_check.ps1` is destructive by design and
 refuses before touching anything if the app is running or already registered; read
 [packaging/README.md](packaging/README.md) for what it proves and what a restricted
 shell cannot let it finish. In this shell that means `-FilesOnly -Dir <a path inside the
