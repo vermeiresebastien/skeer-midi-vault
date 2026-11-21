@@ -401,6 +401,21 @@ does not, the choice is a watched import folder versus a third-party virtual por
 every user must also install — and that second option carries a dependency this project
 has so far avoided entirely.
 
+**Where a per-user install puts the plug-in.** 1.1.1 fixed the machine-wide destination, and the
+evidence for it turned up the per-user counterpart on the same run: this host's own scan cache lists
+bundles it enumerated out of `%LOCALAPPDATA%\Programs\Common\VST3` — 4 rows in the `12.3.5` cache,
+including `SKEER Vault.vst3` and `Expressive Drum.vst3`, every one `ok`. That is the Windows per-user
+VST3 folder, it needs no elevation to write, and our per-user Setup puts nothing there: it uses
+`{app}\VST3`, a root that appears in **no** scan cache on this machine. So the install a buyer gets by
+accepting the defaults ships a plug-in no host can see without a manual step, and closing it is one
+`[Files]` destination rather than a design change. It waits here, not in a build, because a shipped
+installer is involved: the `installed` leg and the cycle check have to be re-run against new bytes, a
+`[Files]` change is behaviour and so this is 1.1.2 and not a doc patch, and two questions are yours —
+whether the new destination *replaces* `{app}\VST3` (an upgrade would then leave the old copy orphaned
+under `Programs\SKEER MIDI VAULT\VST3`, which Setup will not delete) or sits beside it, and how that
+squares with your standing rule that a bundle lives in exactly one place. Measurement and the three
+install routes are in `packaging/README.md`, "A host session".
+
 ---
 
 ## 7. Explicitly not doing

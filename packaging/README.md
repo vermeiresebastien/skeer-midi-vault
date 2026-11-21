@@ -303,8 +303,15 @@ alike. Three things are left, and none of them can be settled from a shell:
    what it installs, so as measured 2026-11-21 20:48Z this machine holds no copy of ours — neither
    `%LOCALAPPDATA%\Programs\SKEER MIDI VAULT` nor a `SKEER MIDI VAULT.vst3` in the shared scan folder,
    which contains only the sibling bundle. A host scan right now returns nothing, and that is not a
-   defect in these bytes. Install first (the Setup, or Setup elevated with `/ALLUSERS` for the shared
-   folder), then scan. And when you check from a shell whether the host is even up, match the image
+   defect in these bytes. Install first, then scan — and there are three ways to make a bundle visible
+   to this host, only two of which need elevation: the per-user Setup (which puts it in `{app}\VST3`, a
+   folder a host has to be pointed at by hand), the same Setup elevated with `/ALLUSERS` (the shared
+   scan folder), and copying `launch\VST3\SKEER MIDI VAULT.vst3` into
+   `%LOCALAPPDATA%\Programs\Common\VST3` — the user-writable root the census further down proves this
+   host already reads, which is the shortest route to a session and the easiest to undo. That third one
+   is deliberately not done for you here: it leaves a second copy of the bundle on the machine, and
+   retiring or duplicating a plug-in folder is a decision about your rig, not a step in a test plan.
+   And when you check from a shell whether the host is even up, match the image
    name exactly: it is `Ableton Live 12 Suite.exe`, and a case-insensitive filter on `ableton` also
    returns `ableton-mcp.exe` — on this machine that bridge was running, pid 13980, while Live was not,
    and the only honest signal was the bridge's own reply: `Could not connect to Ableton. Make sure the
@@ -333,6 +340,21 @@ alike. Three things are left, and none of them can be settled from a shell:
    by going red on a healthy cache. So the first row naming `SKEER MIDI VAULT` after an install means
    the scan found it and nothing else. Re-take the count after installing: a rescan is what rewrites
    that file, so a stale cache proves only what was true at the previous scan.
+
+   That script also censuses, and the census is the part that earned its keep. It prints every distinct
+   VST3 root a cache names and whether that folder still exists, not merely the folders the script was
+   written to look for — because a needle list can only confirm what its author already suspected. Run at
+   21:11 local on 2026-11-21, the two recent caches each name **three** roots and the needles covered one
+   of them: `C:\Program Files\Common Files\VST3` (751 rows in `12.3.2`, 742 in `12.3.5`), a `K:\` folder
+   holding a mounted backup of some other product's `Program Files` tree (1 row, present on disk), and
+   `C:\Users\Sebastien\AppData\Local\Programs\Common\VST3` — 2 rows in `12.3.2` and 4 in `12.3.5`, all
+   `ok`, and the `12.3.5` set includes `SKEER Vault.vst3` and `Expressive Drum.vst3` by full path. That
+   third root is the per-user VST3 folder: no elevation to write it, no admin to read it, and this host
+   has demonstrably enumerated bundles out of it. So "a per-user install has to be pointed at by hand" is
+   a fact about where *our* Setup puts the bundle (`{app}\VST3`), not about what this host scans — and the
+   machine-wide placement this release fixed has a per-user counterpart that was never the wrong folder,
+   just a private one. It is recorded as a numbered step in `docs/next-steps-2026-11.md` rather than
+   changed here, because it moves a shipped installer and would need the certification run again.
 
    What that session will be operating on, measured on this machine 2026-11-19 so nobody has to
    guess it mid-take:

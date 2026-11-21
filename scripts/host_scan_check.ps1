@@ -9,6 +9,9 @@
   This script reads that file and prints counts. It writes nothing, opens nothing, and starts no DAW.
   It refuses rather than reporting zeros when its own patterns cannot work - a counter that can only
   print 0 is worse than no counter, because 0 on this question reads as "not installed".
+  It also censuses *every* VST3 root the cache names, not just the ones listed below, because a needle
+  list can only confirm what the author already suspected. The per-user root this census turned up
+  (`%LOCALAPPDATA%\Programs\Common\VST3`) is the reason that rule is in the code.
 .EXAMPLE
   powershell -File scripts/host_scan_check.ps1
   powershell -File scripts/host_scan_check.ps1 -CacheFile "$env:APPDATA\Ableton\Live 12.3.2\Preferences\PluginScanDb.txt"
@@ -64,6 +67,26 @@ foreach ($t in $targets) {
     Write-Host '          this script reads, so every count above is meaningless. Fix the reader, not the host.'
     exit 1
   }
+  # The census: every distinct VST3 root this cache names, and whether that folder is still there.
+  $agg = @{}
+  foreach ($line in $text) {
+    $pm = [regex]::Match($line, '"([^"]+\.vst3[^"]*)"')
+    if (-not $pm.Success) { continue }
+    $rm = [regex]::Match($pm.Groups[1].Value, '(?i)^(.*\\VST3)\\')
+    if (-not $rm.Success) { continue }
+    $r = $rm.Groups[1].Value
+    if ($agg.ContainsKey($r)) { $agg[$r] = $agg[$r] + 1 } else { $agg[$r] = 1 }
+  }
+  $known = @($roots | ForEach-Object { $_.Lit.TrimEnd('\') })
+  Write-Host ("  distinct VST3 roots named in this cache : {0}" -f $agg.Count)
+  foreach ($kv in ($agg.GetEnumerator() | Sort-Object -Property Value -Descending)) {
+    if (Test-Path -LiteralPath $kv.Key) { $tag = '[on disk now]' } else { $tag = '[absent now]' }
+    $named = $false
+    foreach ($k in $known) { if ($kv.Key -like ($k + '*')) { $named = $true } }
+    if ($named) { $arrow = '' } else { $arrow = '   <-- read by this host, not named by the needles above' }
+    Write-Host ("    {0,5} rows  {1}  {2}{3}" -f $kv.Value, $kv.Key, $tag, $arrow)
+  }
+
   if ($shared -eq 0 -and $old -eq 0) {
     Write-Host 'NOTE - neither candidate folder appears. This host has not scanned either one, so a scan of'
     Write-Host '       ours here would prove nothing about placement until the host is pointed at a folder.'
