@@ -298,6 +298,22 @@ alike. Three things are left, and none of them can be settled from a shell:
    a Setup run or a hand copy, the file alone cannot say, but retiring it is a decision between your
    two plug-ins and not about a third party.
 
+   A running host is reachable from a shell, and that changes who has to answer what. Measured
+   2026-11-21 at 21:39Z through this machine's Ableton Live 12 MCP bridge: `plugins` → `VST3` offers
+   a vendor folder `SKEER` (BASSGEN, DRUMGEN, DRUMGEN Origin, SliceForge, VRAC+) and one
+   `SKEER Audio` holding exactly `SKEER Vault` — and **no `SKEER MIDI VAULT` entry anywhere in it**.
+   Asking for `Skeer Audio` and `SKEER Audio` returns the same URI, so the host folds the two vendor
+   spellings in this family onto one node. The disk census behind that answer: `C:\Program Files\Common
+   Files\VST3` held 56 bundles with none named for this product, `%LOCALAPPDATA%\Programs\Common\VST3`
+   exists and is empty, and the only copy of the bundle on the machine was `launch\VST3\`. So question
+   1 is still unanswered on the shipped bytes, for the reason the paragraph above gives rather than a
+   new one. What is different now is the cost of answering it: once the bundle sits in a folder this
+   host scans and he has pressed Rescan, the same browser query is a machine-readable yes-or-no for
+   recognition, and a host-side parameter read is the three exported controls counted by the host
+   rather than by `vault-editor-test`. Rescanning has no method on that bridge (none of its 37 tools
+   rescans), and neither does any of this without a write into a running set, so the two steps that
+   remain are the owner's by nature and not by shortage of tooling.
+
    Whether a host has anything to find at all is a machine state, not a property of the release, and
    the runbook above can leave you with the wrong one: `install_cycle_check.ps1 -AllUsers` *uninstalls*
    what it installs, so as measured 2026-11-21 20:48Z this machine holds no copy of ours — neither
