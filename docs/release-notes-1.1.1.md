@@ -173,14 +173,25 @@ true of one range and printed inside a sentence about another. A relational clai
 and this is the same class of defect as the two drifted line anchors above.
 
 None of it moves a shipped byte. `packaging/build_installer.ps1` reads none of those eight files as an
-input - its only mentions of `packaging\README.md` are a comment and a log string - and both artifacts
-were re-hashed against `SHA256SUMS.txt` at 21:01Z on 2026-11-21, with the tree seven commits past the
-tag: four documentation files and one read-only diagnostic script, none of them an input to the build,
-and the Setup still stamped 18:55:50Z from the certified run. Setup `d61324f2…`, ZIP `4a69a841…`, both
-MATCH. The release page text was
-corrected to the re-derived numbers. The tag object's message cannot be edited, only rewritten and
-force-pushed, and a second move of a published tag is its owner's call, so this section is where the
-discrepancy is recorded rather than silently patched.
+input - its only mentions of `packaging\README.md` are a comment and a log string. The test for that is
+a command, not a number:
+
+```
+git log --oneline v1.1.1..HEAD -- scripts/release_check.ps1 scripts/check_release_gate.py packaging/build_installer.ps1
+```
+
+prints nothing, because no commit past the tag touches a file the build reads. Both artifacts were
+re-hashed against `SHA256SUMS.txt` at 21:05Z on 2026-11-21 — Setup `d61324f2…`, ZIP `4a69a841…`, both
+MATCH — and the Setup still carries its 18:55:50Z timestamp from the certified run, which is what says the
+bytes were never rewritten.
+
+What sat here before pinned a commit count: "the tree seven commits past the tag". That was true of the
+tree it was written on and false of the commit it produced, which was the eighth. The tag message above
+miscounted by reading a closed range as an open one; this paragraph miscounted by recording its own
+post-image. An open-ended count has no stable value, so the carriers now give the command above, and the
+live release page lost its number the same way. The tag object's message cannot be edited, only rewritten
+and force-pushed, and a second move of a published tag is its owner's call, so this section is where both
+discrepancies are recorded rather than silently patched.
 
 ## Artifacts
 
