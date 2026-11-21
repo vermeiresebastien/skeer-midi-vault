@@ -90,6 +90,7 @@ node tests/midi-output-guard.mjs        # fake requestMIDIAccess: refused send, 
 node tests/space-activation.mjs         # Space reaches the focused control, not the transport
 node tests/deck-broken-row.mjs          # the deck walks past a row whose details/preview are empty
 node tests/scan-settings.mjs            # Settings → Scanning re-hash guard: PATCH, reload, re-arm
+powershell -File scripts/host_scan_check.ps1    # read-only: what the host's own VST3 scan cache proves
 powershell -File scripts/release_check.ps1              # the release gate; exit 0 READY / 1 NOT READY / 2 INCOMPLETE
 powershell -File scripts/release_check.ps1 -Fast        # gate, suite, licence, checksums only
 python scripts/check_release_gate.py    # falsifies that gate and the build script: 34 cases on a copied tree
