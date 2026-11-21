@@ -76,6 +76,17 @@ had before the edit, and for the two deliverables GitHub's own computed digest e
 `SHA256SUMS.txt` row printed on the page — a server-side check that does not go through anything this
 shell hashed.
 
+A second edit followed the 19:35:19Z run, same shape and same proof. That page's `installed` row said
+`not verified here`, which blurred two separate things. It now reads **registration** not verified
+and carries a section spelling out what *was* graded — all 198 payload files, nothing missing and
+nothing extra, on seven builds including the `855516d5bbee` one — and what was not: registration, the
+first launch of the installed executable, and the uninstall comparison, with the single command that
+runs all three. Read back after the edit, the live body equals the intended text apart from line
+endings, and the three assets still hold `2f11401d…460abc` at 25,671,169 B, `1ca58426…894916` at
+34,693,150 B and the 201-byte manifest — so the amendment moved no byte a user downloads. The
+sentence in that section claiming the two builds share their install inputs is the nine-path list
+above, not a new claim.
+
 Recording the publish run at all is possible because a tag pins it. **Order of work** below says the
 last gate run of a release is the one nobody records, since the commit that records it invalidates
 the bundle; that argument depends on `HEAD` being the only handle on the judged commit. Once the
