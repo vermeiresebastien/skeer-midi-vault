@@ -298,6 +298,18 @@ alike. Three things are left, and none of them can be settled from a shell:
    a Setup run or a hand copy, the file alone cannot say, but retiring it is a decision between your
    two plug-ins and not about a third party.
 
+   Whether a host has anything to find at all is a machine state, not a property of the release, and
+   the runbook above can leave you with the wrong one: `install_cycle_check.ps1 -AllUsers` *uninstalls*
+   what it installs, so as measured 2026-11-21 20:48Z this machine holds no copy of ours — neither
+   `%LOCALAPPDATA%\Programs\SKEER MIDI VAULT` nor a `SKEER MIDI VAULT.vst3` in the shared scan folder,
+   which contains only the sibling bundle. A host scan right now returns nothing, and that is not a
+   defect in these bytes. Install first (the Setup, or Setup elevated with `/ALLUSERS` for the shared
+   folder), then scan. And when you check from a shell whether the host is even up, match the image
+   name exactly: it is `Ableton Live 12 Suite.exe`, and a case-insensitive filter on `ableton` also
+   returns `ableton-mcp.exe` — on this machine that bridge was running, pid 13980, while Live was not,
+   and the only honest signal was the bridge's own reply: `Could not connect to Ableton. Make sure the
+   Remote Script is running.` A process sighting is not the DAW.
+
    What that session will be operating on, measured on this machine 2026-11-19 so nobody has to
    guess it mid-take:
    `%LOCALAPPDATA%\Skeer\MIDI Vault\midivault.sqlite3` is 449,347,584 bytes with
