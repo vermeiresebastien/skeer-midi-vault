@@ -22,6 +22,12 @@
 #   powershell -File packaging\install_cycle_check.ps1 -KeepInstall   # leave it installed to poke at
 #   powershell -File packaging\install_cycle_check.ps1 -FilesOnly -Dir D:\somewhere\empty
 #   powershell -File packaging\install_cycle_check.ps1 -AllUsers      # elevated prompt only
+#   powershell -File packaging\install_cycle_check.ps1 -WithShortcuts # assert the icons too
+#
+# By default the two shortcut tasks are declined, so the run needs no write in the user's real
+# Start Menu or on the desktop and the shortcuts row grades that absence. -WithShortcuts is the
+# customer-facing leg: it lets both tasks run, requires the two .lnk files at the paths the [Icons]
+# section actually declares, and the uninstall comparison then proves they were removed again.
 #
 # -AllUsers runs the machine-wide leg: Setup gets /ALLUSERS (the script allows the override at
 # packaging\skeer-midi-vault.iss:36), the shared-folder phase then requires the bundle to appear in
@@ -45,6 +51,7 @@ param(
     [switch] $Existing,
     [switch] $FilesOnly,
     [switch] $AllUsers,
+    [switch] $WithShortcuts,
     [string] $Dir
 )
 
@@ -75,9 +82,18 @@ if ($Dir) {
 }
 $Setup = Join-Path $Repo ("launch\SKEER-MIDI-VAULT-Setup-$Version.exe")
 $BundleExe = Join-Path $Repo "launch\$AppName\$ExeName"
-$Desktop = [Environment]::GetFolderPath('Desktop')
-$StartLnk = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\$AppName\$AppName.lnk"
-$DesktopLnk = Join-Path $Desktop "$AppName.lnk"
+# The [Icons] section declares {autoprograms}\SKEER AUDIO\{AppName} and {autodesktop}\{AppName},
+# so the group folder is the publisher, not the app, and both roots move with the install mode:
+# {autoprograms} is the user's Start Menu for a per-user Setup and ProgramData's for /ALLUSERS.
+if ($AllUsers) {
+    $StartRoot = Join-Path $env:ProgramData 'Microsoft\Windows\Start Menu\Programs'
+    $Desktop = [Environment]::GetFolderPath('CommonDesktopDirectory')
+} else {
+    $StartRoot = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs'
+    $Desktop = [Environment]::GetFolderPath('Desktop')
+}
+$StartLnk = Join-Path $StartRoot ('SKEER AUDIO\' + $AppName + '.lnk')
+$DesktopLnk = Join-Path $Desktop ($AppName + '.lnk')
 $UserLib = Join-Path $env:LOCALAPPDATA 'Skeer\MIDI Vault'
 $SystemVst3 = Join-Path ${env:ProgramFiles} 'Common Files\VST3'
 
@@ -382,13 +398,14 @@ Write-Host ('before: install dir ' + $before.install_dir + ', desktop shortcut '
 # ---------------------------------------------------------------------------
 $setupLog = Join-Path $Evidence 'setup-install.log'
 $installArgs = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART',
-                 '/MERGETASKS=!startmenuicon,!desktopicon',
                  ('/DIR="' + $InstallDir + '"'), ('/LOG="' + $setupLog + '"'))
-# The two shortcut tasks are declined because this is a throwaway install that the script uninstalls
-# again: a Start Menu entry and a desktop icon would be written into the user's real shell, point at
-# a folder this run is about to delete, and the uninstaller's own "left nothing behind" comparison
-# would then be grading shortcuts it had to clean up after a test that never needed them. It also
-# happens to remove the two out-of-workspace writes that a restricted shell refuses Setup -- measured
+if (-not $WithShortcuts) { $installArgs = @('/MERGETASKS=!startmenuicon,!desktopicon') + $installArgs }
+# The two shortcut tasks are declined unless -WithShortcuts says otherwise, because this is a
+# throwaway install that the script uninstalls again: a Start Menu entry and a desktop icon would be
+# written into the user's real shell, point at a folder this run is about to delete, and the
+# uninstaller's own "left nothing behind" comparison would then be grading shortcuts it had to clean
+# up after a test that never needed them. It also happens to remove the two out-of-workspace writes
+# that a restricted shell refuses Setup -- measured
 # 2026-11-19 on the shipped Setup, the payload copied 198/198 into a -Dir inside the repo and Setup
 # then died at Start Menu (Error 5, exit 4) before it ever reached the uninstall key. The [Icons]
 # entries stay declared in packaging\skeer-midi-vault.iss:98-99, and a wizard run still makes its own
@@ -556,15 +573,30 @@ if (-not (Test-Path -LiteralPath $pluginBinary)) {
     }
 }
 
-# Both shortcut entries are asserted. Whatever the installer created has to be back to its
-# original state after the uninstall, which is compared, not assumed.
+# The shortcuts row grades what this run asked Setup to do, and nothing else: the default route
+# declines both tasks, so a shortcut appearing is the defect there. -WithShortcuts runs them and
+# requires both .lnk files at the declared paths - which is also the only route that can tell a
+# correct expected path from a wrong one, because absence is what both produce.
 $startNow = Test-Path -LiteralPath $StartLnk
 $desktopNow = Test-Path -LiteralPath $DesktopLnk
 Write-Host ('       shortcuts after install: start menu ' + $startNow + ', desktop ' + $desktopNow)
-if ($startNow) {
-    Add-Row 'shortcuts' 'PASS' "start menu shortcut at $StartLnk"
+if ($WithShortcuts) {
+    $absent = @()
+    if (-not $startNow) { $absent += "start menu $StartLnk" }
+    if (-not $desktopNow -and -not $before.desktop_lnk) { $absent += "desktop $DesktopLnk" }
+    if ($absent.Count) {
+        Add-Row 'shortcuts' 'FAIL' ('the shortcut tasks were not declined, but no ' +
+            ($absent -join ' and no '))
+    } else {
+        Add-Row 'shortcuts' 'PASS' "start menu shortcut at $StartLnk, desktop shortcut at $DesktopLnk"
+    }
 } else {
-    Add-Row 'shortcuts' 'FAIL' "no start menu shortcut at $StartLnk"
+    if ($startNow -or $desktopNow) {
+        Add-Row 'shortcuts' 'FAIL' ('/MERGETASKS declined both tasks yet a shortcut exists: ' +
+            "start menu $startNow, desktop $desktopNow")
+    } else {
+        Add-Row 'shortcuts' 'PASS' 'no Start Menu or desktop shortcut, as the declined tasks asked'
+    }
 }
 
 # A per-user install must leave the shared all-users plug-in folder alone, and the installer says

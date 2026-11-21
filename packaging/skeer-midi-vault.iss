@@ -5,7 +5,7 @@
 ; User library data stays in %LOCALAPPDATA%\Skeer\MIDI Vault and is not removed.
 
 #define AppName "SKEER MIDI VAULT"
-#define AppVersion "1.1.0"
+#define AppVersion "1.1.1"
 #define AppPublisher "SKEER AUDIO"
 #define AppExeName "SKEER MIDI VAULT.exe"
 #ifndef SourceRoot
@@ -21,7 +21,7 @@ AppName={#AppName}
 AppVersion={#AppVersion}
 AppVerName={#AppName} {#AppVersion}
 AppPublisher={#AppPublisher}
-VersionInfoVersion=1.1.0.0
+VersionInfoVersion=1.1.1.0
 VersionInfoCompany={#AppPublisher}
 VersionInfoCopyright=Copyright (C) 2026 SKEER AUDIO. All rights reserved.
 VersionInfoDescription={#AppName} installer
@@ -76,7 +76,7 @@ function CommonVst3: Boolean;
 begin
   Result := IsAdminInstallMode;
   if Result then
-    Log('VST3: installing into ' + ExpandConstant('{commonpf64}\VST3') + '.')
+    Log('VST3: installing into ' + ExpandConstant('{commoncf64}\VST3') + '.')
   else
     Log('VST3: installed only in ' + ExpandConstant('{app}\VST3') + ' because this is a ' +
         'per-user install; the all-users plug-in folder was not touched. Re-run Setup with ' +
@@ -91,7 +91,10 @@ Source: "{#SourceRoot}\launch\SKEER MIDI VAULT\*"; DestDir: "{app}"; Flags: recu
 ; disagrees with AppVersion. Compiling without /DPluginStaged makes an installer with no plug-in
 ; in it, which is what -SkipPlugin needs to keep working instead of failing on a missing Source.
 Source: "{#SourceRoot}\launch\VST3\*"; DestDir: "{app}\VST3"; Flags: recursesubdirs createallsubdirs ignoreversion
-Source: "{#SourceRoot}\launch\VST3\*"; DestDir: "{commonpf64}\VST3"; Flags: recursesubdirs createallsubdirs ignoreversion; Check: CommonVst3
+; {commoncf64} is Common Files; {commonpf64} is plain Program Files, and C:\Program Files\VST3 is
+; not a folder hosts scan by default. The 64-bit constant rather than {commoncf}: the staged bundle
+; is x86_64-win, and {commoncf64} stays right whichever install mode Setup runs in.
+Source: "{#SourceRoot}\launch\VST3\*"; DestDir: "{commoncf64}\VST3"; Flags: recursesubdirs createallsubdirs ignoreversion; Check: CommonVst3
 #endif
 
 [Icons]

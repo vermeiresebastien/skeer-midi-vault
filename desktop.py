@@ -37,7 +37,7 @@ from midivault.scanner import ScanManager
 from midivault.server import _default_data_dir
 
 APP_NAME = "SKEER MIDI VAULT"
-VERSION = "1.1.0"
+VERSION = "1.1.1"
 MUTEX_NAME = "Local\\SkeerMidiVaultDesktopV1"
 PREFERRED_PORT = 8737
 
