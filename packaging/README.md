@@ -321,17 +321,26 @@ alike. Three things are left, and none of them can be settled from a shell:
    name: bytes 9-16 of our CID are ASCII `SkAuMvlt`, and exactly one bundle on the machine reports it.
    So question 1 is still unanswered on the shipped bytes, for the reason the paragraph above gives
    rather than a new one — and the browser was never the instrument that could answer it. What can is
-   the host's own scan database, re-read 2026-11-21 at 22:00Z with `scripts/host_scan_check.ps1`
-   (read-only): the newest cache, `Live 12.3.5\Preferences\PluginScanDb.txt`, last written 15 Nov at
-   16:49 with 3510 lines, holds **zero** rows containing our class ID in any of the four groupings that
-   file uses for it (`536b-4175`, `4d766c74`, `536b-41754d766c74`, `41754d766c74`) and zero naming
-   `SKEER MIDI VAULT`. A CID match cannot be fooled by a rename and cannot be missed by a subfolder,
-   which is more than either check above can say. Two facts in the same read change what a rescan will
-   prove: the cache has not been rewritten although Live is running now, so **its mtime moving is
-   itself the machine-readable evidence that a scan happened**; and 656 of the 742 rows under
-   `C:\Program Files\Common Files\VST3` point inside vendor subfolders, so this host scans recursively
-   and a bundle in `…\VST3\Skeer Audio\` would be found as readily as one at the top level — worth
-   knowing before the 1.1.2 placement decision is taken. Once a scan has happened, a host-side
+   the host's own scan database, and the instrument is now `scripts/host_scan_check.ps1` (read-only),
+   which takes the class ID from `plugin/CMakeLists.txt` rather than repeating it. Run 2026-11-21 at
+   22:14Z against all four caches on this machine: the newest, `Live 12.3.2`, was **last written at
+   22:14 local — sixty minutes before that read, with Live running** — so a scan genuinely did happen
+   today, and its 1414 device rows carry zero of our class ID and no row of any kind names
+   `SKEER MIDI VAULT`. `Live 12.3.5` (3510 lines, last written 15 Nov 16:49) reads the same, and it was
+   the 22:00Z figure; the four needles that first pass counted were substrings of one spelling, so they
+   proved one thing rather than four. The control run is what found the spelling: the same script
+   pointed at a sibling pair, `-VendorCode Sker -PluginCode Vrac`, finds `SkerVrac` in one device row of
+   the very cache where all four needles for us read 0. That row spells the ID `536b-657256726163`, so a
+   CID matches only across the host's 8-4-4-4-12 grouping and never as one contiguous run — which is why
+   the script counts both spellings and takes the larger, and why a reader written to the contiguous form
+   alone reports "not installed" about a plug-in the host has recognised. Two of those 1414 rows carry
+   §6's finding into the host's own file: `VRAC+` is cached twice, as `SkerVrac` from vendor `SKEER` and
+   as `ErwmVrac` from vendor `Earworm`, and `SliceForge` is cached under `ErwmVrac` — two products, one
+   identity, in a list a person reads. So the cache being rewritten is the machine-readable proof that a
+   scan happened, and 656 of the 751 rows under `C:\Program Files\Common Files\VST3` point inside vendor
+   subfolders (the same 656 of the older cache's 742), so this host scans recursively and a bundle in
+   `…\VST3\Skeer Audio\` would be found as readily as one at the top level — worth knowing before the
+   1.1.2 placement decision is taken. Once a scan has happened, a host-side
    parameter read is the three exported controls counted by the host rather than by
    `vault-editor-test`. Rescanning has no method on that bridge (none of its 37 tools
    rescans), and neither does any of this without a write into a running set, so the two steps that

@@ -430,6 +430,18 @@ Vault `SkerSkrv`↔`sample-vault`, PulseKit `WkauPlkt`↔`pulsekit`, SKULPT `SkA
 `SliceForge.vst3` carries `ErwmVrac` — VRAC+'s pair rather than its own, which is the reuse hazard
 below already realised once on this disk.
 
+The host's own cache now says it back without being asked. `scripts/host_scan_check.ps1` counts a
+class-ID pair in `%APPDATA%\Ableton\Live *\Preferences\PluginScanDb.txt`; run against a sibling pair as
+a control (`-VendorCode Sker -PluginCode Vrac`) it finds one device row carrying `SkerVrac`, and the
+product-half needle finds three carrying `Vrac` — `VRAC+` twice, once as `SkerVrac` under vendor `SKEER`
+and once as `ErwmVrac` under vendor `Earworm`, plus `SliceForge` under `ErwmVrac`. So the reuse hazard
+above is not only on the disk: it is in the browser menu a producer reads, as two entries with one name
+and one entry wearing another product's identity. That is the argument for testing recognition by ID.
+The same control settled how to spell the needle — Live writes a CID in 8-4-4-4-12 groups, so our pair
+appears as `536b-41754d766c74` and never as the contiguous sixteen hex digits, and a script that counted
+only the contiguous form would report "not installed" about a plug-in this host has recognised. Both
+spellings are counted and the larger taken, measured 2026-11-21 at 22:14Z.
+
 PulseKit is the natural experiment that settles the asymmetry, and this machine's own scan cache
 witnesses it: the row for `PulseKit.vst3` names the vendor **"Workshop Audio"** while the moduleinfo of
 that same bundle on disk reads `Skeer Audio` — the spelling was changed, the host has not rescanned
