@@ -208,10 +208,14 @@ Add/Remove Programs gained the entry and went back to `0 entry(ies)`; the second
 only earlier pass was against a hand-copied tree; the user library at
 `%LOCALAPPDATA%\Skeer\MIDI Vault` came through untouched; and the census of
 `C:\Program Files\Common Files\VST3` read 1317 entries before and the same 1317 after, in both
-runs. Two things that does **not** settle: both runs were per-user, so the bundle landed in
-`{app}\VST3` and the `/ALLUSERS` leg is still open (item 1 below); and these are 1.1.0 bytes, so
-the 1.1.1 Setup owes its own run — which is what `release_check.ps1`'s `installed` stage does
-against the bytes it has just built.
+runs. Two things that did **not** settle there have since settled, both on 1.1.1 bytes: the
+1.1.1 Setup got its own run from `release_check.ps1`'s `installed` stage
+(`install-cycle-20261121-185610`, `CYCLE OK - 17 phases passed`, shared folder unchanged at 1317),
+and the `/ALLUSERS` leg both of those per-user runs left open was executed from an elevated prompt
+and graded green — `shared-folder PASS`, 2 files placed under `C:\Program Files\Common Files\VST3`,
+every one inside our own bundle, and the uninstall returning the folder to the census it started
+from. Item 1 below carries the detail, including the first attempt that went red on the grader
+rather than on the installer.
 
 One item that used to open that list is no longer in it: the licence page has been seen the way a
 buyer sees it. On 2026-11-18 the wizard opened on *License Agreement* with §6 and §7 filled —
@@ -240,8 +244,16 @@ alike. Three things are left, and none of them can be settled from a shell:
    all-users mode. One command grades that leg instead of asking you to read a log: `packaging\install_cycle_check.ps1 -AllUsers`,
    from an elevated prompt — it refuses in preflight when the terminal is not admin, so it cannot
    half-install, and it requires both the `VST3: installing into` line and a shared folder whose
-   only new entries are inside `SKEER MIDI VAULT.vst3`. Either way the plug-in should be listed as
-   *SKEER MIDI VAULT* **1.1.0**: that number comes from the staged bundle's `moduleinfo.json`, is
+   only new entries are inside `SKEER MIDI VAULT.vst3`. That command has now run: 2026-11-21, 18:56Z,
+   against the 1.1.1 Setup the certification built, and it ended `CYCLE OK - 18 phases passed` with
+   `shared-folder PASS - 2 file(s) placed under C:\Program Files\Common Files\VST3, every one inside
+   our own bundle, and nothing else in that folder moved` and `uninstall PASS - shared VST3 folder
+   still unchanged`. The attempt 16 minutes earlier graded that row **FAIL**, and the fault was the
+   grader's: it matched diff entries against `^SKEER MIDI VAULT\.vst3`, but the helper emits
+   `added: <path>`, so no entry could ever classify as ours — while Setup's own log had listed both
+   files created under `Common Files\VST3` and both deleted on uninstall. Fix-forward commits
+   `7055952` (the destination) and `10fbc15` (the grader). Either way the plug-in should be listed as
+   *SKEER MIDI VAULT* **1.1.1**: that number comes from the staged bundle's `moduleinfo.json`, is
    what a host displays, and the build refuses to ship a bundle whose copy disagrees with the
    release. The same `moduleinfo.json` declares the class under `Sub Categories: ["Fx"]` on
    VST 3.7.12, so a host that groups by category files it with the effects, not with the

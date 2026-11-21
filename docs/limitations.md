@@ -269,12 +269,18 @@ now does put a VST3 somewhere**. Where it lands is the remaining caveat, and it 
 how Setup was run. At the default lowest privileges it goes into
 `{app}\VST3`, a folder no host scans automatically, so add it to the host's VST3 search
 paths or re-run Setup with `/ALLUSERS`, which also copies it to
-`%ProgramFiles%\Common Files\VST3` where every host looks. The Setup log names which of the
-two happened. Either way nothing in the installer edits, adds or removes a host's own scan
-path, and the `/ALLUSERS` leg has never been executed here because elevation is not
-available in this environment — `packaging\install_cycle_check.ps1 -AllUsers` is the command that
-grades it, and it refuses rather than half-installs when the terminal is not elevated; see
-`packaging/README.md`.
+`%ProgramFiles%\Common Files\VST3` where every host looks — and that is exactly what 1.1.1 changed:
+1.1.0 sent the machine-wide copy to `%ProgramFiles%\VST3`, a folder no host scans by default, while
+its own Setup log and these pages said "Common Files". The log now prints the expanded path, so the
+log — not the documentation — is the authority on where a given install put it. Either way nothing
+in the installer edits, adds or removes a host's own scan
+path. The `/ALLUSERS` leg is no longer unexecuted: from an elevated terminal on 2026-11-21,
+`packaging\install_cycle_check.ps1 -AllUsers` ended `CYCLE OK - 18 phases passed` against the 1.1.1
+Setup, with the bundle placed under `C:\Program Files\Common Files\VST3`, nothing else in that folder
+moved, and the uninstall returning it to the 1317 entries it was censused at. The same command
+refuses rather than half-installs when the terminal is not elevated; see `packaging/README.md`.
+What still has no evidence is the next link in the chain: **no host has been shown loading the
+bundle from that folder**, which takes a session in a real DAW and nothing a shell can substitute.
 
 - It has a browser panel over the app's own index — filter box, one list, the three
   exported controls (Follow Host Tempo, Transpose, Loop), and a status strip that says

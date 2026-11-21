@@ -1,7 +1,8 @@
 # Deliverable status: completed, partial, missing
 
-Scoped to the version 1.0.0 brief and re-checked against the 1.1.0 tree on
-2026-11-17. "Completed" means implemented in this workspace and exercised by
+Scoped to the version 1.0.0 brief, re-checked against the 1.1.0 tree on
+2026-11-17 and against the 1.1.1 tree on 2026-11-21. "Completed" means implemented
+in this workspace and exercised by
 tests where the environment permits. Environment-blocked verification is called
 out explicitly.
 
@@ -96,7 +97,7 @@ out explicitly.
 - [x] Standalone PyInstaller application containing the Python runtime and web
       interface; packaged smoke test passes (health, frozen process-worker scan,
       quit, no orphan workers).
-- [x] Per-user Windows installer (`SKEER-MIDI-VAULT-Setup-1.1.0.exe`) that stages the
+- [x] Per-user Windows installer (`SKEER-MIDI-VAULT-Setup-1.1.1.exe`) that stages the
       app, the interface, the provenance stamp and the VST3 bundle, with the EULA page
       (both fields filled and compiled in on 2026-11-18) and the application icon and
       version metadata; no Python, Node.js or admin rights required. The licence page was
@@ -108,11 +109,13 @@ out explicitly.
       of the installed executable are implemented in `packaging/skeer-midi-vault.iss` and
       are graded by `packaging/install_cycle_check.ps1` — see **Partial** for which legs
       this machine could not execute.
-- [x] VST3 plug-in (`SKEER MIDI VAULT.vst3`, same 1.1.0 version as the app) shipped
+- [x] VST3 plug-in (`SKEER MIDI VAULT.vst3`, same 1.1.1 version as the app) shipped
       inside both deliverables: an editor panel with a filter box, the library list and
       three exported controls, reading the app's own index read-only. It is placed in
       `{app}\VST3` for a per-user install and additionally in
-      `Common Files\VST3` when Setup runs with `/ALLUSERS`.
+      `Common Files\VST3` when Setup runs with `/ALLUSERS` — the machine-wide placement
+      that 1.1.0 got wrong, graded on the 1.1.1 artifact by an executed `-AllUsers` cycle
+      rather than asserted (see **Partial**).
 - [x] Build provenance: `_internal/buildinfo/BUILDINFO.json` inside the bundle
       (commit, dirty flag, status/diff/untracked digests, `web/dist` hash), published
       by `/api/health` and the debug surface.
@@ -195,20 +198,24 @@ out explicitly.
   — `install-cycle-20261121-153747` (tasks declined) and `install-cycle-20261121-153801`
   (`-WithShortcuts`), each `CYCLE OK - 17 phases passed` against the 1.1.0 shipping Setup, with the
   shared-VST3 census reading 1317 entries before and after both. See
-  `packaging/README.md`, "The install → run → uninstall cycle". What still has not run is one
-  narrower thing: the
-  `/ALLUSERS` leg — including the `Common Files\VST3` copy — has never run at all: this shell is
-  not elevated (`IsAdmin=False`, measured 2026-11-18), the bundle is not in
-  `Common Files\VST3`, and the consent prompt that leg needs is the owner's to answer, not the
-  agent's. It is no longer an instruction without a test, though: `install_cycle_check.ps1 -AllUsers`
-passes the switch, demands the `VST3: installing into` line in the Setup log, and fails if anything
-in that shared folder outside our own bundle moved — the refusal path is measured, the elevated
-path is not. What this machine could reach on its own was a *relocated* copy of that payload:
+  `packaging/README.md`, "The install → run → uninstall cycle". The one leg narrower than that —
+  `/ALLUSERS`, and with it the `Common Files\VST3` copy — ran at 18:56Z the same day from an elevated
+  terminal, against the Setup the 1.1.1 certification had just built, and ended
+  `CYCLE OK - 18 phases passed`: `shared-folder PASS` with 2 files placed under
+  `C:\Program Files\Common Files\VST3`, every one inside our own bundle, nothing else in that folder
+  moved, and the folder back at its censused 1317 entries after the uninstall. It took two runs
+  eighteen minutes apart because the first graded that row **FAIL** on a defect in the grader rather
+  than in the installer: Setup's own log had already listed both files created and both deleted
+  again. The command still refuses from this shell — it is not elevated (`IsAdmin=False`, measured
+  2026-11-18) and the consent prompt is the owner's to answer, so `-AllUsers` fails in preflight with
+  `CYCLE NOT RUN - preflight refused; nothing was installed` rather than half-installing. What this
+  machine could reach on its own was a *relocated* copy of that payload:
   `python tests/test_packaged_smoke.py` under `SKEER_PACKAGED_EXE` PASSed against a hand-copied
-  install tree with `built from c520d03eed51 clean`, and the two 2026-11-21 cycles' `installed-run`
+  install tree with `built from c520d03eed51 clean`, and the 2026-11-21 cycles' `installed-run`
   rows do the same from a folder Setup actually registered — so the executable has now been run from
-  `launch/`, from a hand-copied tree, and from an installed location, and only the machine-wide
-  placement of the VST3 bundle is still unwitnessed.
+  `launch/`, from a hand-copied tree, and from installed locations in both install modes. What is
+  still unwitnessed is not where the bundle is placed but who reads it: no host has been shown
+  loading it, which is the "Plug-in interaction in a real host" bullet below.
 - **Installer signing.** The Setup EXE is unsigned (`NotSigned`). Windows SmartScreen
   warning is expected until an Authenticode certificate is applied. `build_installer.ps1`
   is signing-ready through an inert-by-default `-Sign` switch that signs the app before

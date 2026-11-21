@@ -45,7 +45,20 @@ Rules:
   `{commonpf64}\VST3` therefore put it in a folder no host scans, while the log line and the
   README both said "Common Files" — the text was describing the constant the author meant,
   and the constant was wrong. Name the destination by the path Inno will actually produce.
-  Shipped 1.1.0 that way; 1.1.1 installs to `{commoncf64}\VST3`.
+  Shipped 1.1.0 that way. 1.1.1 installs to `{commoncf64}\VST3`, and that is no longer a claim about
+  a constant: `install_cycle_check.ps1 -AllUsers` ran elevated on 2026-11-21 against the Setup the
+  1.1.1 certification built and graded `shared-folder PASS - 2 file(s) placed under
+  C:\Program Files\Common Files\VST3, every one inside our own bundle`, with the uninstall returning
+  the folder to its censused 1317 entries. The same build's per-user arm was graded in the same
+  minute by the gate's `installed` stage (`17 phases`, shared folder untouched), so both branches of
+  `CommonVst3` have now been exercised against one artifact.
+- A `Census-Diff` entry in `packaging\install_cycle_check.ps1` reads `"added: <relative path>"`, so a
+  filter anchored on the path alone (`-match '^SKEER MIDI VAULT\.vst3'`) matches nothing and that row
+  can only ever FAIL. That is how the first `-AllUsers` run reported that the bundle had not landed
+  while Setup's own log listed both files created and both deleted again. Anchor on the verb. And
+  when a check goes red on its **first** execution against a condition it has never seen, read the
+  artifact's log before believing the check: here the red was real evidence about the checker and
+  nothing else.
 - An Inno `[Code]` section comment must be `//` or `{ }`. A `;` there is not a
   comment, it is a syntax error (`'BEGIN' expected`), because the section is handed
   to the script compiler instead of being read as an ini-style list. Measured on
@@ -116,15 +129,15 @@ repo-relative folder and `files` reports every destination as outside the reques
 a **hand-run** Setup will not open its wizard until its own `TMP`/`TEMP` point inside the workspace
 — it is refused the `is-XXXX.tmp` it makes under `%TEMP%` and `/TMPDIR` is not accepted on this
 command line (exit 1, no log), while the check itself has redirected them since
-[packaging/install_cycle_check.ps1:198](packaging/install_cycle_check.ps1).
+[packaging/install_cycle_check.ps1:225](packaging/install_cycle_check.ps1).
 And no `-Dir` can finish the cycle from here, though the script fixed its part on 2026-11-19:
-the Start Menu entry at [packaging/skeer-midi-vault.iss:98](packaging/skeer-midi-vault.iss) now
-carries the `startmenuicon` task (`:98`), the desktop icon the `desktopicon` task (`:99`), so
+the Start Menu entry at [packaging/skeer-midi-vault.iss:101](packaging/skeer-midi-vault.iss) now
+carries the `startmenuicon` task (`:101`), the desktop icon the `desktopicon` task (`:102`), so
 `/MERGETASKS=!startmenuicon,!desktopicon` — or declining the checkboxes in the wizard — removes
 both out-of-workspace icon writes (re-measured on the rebuilt deliverable's own Setup: 199 files
 install either way, 3 Start Menu + 2 desktop `.lnk` attempts by default and **0 of each** with both
 declined, first refusal moving to the registry key). The check now passes that flag itself at
-[packaging/install_cycle_check.ps1:385](packaging/install_cycle_check.ps1) — a throwaway install the
+[packaging/install_cycle_check.ps1:402](packaging/install_cycle_check.ps1) — a throwaway install the
 script is about to uninstall has no business putting shortcuts in the user's real shell — and the
 flag is honoured rather than assumed: with it, `-FilesOnly -Dir <inside the repo>` reports
 `files PASS - 199 file(s) installed … all 198 payload file(s), nothing extra` and Setup dies at the

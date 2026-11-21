@@ -369,6 +369,12 @@ the run reports `orphan workers []`, prints PASS, and the stage exits 0.
    with `CYCLE NOT RUN - preflight refused; nothing was installed` and exit 1 (and the same with
    `-FilesOnly`, which contradicts it), so the refusal path is proven and the elevated path —
    like `-Sign` — has never executed from here.
+   *(Superseded 2026-11-21, later the same day, on 1.1.1 bytes rather than these: the elevated
+   `-AllUsers` leg ran and ended `CYCLE OK - 18 phases passed`, with the bundle placed under
+   `C:\Program Files\Common Files\VST3` and the folder returned to its censused 1317 entries. The
+   reason it needed 1.1.1 is item 1 of `packaging/README.md` — 1.1.0 wrote that copy to
+   `C:\Program Files\VST3`, so "no host on this machine can see it yet" was true of this release
+   even after a successful machine-wide install. See [Release notes 1.1.1](release-notes-1.1.1.md).)*
 4. **The installer is unsigned.** `Get-AuthenticodeSignature` reports `NotSigned` for both
    `SKEER-MIDI-VAULT-Setup-1.1.0.exe` and the bundled app executable. `-Sign` exists and is
    inert by default; it has never executed, because there is no Authenticode certificate

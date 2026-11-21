@@ -23,17 +23,24 @@ sequence without opening a DAW. Files stay where they are and are never modified
 ## Install (Windows 10/11, recommended)
 
 The standalone builds all land in one local folder, **`launch/`**, and the same files are published
-as assets on the **[v1.1.0 release](https://github.com/vermeiresebastien/skeer-midi-vault/releases/tag/v1.1.0)**:
+as assets on the **[v1.1.1 release](https://github.com/vermeiresebastien/skeer-midi-vault/releases/tag/v1.1.1)**:
 
-- **[SKEER-MIDI-VAULT-Setup-1.1.0.exe](https://github.com/vermeiresebastien/skeer-midi-vault/releases/download/v1.1.0/SKEER-MIDI-VAULT-Setup-1.1.0.exe)** —
+- **[SKEER-MIDI-VAULT-Setup-1.1.1.exe](https://github.com/vermeiresebastien/skeer-midi-vault/releases/download/v1.1.1/SKEER-MIDI-VAULT-Setup-1.1.1.exe)** —
   per-user installer, the file to send to customers. No Python, Node.js, terminal
-  or admin rights required. It also carries the VST3 plug-in (see below).
-- **[SKEER-MIDI-VAULT-Portable-1.1.0.zip](https://github.com/vermeiresebastien/skeer-midi-vault/releases/download/v1.1.0/SKEER-MIDI-VAULT-Portable-1.1.0.zip)** —
+  or admin rights required. It also carries the VST3 plug-in (see below); run it with
+  `/ALLUSERS` from an elevated terminal and the plug-in also goes to
+  `C:\Program Files\Common Files\VST3`, which is where hosts look by default.
+- **[SKEER-MIDI-VAULT-Portable-1.1.1.zip](https://github.com/vermeiresebastien/skeer-midi-vault/releases/download/v1.1.1/SKEER-MIDI-VAULT-Portable-1.1.1.zip)** —
   extract and run: the app bundle plus the staged `VST3/` folder. Double-click
   `SKEER MIDI VAULT.exe` inside the bundle; keep `_internal/` beside the exe, it holds the Python
   runtime and the interface bundle.
-- **[SHA256SUMS.txt](https://github.com/vermeiresebastien/skeer-midi-vault/releases/download/v1.1.0/SHA256SUMS.txt)** —
+- **[SHA256SUMS.txt](https://github.com/vermeiresebastien/skeer-midi-vault/releases/download/v1.1.1/SHA256SUMS.txt)** —
   SHA-256 checksums for release distribution.
+
+[Version 1.1.1](docs/release-notes-1.1.1.md) is the current release; it exists because
+[v1.1.0](https://github.com/vermeiresebastien/skeer-midi-vault/releases/tag/v1.1.0) put that
+machine-wide plug-in one folder too high, where no host scans it. The 1.1.0 assets stay published
+and its index opens in 1.1.1 unchanged.
 
 `launch/` is gitignored and refreshed by `packaging/build_installer.ps1`, which
 writes every one of these deliverables there.
@@ -303,10 +310,10 @@ the optional benchmark script to sample process-tree memory.
 
 | Check | Result | Report |
 | --- | --- | --- |
-| Python unit/integration tests | **104/104** (2026-11-17; includes schema migration, the loopback boundary and the version gate) | [`docs/test-report.md`](docs/test-report.md) |
-| VST3 plug-in suites (headless) | **6/6** on both JUCE 8.0.4 and 8.0.8, and the bundle's `moduleinfo.json` reads 1.1.0 | [`plugin/build.ps1`](plugin/build.ps1) |
-| Installer payload | real Setup installed **all 198 payload files**, nothing missing, nothing extra (measured 2026-11-17, re-run 2026-11-18 on the clean `766aa31` build, on the Setup rebuilt after the licence fill — `-FilesOnly` and interactive alike — and on the Setup the final gate rebuilt from `a4708a87ec6d`; what no build has passed are the registration legs, which this shell refuses Setup outside the workspace) | [`packaging/install_cycle_check.ps1`](packaging/install_cycle_check.ps1) |
-| Release gate | `scripts/release_check.ps1` exits 0 only when every selected stage ran and passed; falsifier prints **FALSIFIER OK**, re-verified 2026-11-18 on both states of the licence page. Every eleven-stage run recorded since the two seller fields were filled that day reports `NOT READY - 10 passed, 1 failed` — only `installed`, this shell refusing Setup a folder — and each `stamp PASS - clean` beside the commit it judged is tabled in [`docs/release-notes-1.1.0.md`](docs/release-notes-1.1.0.md) | [`packaging/README.md`](packaging/README.md) |
+| Python unit/integration tests | **104/104** (re-run 2026-11-21 on the 1.1.1 tree; first measured 2026-11-17 — includes schema migration, the loopback boundary and the version gate) | [`docs/test-report.md`](docs/test-report.md) |
+| VST3 plug-in suites (headless) | **6/6** on both JUCE 8.0.4 and 8.0.8, and the bundle's `moduleinfo.json` reads 1.1.1 | [`plugin/build.ps1`](plugin/build.ps1) |
+| Installer payload | real Setup installed **all 198 payload files**, nothing missing, nothing extra (graded by `install_cycle_check.ps1 -FilesOnly -Dir`, measured 2026-11-17 and re-run on later builds). On 1.1.1 the same 198 appear in Setup's own file log: 199 destinations under the app folder, the 199th being the generated `unins000.exe`, and nothing outside its declared targets. The registration legs that this shell could not reach have since been run from an elevated terminal: install, Add/Remove Programs entry, first launch from the registered folder, smoke test against the installed exe, and an uninstall that left the machine as it found it — and on 1.1.1 the `/ALLUSERS` machine-wide leg too, which put the bundle in `Common Files\VST3` and took it back out | [`packaging/install_cycle_check.ps1`](packaging/install_cycle_check.ps1) |
+| Release gate | `scripts/release_check.ps1` exits 0 only when every selected stage ran and passed; falsifier prints **FALSIFIER OK**, re-verified 2026-11-18 on both states of the licence page. The 1.1.1 certification run at 2026-11-21 18:51Z reports `READY - 11 passed, 0 failed, 0 skipped, of 11 stages, release 1.1.1`, with `installed` a completed cycle rather than a skip because that run was elevated; earlier runs from this shell report `NOT READY - 10 passed, 1 failed` for the one stage a restricted terminal cannot grade, and each `stamp PASS - clean` beside the commit it judged is tabled in [`docs/release-notes-1.1.1.md`](docs/release-notes-1.1.1.md) | [`packaging/README.md`](packaging/README.md) |
 | Browser end-to-end checks | **16/16** (piano-roll drag and scrub included) | [`docs/e2e-results.json`](docs/e2e-results.json) |
 | Autoplay deck checks | **8/8** — auto-advance, bounded run, manual stop, selection survives filtering | [`tests/autoplay-deck.mjs`](tests/autoplay-deck.mjs) |
 | Sound path and interaction checks | **23/23** across four harnesses — MIDI output lifecycle, Space activation, deck past a soundless row, scan-setting round trip | [`docs/test-report.md`](docs/test-report.md) |
@@ -315,8 +322,9 @@ the optional benchmark script to sample process-tree memory.
 | Scan/search benchmark | 1,000 files: **83 files/s** full, **255 files/s** incremental; peak tree RSS **88.2 MB**; search p50 **~13.5 ms** | [`docs/benchmark-results.json`](docs/benchmark-results.json) |
 | Playback stability | source-time drift **0.989×** over 7.6 s while scanning and filtering; 0 late/0 skipped notes | [`docs/playback-stability.json`](docs/playback-stability.json) |
 
-The Python, plug-in, installer-payload and release-gate rows were measured against the
-1.1.0 build on 2026-11-17. The browser, autoplay, sound-path, benchmark and playback rows
+The Python, plug-in, installer-payload and release-gate rows are the **1.1.1** measurements,
+taken 2026-11-21 inside the certification run at `10fbc15aeb07`; the same four rows carried the
+1.1.0 build's figures on 2026-11-17. The browser, autoplay, sound-path, benchmark and playback rows
 are the 2026-11-15 measurements — those harnesses have not been re-run since, and their
 figures are quoted as of that date in `docs/test-report.md`.
 
@@ -370,13 +378,15 @@ The installer build needs Inno Setup 6; see
 
 ## Status
 
-Version **1.1.0** — the VST3 plug-in ships with the installer, every deliverable
+Version **1.1.1** — the VST3 plug-in ships with the installer and, on a machine-wide
+install, now lands in the folder hosts actually scan; every deliverable
 carries a provenance stamp naming its commit, and one command decides whether a
 build may leave the machine: `scripts\release_check.ps1`. The feature report lists
 implemented, partial and deliberately missing work:
 [Completed / partial / missing](docs/completed-partial-missing.md). What is new and
 what is still only true conditionally:
-[Release notes 1.1.0](docs/release-notes-1.1.0.md). Earlier:
+[Release notes 1.1.1](docs/release-notes-1.1.1.md). Earlier:
+[Release notes 1.1.0](docs/release-notes-1.1.0.md) and
 [Release notes 1.0.0](docs/release-notes-1.0.0.md).
 
 ## SKEER identity
