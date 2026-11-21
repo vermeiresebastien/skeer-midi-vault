@@ -153,6 +153,24 @@ Test infrastructure, not a shipped byte: none of the commits
 after `10fbc15` are read by `packaging/build_installer.ps1`, so `launch/` still holds what that
 certified build wrote, byte for byte.
 
+## The tag message counts its own delta from the wrong base
+
+The annotated tag says it carries "three commits after that build - two documentation and one
+test-infrastructure - and `build_installer.ps1` reads none of the four distinct files they touch".
+Against the build commit it names, `git rev-list --count 10fbc15..v1.1.1^{commit}` is **four** and the
+distinct-file list is **eight** - seven documentation files plus `scripts/check_release_gate.py`. The
+smaller pair was measured from `a8c9f28`, the commit the tag was moved off the same day: the count was
+true of one range and printed inside a sentence about another. A relational claim carries its base,
+and this is the same class of defect as the two drifted line anchors above.
+
+None of it moves a shipped byte. `packaging/build_installer.ps1` reads none of those eight files as an
+input - its only mentions of `packaging\README.md` are a comment and a log string - and both artifacts
+were re-hashed against `SHA256SUMS.txt` at 20:48Z on 2026-11-21, with the tree past the tag on
+documentation-only commits: Setup `d61324f2…`, ZIP `4a69a841…`, both MATCH. The release page text was
+corrected to the re-derived numbers. The tag object's message cannot be edited, only rewritten and
+force-pushed, and a second move of a published tag is its owner's call, so this section is where the
+discrepancy is recorded rather than silently patched.
+
 ## Artifacts
 
 Both carry the same 198 payload files, counted off the artifacts themselves: the ZIP holds 198
