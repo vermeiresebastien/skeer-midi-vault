@@ -169,6 +169,13 @@ quietly stopped holding the published bytes. So after any full run: re-hash agai
 `SHA256SUMS.txt` **and** the release page, and read a mismatch as "this is a newer build", never as
 corruption. `-Fast` cannot do this — its stage list is `gate, suite, licence, checksums`, and the
 only block that writes into `launch/` sits behind the `if ($Stages -contains 'installer')` guard.
+That last sentence was first read off the guard, and it has since been tested: the stage that could
+write into `launch/` without meaning to is `smoke`, because the harness launches the packaged exe with
+`cwd=str(EXE.parent)` — i.e. with the bundle directory as the working directory — and it passes
+`--data-dir` at `tests\packaged-smoke-data\`, which it deletes both before starting and in its
+`finally`. Measured against the certified 1.1.1 run: **0** files anywhere under
+`launch\SKEER MIDI VAULT\` are newer than the Setup that same run built, so the smoke stage leaves the
+bundle byte-identical and the `installer` guard really is the only writer.
 
 `tests/midi-output-guard.mjs`, `space-activation.mjs`, `deck-broken-row.mjs` and
 `scan-settings.mjs` need no service: `tests/app-harness.mjs` serves the real
