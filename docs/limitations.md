@@ -230,11 +230,13 @@ general-purpose classification accuracy.
   requested directory. Run without `-Dir`, Setup never reaches its
   target and `files` reports FAIL for that reason alone. The Add/Remove Programs entry, the
   shortcuts, the first launch of the installed executable and the uninstall comparison
-  have therefore never completed anywhere: run
-  `powershell -File packaging\install_cycle_check.ps1` once on a normal user desktop
-  before selling. The portable ZIP and the packaged app do pass their smoke tests, and so does a
+  have therefore never completed *from this shell* — they completed on 2026-11-21 from an elevated
+  terminal, twice, `CYCLE OK - 17 phases passed` each way, with the shared VST3 folder read back at
+  the same 1317 entries it started with; the runs and what each row proved are recorded in
+  `packaging/README.md`. One leg is still open: `/ALLUSERS`, whose consent prompt is the owner's to
+  answer. The portable ZIP and the packaged app do pass their smoke tests, and so does a
   hand-copied relocated payload under `SKEER_PACKAGED_EXE` — but that is the executable running
-  from a folder, not from a registered install.
+  from a folder, not from a registered install, and the registered case is now the elevated one.
 - No local model is installed or downloaded. The optional local-model integration
   point is an architecture seam for later work.
 - Third-party npm packages are used to build/serve the interface

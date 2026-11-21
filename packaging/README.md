@@ -196,13 +196,22 @@ Two mechanics that were worth finding out rather than guessing at, both now hand
 `CreateProcess` instead; and SetupLdr cannot create its extraction directory in this `%TEMP%`, so
 the child is given a `TMP`/`TEMP` inside the evidence folder.
 
-**Still unverified, and only you can verify it:** the Add/Remove Programs entry, the optional Start
-Menu and desktop shortcuts, the first launch of the installed executable with its tray icon, and that
-the uninstaller leaves the machine as it found it. Run the
-first command above from a normal user terminal — Setup and the uninstaller both write the
-registry and the user profile, which this agent's shell is not permitted to do on your behalf — and
-paste the last line back. `build\work\install-cycle-<utc>\` keeps the Setup logs, the before/after
-census and the installed-smoke transcript that go with whatever it reports.
+**Closed on 2026-11-21, in a terminal this shell cannot reach.** Those four items ran against the
+shipping Setup — `SKEER-MIDI-VAULT-Setup-1.1.0.exe`, 25670588 bytes, `preflight` reporting `hash
+matches the manifest`, the `855516d5bbee` build — from an elevated prompt, twice:
+`install-cycle-20261121-153747` with both shortcut tasks declined and
+`install-cycle-20261121-153801` with `-WithShortcuts`. Both ended `CYCLE OK - 17 phases passed`.
+Add/Remove Programs gained the entry and went back to `0 entry(ies)`; the second run found both
+`.lnk` files at the paths `[Icons]` declares and found neither after the uninstall; the installed
+`SKEER MIDI VAULT.exe` hashed the same as the one in `launch/` and passed
+`tests\test_packaged_smoke.py` *from a Setup-registered folder*, which had never happened — the
+only earlier pass was against a hand-copied tree; the user library at
+`%LOCALAPPDATA%\Skeer\MIDI Vault` came through untouched; and the census of
+`C:\Program Files\Common Files\VST3` read 1317 entries before and the same 1317 after, in both
+runs. Two things that does **not** settle: both runs were per-user, so the bundle landed in
+`{app}\VST3` and the `/ALLUSERS` leg is still open (item 1 below); and these are 1.1.0 bytes, so
+the 1.1.1 Setup owes its own run — which is what `release_check.ps1`'s `installed` stage does
+against the bytes it has just built.
 
 One item that used to open that list is no longer in it: the licence page has been seen the way a
 buyer sees it. On 2026-11-18 the wizard opened on *License Agreement* with §6 and §7 filled —

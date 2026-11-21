@@ -40,6 +40,12 @@ Rules:
   `C:\Program Files\Common Files\VST3`, where every host looks by default.
   `[Code] function CommonVst3` logs which of the two happened, so the Setup log —
   not the README — says where the bundle landed.
+- In an `.iss`, **`{commonpf64}` is not `{commoncf64}`**: the first is `C:\Program Files`
+  and the second is `C:\Program Files\Common Files`. Shipping the machine-wide bundle to
+  `{commonpf64}\VST3` therefore put it in a folder no host scans, while the log line and the
+  README both said "Common Files" — the text was describing the constant the author meant,
+  and the constant was wrong. Name the destination by the path Inno will actually produce.
+  Shipped 1.1.0 that way; 1.1.1 installs to `{commoncf64}\VST3`.
 - An Inno `[Code]` section comment must be `//` or `{ }`. A `;` there is not a
   comment, it is a syntax error (`'BEGIN' expected`), because the section is handed
   to the script compiler instead of being read as an ini-style list. Measured on
@@ -76,6 +82,7 @@ powershell -File scripts/release_check.ps1 -Fast        # gate, suite, licence, 
 python scripts/check_release_gate.py    # falsifies that gate and the build script: 34 cases on a copied tree
 powershell -File packaging/install_cycle_check.ps1      # Setup → run installed exe → uninstall, compared to before
 powershell -File packaging/install_cycle_check.ps1 -AllUsers   # elevated only: the machine-wide VST3 leg
+powershell -File packaging/install_cycle_check.ps1 -WithShortcuts # the customer-facing icon leg, also elevated-only
 ```
 
 `scripts/release_check.ps1` is the one command whose exit code means "ship it": it

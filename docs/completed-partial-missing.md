@@ -167,8 +167,9 @@ out explicitly.
   piano-roll keyboard navigation are not included.
 - **Platform coverage.** Windows 10/11 is the tested platform. The Python service
   is portable, but drive discovery and skip behavior are Windows-specific.
-- **Installer verification.** The payload is proven on the shipped bytes and the registration
-  legs are not. `packaging/install_cycle_check.ps1` ran against the real
+- **Installer verification.** The payload is proven on the shipped bytes; the registration legs were
+  unreachable from this shell and were completed from an elevated one on 2026-11-21.
+  `packaging/install_cycle_check.ps1` ran against the real
   `SKEER-MIDI-VAULT-Setup-1.1.0.exe` on 2026-11-17 (the `766aa311c5d0` build) and again on
   2026-11-18 against the `c520d03eed51` rebuild that carries the filled licence page, and once
   more at 16:28 against the `a4708a87ec6d` Setup the final gate built (`hash matches the
@@ -188,20 +189,26 @@ out explicitly.
   code 5` on `Creating new uninstall key`, and rolled back; the 2026-11-18 interactive run
   reached the same two. A per-user install puts its files
   under `%LOCALAPPDATA%` too, so that is the leg
-  this machine cannot exercise; it says nothing about the buyer's. The Add/Remove Programs
-  entry, the shortcuts, the first launch of the registered executable and the uninstall
-  comparison therefore have never completed anywhere. They need one run of
-  `powershell -File packaging\install_cycle_check.ps1` from a normal user terminal. The
+  this machine cannot exercise; it says nothing about the buyer's. **That limit was crossed on
+  2026-11-21:** the Add/Remove Programs entry, both shortcuts, the first launch from a
+  Setup-registered folder and the uninstall comparison all completed, in an elevated terminal, twice
+  — `install-cycle-20261121-153747` (tasks declined) and `install-cycle-20261121-153801`
+  (`-WithShortcuts`), each `CYCLE OK - 17 phases passed` against the 1.1.0 shipping Setup, with the
+  shared-VST3 census reading 1317 entries before and after both. See
+  `packaging/README.md`, "The install → run → uninstall cycle". What still has not run is one
+  narrower thing: the
   `/ALLUSERS` leg — including the `Common Files\VST3` copy — has never run at all: this shell is
   not elevated (`IsAdmin=False`, measured 2026-11-18), the bundle is not in
   `Common Files\VST3`, and the consent prompt that leg needs is the owner's to answer, not the
   agent's. It is no longer an instruction without a test, though: `install_cycle_check.ps1 -AllUsers`
 passes the switch, demands the `VST3: installing into` line in the Setup log, and fails if anything
 in that shared folder outside our own bundle moved — the refusal path is measured, the elevated
-path is not. The closest this machine can reach is running a *relocated* copy of that payload:
+path is not. What this machine could reach on its own was a *relocated* copy of that payload:
   `python tests/test_packaged_smoke.py` under `SKEER_PACKAGED_EXE` PASSed against a hand-copied
-  install tree with `built from c520d03eed51 clean`, so the executable does run from somewhere
-  other than `launch/` — it just has never been run from a Setup-registered location.
+  install tree with `built from c520d03eed51 clean`, and the two 2026-11-21 cycles' `installed-run`
+  rows do the same from a folder Setup actually registered — so the executable has now been run from
+  `launch/`, from a hand-copied tree, and from an installed location, and only the machine-wide
+  placement of the VST3 bundle is still unwitnessed.
 - **Installer signing.** The Setup EXE is unsigned (`NotSigned`). Windows SmartScreen
   warning is expected until an Authenticode certificate is applied. `build_installer.ps1`
   is signing-ready through an inert-by-default `-Sign` switch that signs the app before

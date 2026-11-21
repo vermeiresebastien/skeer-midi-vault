@@ -277,7 +277,10 @@ the run reports `orphan workers []`, prints PASS, and the stage exits 0.
    right and refund path that follow, neither of which this EULA mentions — is written out in
    `packaging/README.md`.
 2. **The full install → run → uninstall cycle has not completed anywhere, and this shell cannot
-   complete it.** The payload copy is proven against every Setup in the table above, but the host's
+   complete it.** *(Superseded 2026-11-21: it has since completed — twice, 17 phases each, from an
+   elevated terminal on this very Setup — see "The install → run → uninstall cycle" in
+   `packaging/README.md`. What follows stays true and stays here: it is the measurement that made
+   this a limit of the agent shell rather than a defect in the installer.)* The payload copy is proven against every Setup in the table above, but the host's
    policy refuses **Setup**
    every write outside the workspace: first at creating its target under `%LOCALAPPDATA%` and
    `%APPDATA%\Microsoft\Windows\Start Menu\Programs\SKEER AUDIO` (`Error 5: Access is denied`),
