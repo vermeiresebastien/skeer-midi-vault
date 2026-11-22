@@ -2,7 +2,7 @@
 
 Local-first MIDI library and audition tool: a Python 3.12 stdlib HTTP service
 (loopback only) plus a React 19 + TypeScript/Vite interface, indexed in SQLite.
-Version 1.1.0.
+Version 1.1.2.
 
 ## Deliverables: `launch/` is the one place to build and run from
 
@@ -19,7 +19,7 @@ the user hunt through `dist/` or `dist-installer/` for what to run.
   its sibling `_internal/` (Python runtime + `web/dist`) beside it: **onedir, not
   onefile.** Do not switch to `--onefile`; each multiprocessing scan worker would
   re-extract ~50 MB to `%TEMP%`.
-- `SKEER-MIDI-VAULT-Setup-1.1.0.exe`, `SKEER-MIDI-VAULT-Portable-1.1.0.zip`,
+- `SKEER-MIDI-VAULT-Setup-1.1.2.exe`, `SKEER-MIDI-VAULT-Portable-1.1.2.zip`,
   `SHA256SUMS.txt`
 - `VST3/SKEER MIDI VAULT.vst3` — the staged plug-in bundle the installer and the
   ZIP both carry. `build_installer.ps1` refuses to ship it if its
@@ -35,9 +35,14 @@ Rules:
   the staged plug-in bundle is removed the same way at line 210.
 - Verify `launch/` holds freshly timestamped binaries before reporting a build done.
 - The Setup is **per-user by default**: `{autopf}` is `%LOCALAPPDATA%\Programs` and
-  the plug-in goes to `{app}\VST3`, which a host has to be pointed at by hand. Only
-  Setup run with `/ALLUSERS` in admin mode also writes
-  `C:\Program Files\Common Files\VST3`, where every host looks by default.
+  the plug-in goes to `{app}\VST3`, which a host has to be pointed at by hand. Setup
+  run with `/ALLUSERS` in admin mode writes the plug-in to
+  `C:\Program Files\Common Files\VST3` **instead**, where every host looks by default —
+  the two `[Files]` entries are mutually exclusive (`Check: not CommonVst3` and
+  `Check: CommonVst3`), so one install mode places exactly one bundle. Through 1.1.1 the
+  machine-wide arm wrote *both*, which is how one class ID came to stand in two folders on
+  this machine; `scripts/host_scan_check.ps1` is the census that counts copies across every
+  root and exits 1 on a duplicate, and it is outside the gate.
   `[Code] function CommonVst3` logs which of the two happened, so the Setup log —
   not the README — says where the bundle landed.
 - In an `.iss`, **`{commonpf64}` is not `{commoncf64}`**: the first is `C:\Program Files`
@@ -51,7 +56,12 @@ Rules:
   C:\Program Files\Common Files\VST3, every one inside our own bundle`, with the uninstall returning
   the folder to its censused 1317 entries. The same build's per-user arm was graded in the same
   minute by the gate's `installed` stage (`17 phases`, shared folder untouched), so both branches of
-  `CommonVst3` have now been exercised against one artifact.
+  `CommonVst3` have now been exercised against one artifact. Re-run the same way against 1.1.2 on
+  2026-11-22 — `18 phases` machine-wide, `17 phases` per-user, fifteen seconds apart on one Setup — and
+  the `plugin` phase then asserted the new rule too: each arm looks in the *other* mode's destination for
+  a second copy and fails on finding one. Do not chase a shared-folder entry count across releases: that
+  folder is the whole machine's shared plug-in collection and it grows (1317 on 2026-11-21, 1319 on
+  2026-11-22), so the invariant the row proves is `before == after` inside one run.
 - A `Census-Diff` entry in `packaging\install_cycle_check.ps1` reads `"added: <relative path>"`, so a
   filter anchored on the path alone (`-match '^SKEER MIDI VAULT\.vst3'`) matches nothing and that row
   can only ever FAIL. That is how the first `-AllUsers` run reported that the bundle had not landed
@@ -63,6 +73,14 @@ Rules:
   comment, it is a syntax error (`'BEGIN' expected`), because the section is handed
   to the script compiler instead of being read as an ini-style list. Measured on
   Inno Setup 6.7.4.
+- A function used as a `[Files]` `Check:` is evaluated **once per entry that names it**, not once per
+  install. `CommonVst3` logs its decision, so that line appears 12 times in each arm's Setup log
+  (measured 2026-11-22, both arms of the 1.1.2 cycle) — repetition is the mechanism, not a loop, and a
+  prompt, `WizardForm` write or any other side effect belongs there even less than a log line does.
+  One wording defect is filed for the next release rather than fixed under certified bytes: the per-user
+  branch logs `VST3: installed only in …`, in the past tense, at the moment `Check:` runs — before
+  anything has been copied. `packaging/skeer-midi-vault.iss` is a build input, so editing it invalidates
+  the `launch/` hashes this release certified.
 - `distpath` is a CLI option, not a spec setting: building from the root
   `SKEER MIDI VAULT.spec` by hand needs `--distpath launch`.
 - `dist/` and `dist-installer/` are the superseded locations, kept ignored only so
@@ -95,7 +113,7 @@ powershell -File scripts/host_scan_check.ps1 -VendorCode Sker -PluginCode Vrac -
 powershell -File scripts/host_scan_check.ps1 -VendorCode Sker -PluginCode Skrv -BundleName 'SKEER Vault'   # the placement control: one copy on disk, census exit 0
 powershell -File scripts/release_check.ps1              # the release gate; exit 0 READY / 1 NOT READY / 2 INCOMPLETE
 powershell -File scripts/release_check.ps1 -Fast        # gate, suite, licence, checksums only
-python scripts/check_release_gate.py    # falsifies that gate and the build script: 34 cases on a copied tree
+python scripts/check_release_gate.py    # falsifies that gate and the build script; it prints one line per case it ran, so count those, not a number kept here
 powershell -File packaging/install_cycle_check.ps1      # Setup → run installed exe → uninstall, compared to before
 powershell -File packaging/install_cycle_check.ps1 -AllUsers   # elevated only: the machine-wide VST3 leg
 powershell -File packaging/install_cycle_check.ps1 -WithShortcuts # the customer-facing icon leg, also elevated-only

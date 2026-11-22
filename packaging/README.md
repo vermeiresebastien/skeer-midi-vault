@@ -29,10 +29,16 @@ The installed app:
 - installs under `{autopf}\SKEER MIDI VAULT`, which is
   `%LOCALAPPDATA%\Programs\SKEER MIDI VAULT` for the default per-user install and
   `Program Files\SKEER MIDI VAULT` when Setup is run with `/ALLUSERS`
-- installs the VST3 bundle into `{app}\VST3` always, and additionally into
-  `Program Files\Common Files\VST3` — the folder hosts scan by default — in an all-users
-  install. A per-user install never writes to a shared folder, and the Setup log records which
-  of the two happened, so a producer who cannot see the plug-in has an explanation to read.
+- installs the VST3 bundle into **one** folder, chosen by the install mode: `{app}\VST3`
+  for a per-user install, `Program Files\Common Files\VST3` — the folder hosts scan by
+  default — for an all-users one. The two `[Files]` entries carry `Check: not CommonVst3`
+  and `Check: CommonVst3`, so neither mode can leave two copies of one class ID standing in
+  two folders; through 1.1.1 the all-users mode wrote both, which is what a producer saw as
+  the same device listed twice. A per-user install never writes to a shared folder, and the
+  Setup log records which of the two happened — the all-users branch prints the shared path
+  it used and names the `{app}\VST3` copy it declined, the per-user branch prints the
+  `{app}\VST3` path and says the shared folder was not touched — so a producer who cannot
+  see the plug-in has an explanation to read.
   Nothing in the installer edits a host's plug-in scan paths.
 - optionally creates Start Menu and Desktop shortcuts (each is a checkbox; `/MERGETASKS=!startmenuicon,!desktopicon` declines both on the command line)
 - starts a loopback-only service, opens the interface in the user's browser and
@@ -238,7 +244,9 @@ alike. Three things are left, and none of them can be settled from a shell:
    `%LOCALAPPDATA%\Programs\SKEER MIDI VAULT\VST3`, which no host scans by default. Setup's own log
    says which folder it used — `VST3: installing into …` or `VST3: installed only in …` — and the
    choices are to point the host at that folder or re-run Setup elevated with `/ALLUSERS`, which
-   also writes `C:\Program Files\Common Files\VST3`. That switch is honoured, not rejected: the
+   writes `C:\Program Files\Common Files\VST3` **instead** and leaves `{app}\VST3` empty — as of
+   1.1.2 the two placements are mutually exclusive, so an all-users install does not leave a second
+   copy behind (through 1.1.1 it did). That switch is honoured, not rejected: the
    script sets `PrivilegesRequired=lowest` with `PrivilegesRequiredOverridesAllowed=commandline`
    (`packaging/skeer-midi-vault.iss:35-36`), which is what lets a command-line install choose
    all-users mode. One command grades that leg instead of asking you to read a log: `packaging\install_cycle_check.ps1 -AllUsers`,
@@ -252,49 +260,79 @@ alike. Three things are left, and none of them can be settled from a shell:
    grader's: it matched diff entries against `^SKEER MIDI VAULT\.vst3`, but the helper emits
    `added: <path>`, so no entry could ever classify as ours — while Setup's own log had listed both
    files created under `Common Files\VST3` and both deleted on uninstall. Fix-forward commits
-   `7055952` (the destination) and `10fbc15` (the grader). Either way the plug-in should be listed as
-   *SKEER MIDI VAULT* **1.1.1**: that number comes from the staged bundle's `moduleinfo.json`, is
+   `7055952` (the destination) and `10fbc15` (the grader). Both arms ran again on 2026-11-22 against the
+   Setup this release certifies — `CYCLE OK - 18 phases passed` machine-wide
+   (`build\work\install-cycle-20261122-181627`) and `CYCLE OK - 17 phases passed` per-user
+   (`…-181612`) — and the `plugin` phase in each arm now checks the destination that mode is allowed to
+   write *and* looks in the other one for a second copy, so this section's placement claim is graded on
+   the bytes a session will load rather than on 1.1.1's. Either way the plug-in should be listed as
+   *SKEER MIDI VAULT* **1.1.2**: that number comes from the staged bundle's `moduleinfo.json`, is
    what a host displays, and the build refuses to ship a bundle whose copy disagrees with the
-   release. The same `moduleinfo.json` declares the class under `Sub Categories: ["Fx"]` on
-   VST 3.7.12. It declares **three** classes in total — one `Audio Module Class` plus Steinberg's
+   release. The same `moduleinfo.json` declares the class under `Sub Categories:
+   ["Instrument","Synth"]` on VST 3.7.12 — **and that is the one line of this runbook that changes
+   where a session should look**: 1.1.1's copy read `["Fx"]` and the host listed it under Effects, so
+   the device is now expected in the **Instruments** drawer. `Class Flags: 2` beside it is
+   `Vst::kSimpleModeSupported`, which `IS_SYNTH TRUE` adds; the category list, not that flag, is what
+   files the drawer. It declares **three** classes in total — one `Audio Module Class` plus Steinberg's
    `Component Controller Class` and `Plugin Compatibility Class`, all three named
-   `SKEER MIDI VAULT` at `1.1.1` — so a conforming host lists **one** entry, and a second or third
+   `SKEER MIDI VAULT` at `1.1.2`, the third with no `Sub Categories` of its own — so a conforming host lists **one** entry, and a second or third
    copy of the name in a scan is a host bug, not a staging mistake. The *which menu* question this
-   paragraph used to hand to a session has since been answered out of the host's own file, and the answer
-   disposes of a hypothesis:
+   paragraph used to hand to a session was answered out of the host's own file — for the **1.1.1**
+   bytes — and the answer disposes of a hypothesis without settling the new one:
    [plugin/Source/VaultMIDIProcessor.h:86](../plugin/Source/VaultMIDIProcessor.h) returns
    `isMidiEffect() == true`, yet the host filed us `device:vst3:audiofx` — because there is no MIDI-effect
    bucket for it to put us in. Counting the class-id kinds across the `12.3.2` cache gives 1,298 `audiofx`
    and 118 `instr` for VST3 (those 1,416 are the device rows the census counts) plus 184 `audiofx` and 14
    `instr` for the legacy VST2 rows, which are the 198 the census leaves out, and **no** third kind anywhere
    in the file. That is what a plug-in scan DB looks like when a host offers third-party code two drawers, so
-   the flag did not move this host's filing and the `IS_SYNTH` choice is genuinely binary in this application.
-   What one click still has to settle is narrower
-   than a menu: whether Live will let a device filed `audiofx` be inserted on a MIDI track at all. This
-   runbook does not claim it.
+   the filing decision really is binary here: a device lands in one drawer or the other, and 1.1.1's
+   bytes landed in Effects. What no file on this machine can yet say is where 1.1.2's land — the cached
+   row was written for the old bytes and a host rewrites it only when it rescans them. So the first of
+   this section's three questions is now two. **1a:** after a rescan, does our device row read `instr`
+   with sub-category `Instrument|Synth`? **1b:** will Live put a MIDI-out-only device on a MIDI track
+   at all, which has never been tested in either drawer. This runbook claims neither.
    Which bytes you are loading matters for what a session proves: the two JUCE trees build
-   different binaries, and only one of them ships. Re-measured 2026-11-21 against the bytes the
-   1.1.1 release ships — the earlier figure below was from 2026-11-18 and predates this rebuild,
+   different binaries, and only one of them ships. Re-measured 2026-11-22 against the bytes this
+   build stages — the earlier figure below was from 2026-11-21 and predates this rebuild,
    which the note at the end of this paragraph has always told the reader to do:
    `launch/VST3/…/Contents/x86_64-win/SKEER MIDI VAULT.vst3` is SHA-256
-   `a2f157679dacfd7ae202db7e8d246cc4a85a5e727eb62c4c7a8fd4bd6e9c9bf9`, 7,566,336 bytes, and
+   `6fcc3f4cb96829f19052dc887ac3386190c643787a6372164d34f3fb94d8505f`, 7,566,336 bytes, and
    byte-identical to the copy under `plugin/build/…` — the 8.0.4 tree — and that copy is what
    `vault-host-test` loaded in the same gate run; the `build/tag-808` bundle is
-   `6b898e83dabcb631…` at 7,694,848 bytes — different size, different SHA-256 — and is
-   source-compatibility evidence only. So a DAW session ratifies the 8.0.4 binary; nothing you
+   `8aaa71651785bb6c…` at 7,694,848 bytes — different size, different SHA-256 — and is
+   source-compatibility evidence only. Two of those numbers are worth reading twice. The shipped
+   binary is **the same length as 1.1.1's** (`a2f157679dacfd…`, 7,566,336 bytes) and a different
+   hash, so a same-length compiled string moved it and no size check could see that — which is why
+   the cycle's `plugin` phase works in SHA-256. And the artifact settles the category question
+   without waiting for a host: the file contains `Instrument|Synth` once and `1.1.2` once, with no
+   `1.1.1` anywhere, so the bytes that ship are the bytes the flags were set in —
+   `python -c "b=open(r'launch/VST3/SKEER MIDI VAULT.vst3/Contents/x86_64-win/SKEER MIDI VAULT.vst3','rb').read();print(b.count(b'Instrument|Synth'),b.count(b'1.1.2'),b.count(b'1.1.1'))"`
+   prints `1 1 0`. So a DAW session ratifies the 8.0.4 binary; nothing you
    hear in a host speaks for the 8.0.8 build. Recompute the two hashes rather than trusting this
    sentence after any rebuild.
 
-   A second name confusion is live on this machine, and it is not ours. Census 2026-11-19:
-   `C:\Program Files\Common Files\VST3\SKEER Vault.vst3` is installed — module
-   `Contents/x86_64-win/SKEER Vault.vst3`, 5,475,328 bytes, stamped 12:54:42 that day, with
-   `moduleinfo.json` saying `Name = SKEER Vault` and `Version = 1.1.0`. Same brand, same version,
-   different product: `git log -S "SKEER Vault" --all` finds that string nowhere in this repo's
-   history, so it is not an earlier name of this bundle, and ours is `SKEER MIDI VAULT` at
-   7,566,336 bytes. Both declare `Sub Categories: ["Fx"]`, so a host that scans the shared folder
-   files the two side by side in the same menu as same-version effects — and a session spent on the
-   wrong one proves nothing about these bytes. Check the exact name the
-   host loaded (and its path, when it shows one) before answering any of the three questions.
+   A second name confusion is live on this machine, and it is not ours. Measured again 2026-11-22 —
+   the first census was 2026-11-19 and three of its numbers have since moved, which is itself the
+   lesson: `C:\Program Files\Common Files\VST3\SKEER Vault.vst3` is installed, module
+   `Contents/x86_64-win/SKEER Vault.vst3` now 6,756,352 bytes stamped 04:04:02 local that morning,
+   where 11-19 recorded 5,475,328 at 12:54:42. The sibling project reinstalls itself between
+   sessions, so **any figure quoted about that bundle needs a date**. `moduleinfo.json` still says
+   `Name = SKEER Vault`, `Vendor = SKEER Audio` and `Version = 1.1.0`. Same brand, different
+   product: `git log -S "SKEER Vault" --all` finds that string nowhere in this repo's
+   history, so it is not an earlier name of this bundle, and ours is `SKEER MIDI VAULT` at `1.1.2`.
+   What 11-19 wrote next is now false on both sides and has been rewritten rather than left: it said
+   both bundles declared `Sub Categories: ["Fx"]`, so a host filed the two side by side in an effects
+   menu. Read off the folder today, that bundle declares `["Instrument","Instrument","Synth"]` — the
+   `Instrument` appears twice, for a reason this repo cannot see because the file belongs to the
+   sibling project — and the file is one a strict JSON parser refuses (`json.load` dies at line 12
+   with a trailing comma), which is why the census reads these files with a regex. Ours declares
+   `["Instrument","Synth"]`. **So the two now share the Instruments drawer and the drawer is no
+   longer a discriminator.** What discriminates, in order of reliability: the class-ID tail
+   (`536B41754D766C74` is ours — `SkAu`/`Mvlt`; that bundle is `536B6572536B7276` — `Sker`/`Skrv`),
+   then the exact name, then the version, which is the weakest of the three because both products
+   have shipped `1.1.0`. A session spent on the wrong one proves nothing about these bytes, so check
+   the exact name the
+   host loaded — and its path, when it shows one — before answering any of the three questions.
    This does not block the `/ALLUSERS` leg: `install_cycle_check.ps1 -AllUsers` requires that the
    new entries in the shared folder sit inside `SKEER MIDI VAULT.vst3`, so a foreign bundle already
    there is neither a refusal nor a false pass. It is not a stranger either: the string comes from

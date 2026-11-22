@@ -1,6 +1,9 @@
 # SKEER MIDI VAULT — application architecture
 
-Status: implemented in this workspace (version 1.1.0, released 2026-11-17). This
+Status: implemented in this workspace (version 1.1.0, released 2026-11-17; boundaries
+re-checked against 1.1.2 on 2026-11-22, which moved no module — the one change since that
+is a rule rather than a component: `/api/health` no longer audits the index, and the audit
+keeps its own route). This
 document records the architecture proposal derived from the two existing SKEER-family
 codebases and the decisions that were actually shipped. The 1.1.0 additions — a read-only
 VST3 reader beside the app, a build-provenance stamp inside the bundle, and a release gate

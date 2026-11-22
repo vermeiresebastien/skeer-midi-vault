@@ -479,6 +479,18 @@ than by length — two builds of this bundle have measured the same size apart f
 What remains outside the gate is the wider claim: `scripts/host_scan_check.ps1` still owns the census across
 every root a host has ever named, so what the cycle proves is one bundle across the two install
 destinations, not one bundle on the whole machine.
+The rewritten phase has since been run in both arms against the certified 1.1.2 Setup, from the elevated
+terminal at the end of the 18:12:46Z gate: machine-wide `CYCLE OK - 18 phases passed`
+(`install-cycle-20261122-181627`) and per-user `CYCLE OK - 17 phases passed`
+(`install-cycle-20261122-181612`), each carrying `plugin PASS — VST3 1.1.2 at 7566336 bytes,
+byte-identical to the staged bundle` in the one destination that mode is allowed to write, and each
+checking the *other* mode's destination for a second copy it did not find. **That supersedes the
+17-pass/1-fail row above**, which was the same command against the same bytes one phase before the phase
+could see them; the green is the measurement, the red is the witness that the checker had been blind.
+Setup's own log is the independent cross-check, and it is not my checker: 199 `Dest filename:` entries
+per arm, 199 under the app root per-user with **0** in the shared folder, and 197 + **2** machine-wide —
+the two being the bundle's binary and its `moduleinfo.json`. The ZIP holds 198 files; the 199th in every
+install is `unins000.exe`, which Setup writes itself.
 
 **The host files the plug-in as an audio effect, where every sibling is an instrument.** Found
 2026-11-22 at 16:22 local, in the first scan-cache row this product has ever had: our device row reads

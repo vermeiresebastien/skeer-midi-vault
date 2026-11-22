@@ -1,6 +1,6 @@
 # Known limitations
 
-This is version 1.1.0. The list is deliberately explicit: the application is
+This is version 1.1.2, re-checked against that tree on 2026-11-22. The list is deliberately explicit: the application is
 useful, but it is not a DAW, a commercial MIDI catalog and it does not claim
 general-purpose classification accuracy.
 
@@ -230,12 +230,25 @@ general-purpose classification accuracy.
   being called dead. Two checks pin it: `tests/test_api.py` records the SQL the readiness
   route actually executes and fails if either PRAGMA comes back, while requiring the audit
   route to still perform one; `tests/test_desktop_ready.py` pins both directions of the
-  budget. **What this does not fix: the shipped bytes.** `launch/` and the published
-  v1.1.1 assets still carry the defect and no argument avoids it, because the readiness
-  loop runs before `--server-only`/`--no-open` branches — so 1.1.1 cannot be launched from
-  a large library by anyone until a release is built from this tree. In the meantime
+  budget. **What this did not fix at the time: the shipped bytes.** `launch/` and the published
+  v1.1.1 assets carried the defect and no argument avoided it, because the readiness
+  loop runs before `--server-only`/`--no-open` branches — so 1.1.1 could not be launched from
+  a large library by anyone until a release was built from this tree. In the meantime
   `python -m midivault.server --open` serves the same default data directory with no
   launcher and therefore no self-imposed gate.
+  **No longer true of `launch/`.** The 1.1.2 bundle stamped there names commit `d8110db06738`,
+  built `2026-11-22T18:15:13+00:00`, clean, and that commit descends from `f2dff96` (`git
+  merge-base --is-ancestor f2dff96 d8110db06738` exits 0). The Setup and ZIP in `launch/` are
+  those bytes, digests recorded in [docs/release-notes-1.1.2.md](release-notes-1.1.2.md); a
+  v1.1.2 release page does not exist yet, so as of
+  this writing the newest published assets are still 1.1.1's and still carry the defect. So is
+  anyone on 1.1.1, whatever gets published. What is *still* not witnessed
+  is the end of the story rather than its middle: no packaged launch has been run against the
+  owner's 48,516-file index. The 0.17 s above is that database served over real HTTP by the
+  fixed code, and every packaged launch this repo performs — the `smoke` stage and both
+  install-cycle arms included — passes a fixture `--data-dir`, which is the hole that let the
+  defect ship twice. The first `SKEER MIDI VAULT.exe` start on the real index is the measurement
+  that closes it.
 
 - The installer's payload is proven on every build in `launch/`; its registration is not.
   `packaging/install_cycle_check.ps1` ran the real Setup on 2026-11-17, against the

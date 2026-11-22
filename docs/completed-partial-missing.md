@@ -1,7 +1,8 @@
 # Deliverable status: completed, partial, missing
 
 Scoped to the version 1.0.0 brief, re-checked against the 1.1.0 tree on
-2026-11-17 and against the 1.1.1 tree on 2026-11-21. "Completed" means implemented
+2026-11-17, the 1.1.1 tree on 2026-11-21, and the 1.1.2 tree on 2026-11-22.
+"Completed" means implemented
 in this workspace and exercised by
 tests where the environment permits. Environment-blocked verification is called
 out explicitly.
@@ -96,8 +97,10 @@ out explicitly.
 - [x] One-command source launch (`start.bat`/`start.ps1`) and manual server command.
 - [x] Standalone PyInstaller application containing the Python runtime and web
       interface; packaged smoke test passes (health, frozen process-worker scan,
-      quit, no orphan workers).
-- [x] Per-user Windows installer (`SKEER-MIDI-VAULT-Setup-1.1.1.exe`) that stages the
+      quit, no orphan workers). The readiness route the launcher polls no longer
+      audits the index, so a large library starts instead of being called dead —
+      see the caveat on what `smoke` can prove, under **Partial → Large-library scale**.
+- [x] Per-user Windows installer (`SKEER-MIDI-VAULT-Setup-1.1.2.exe`) that stages the
       app, the interface, the provenance stamp and the VST3 bundle, with the EULA page
       (both fields filled and compiled in on 2026-11-18) and the application icon and
       version metadata; no Python, Node.js or admin rights required. The licence page was
@@ -109,13 +112,17 @@ out explicitly.
       of the installed executable are implemented in `packaging/skeer-midi-vault.iss` and
       are graded by `packaging/install_cycle_check.ps1` — see **Partial** for which legs
       this machine could not execute.
-- [x] VST3 plug-in (`SKEER MIDI VAULT.vst3`, same 1.1.1 version as the app) shipped
+- [x] VST3 plug-in (`SKEER MIDI VAULT.vst3`, same 1.1.2 version as the app) shipped
       inside both deliverables: an editor panel with a filter box, the library list and
-      three exported controls, reading the app's own index read-only. It is placed in
-      `{app}\VST3` for a per-user install and additionally in
-      `Common Files\VST3` when Setup runs with `/ALLUSERS` — the machine-wide placement
-      that 1.1.0 got wrong, graded on the 1.1.1 artifact by an executed `-AllUsers` cycle
-      rather than asserted (see **Partial**).
+      three exported controls, reading the app's own index read-only. It is filed as an
+      instrument (`moduleinfo.json` reads `Sub Categories ["Instrument","Synth"]`, and the
+      staging step refuses a bundle that says otherwise). It is placed in
+      `{app}\VST3` for a per-user install, **or** in `Common Files\VST3` when Setup runs
+      with `/ALLUSERS` — one copy, in the folder that matches the mode, which is what 1.1.2
+      changed: through 1.1.1 a machine-wide install put it in *both*, one class ID standing
+      in two folders. The machine-wide placement that 1.1.0 got wrong is graded on this
+      release's artifact by an executed `-AllUsers` cycle (18 phases) and a per-user cycle
+      (17 phases) against the same bytes, rather than asserted — see **Partial**.
 - [x] Build provenance: `_internal/buildinfo/BUILDINFO.json` inside the bundle
       (commit, dirty flag, status/diff/untracked digests, `web/dist` hash), published
       by `/api/health` and the debug surface.
@@ -164,7 +171,14 @@ out explicitly.
   created on this workstation.
 - **Large-library scale.** 1,000 files were benchmarked. Tens/hundreds of
   thousands of files and enormous folder trees are not benchmarked; expect
-  proportionally longer scans and slower search.
+  proportionally longer scans and slower search. The one measurement at real
+  scale is a startup one: a 450 MB / 48,516-file index answers `/api/health` in 0.17 s
+  since 1.1.2, where 1.1.1's answer cost 2.27 s and the launcher's budget expired — see
+  `docs/limitations.md`. Scan throughput and search latency at that size remain unmeasured,
+  and so does the packaged launcher against that index: every packaged launch this repo
+  performs, the gate's `smoke` stage and both install-cycle arms included, passes a fixture
+  `--data-dir`, which is why `smoke` was green while that library could not start. **A green
+  `smoke` stage says the bundle runs, not that it runs at a customer's size.**
 - **Accessibility.** Keyboard focus, labels, switch semantics, reduced motion and
   scale are implemented. A full screen-reader/keyboard-only audit and full canvas
   piano-roll keyboard navigation are not included.
@@ -213,8 +227,12 @@ out explicitly.
   `python tests/test_packaged_smoke.py` under `SKEER_PACKAGED_EXE` PASSed against a hand-copied
   install tree with `built from c520d03eed51 clean`, and the 2026-11-21 cycles' `installed-run`
   rows do the same from a folder Setup actually registered — so the executable has now been run from
-  `launch/`, from a hand-copied tree, and from installed locations in both install modes. What is still
-  unwitnessed has narrowed to one verb. A host has now been shown *reading* the bundle — Live 12.3.2
+  `launch/`, from a hand-copied tree, and from installed locations in both install modes. Both arms were
+  run again on 2026-11-22 against the 1.1.2 Setup, which is the release that makes them put the bundle in
+  one folder rather than two: `CYCLE OK - 17 phases passed` per-user (`install-cycle-20261122-181612`) and
+  `CYCLE OK - 18 phases passed` machine-wide (`install-cycle-20261122-181627`), each with a `plugin` row
+  that now reads the destination that mode is allowed to write and compares the installed binary to
+  `launch/VST3` by SHA-256. What is still unwitnessed has narrowed to one verb. A host has now been shown *reading* the bundle — Live 12.3.2
   scanned the machine-wide copy on 2026-11-22, logged a `found:` record naming
   `C:\Program Files\Common Files\VST3\SKEER MIDI VAULT.vst3`, and persisted one device row carrying our
   class ID — but no host has been shown *instantiating* it, and those are different claims. The second is
@@ -236,9 +254,13 @@ out explicitly.
   `Snap Heap`, and no instance of ours, so the sentence above about *reading* rather than *loading* is a
   read of the running song rather than an absence of evidence. What that same scan did turn up was a scope
   question, not a defect: the host filed this plug-in as `audiofx`/`Fx`, where every sibling in the family
-  is `instr`/`Instrument`, because `IS_SYNTH` was `FALSE` in `plugin/CMakeLists.txt`. Decided and built for
-  1.1.2: the staged bundle's `moduleinfo.json` now reads `Instrument|Synth` and the host suite sees it as an
-  instrument. What remains unmeasured is the part a producer cares about — whether the filing costs or wins
+  is `instr`/`Instrument`, because `VST3_CATEGORIES` was set to `Fx` in `plugin/CMakeLists.txt` (`IS_SYNTH`
+  was `FALSE` too, but the category list wins and flipping it alone would have moved nothing a host reads).
+  Decided and built for 1.1.2: the staged bundle's `moduleinfo.json` reads `Sub Categories
+  ["Instrument","Synth"]`, and the staging step in `packaging/build_installer.ps1` refuses a bundle whose
+  `Sub Categories` does not name `Instrument` — that read of the built artifact is the gate, not the host
+  suite, which prints whether it sees an instrument but does not assert it. What remains unmeasured is the
+  part a producer cares about — whether the filing costs or wins
   users — and the host's own cache still says `Fx` until it rescans the new bytes.
 - **Native window shell.** The standalone app opens the system browser and runs a
   tray service; it is not a custom Electron/WinUI window. This preserves Web MIDI,

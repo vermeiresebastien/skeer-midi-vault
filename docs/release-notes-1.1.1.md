@@ -47,10 +47,21 @@ pointed at it by hand.
    "This version is 1.1.1" line). `python scripts/check_version_consistency.py` prints
    `8 files, 11 values, one version 1.1.1.` and the gate's `gate` stage refuses a half-bump.
 
-Nothing else on the product side moved. Across `v1.1.0..HEAD` the only file that changed inside
-`midivault/` is `midivault/__init__.py`, and nothing changed under `web/src/`. **The database
-schema is still version 1: an index built by 1.1.0 opens in 1.1.1 unchanged, and no rescan is
-required to upgrade.**
+Nothing else on the product side moved. Across `v1.1.0..v1.1.1` — the range closed on the tag, not
+on whatever `HEAD` is now — the only file that changed inside `midivault/` is
+`midivault/__init__.py`, and nothing changed under `web/src/`. **The database schema is unchanged
+between the two releases: `SCHEMA_VERSION` is 2 in both, so an index built by 1.1.0 opens in 1.1.1
+unchanged and no rescan is required to upgrade.**
+
+This sentence originally read "the database schema is still version 1", and it was re-checked on
+2026-11-22 while writing the 1.1.2 notes. The number was wrong — `SCHEMA_VERSION` has been 2 since
+`67ff177`, which is before 1.1.0, and `MIGRATIONS` has carried a 1→2 step (`files.fingerprint_version`,
+with pre-versioning rows stamped legacy so similarity refuses them) ever since. The *consequence* the
+sentence drew was right, which is how it survived a review that only asked "does an old index open?":
+an index at 2 opens at 2. A version number quoted in prose is not gated by anything —
+`scripts/check_version_consistency.py` counts the *release* literals, not the schema — so the claim
+is now stated as a comparison between two tags, which is the part that is actually load-bearing for
+an upgrade.
 
 ## Certified run
 

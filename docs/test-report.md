@@ -29,6 +29,26 @@ unittest suites and are reported in
 [`release-notes-1.1.0.md`](release-notes-1.1.0.md) and
 [`../packaging/README.md`](../packaging/README.md).
 
+Re-verification for 1.1.2 (2026-11-22): taken from the certification run
+`build\work\release-check-20261122-181246\`, executed elevated against a tree clean at
+`d8110db06738`. `python -m unittest discover -s tests` reported **Ran 115 tests — OK** in
+24.791 s. The 104 → 115 delta is the readiness work, attributed by counting `def test_`
+per file across `v1.1.1..HEAD`: `tests/test_api.py` 12 → 13 (the readiness route must not
+run a page-scanning pragma, and the audit route must still run one), plus two new files —
+`tests/test_desktop_ready.py` (2, both directions of the launch budget) and
+`tests/test_engine_purity.py` (8). `plugin/build.ps1` reported exit 0 and **ctest 6/6** on
+both JUCE trees (8.0.4 and 8.0.8), and `python tests/test_packaged_smoke.py` reported PASS
+against `launch\SKEER MIDI VAULT\SKEER MIDI VAULT.exe`, which the same run had just rebuilt
+and whose `BUILDINFO.json` names `d8110db06738`, `dirty: false`,
+`built_at 2026-11-22T18:15:13+00:00`. Read that row beside the caveat under **Partial →
+Large-library scale** in [`completed-partial-missing.md`](completed-partial-missing.md): a
+packaged launch passes a fixture `--data-dir`, so it proves the bundle runs, not that it
+runs at 48,516 files. The browser harnesses were not re-run for this build, and the
+release notes record why that is a small concession this time: nothing under `web/src/`
+changed between the two tags. `scripts/release_check.ps1` itself, its falsifier
+(33 cases, `FALSIFIER OK` at 18:09Z) and both `install_cycle_check.ps1` arms are reported
+in [`release-notes-1.1.2.md`](release-notes-1.1.2.md).
+
 Machine-readable results: [`e2e-results.json`](e2e-results.json),
 [`playback-stability.json`](playback-stability.json),
 [`benchmark-results.json`](benchmark-results.json),
