@@ -259,12 +259,19 @@ alike. Three things are left, and none of them can be settled from a shell:
    VST 3.7.12. It declares **three** classes in total — one `Audio Module Class` plus Steinberg's
    `Component Controller Class` and `Plugin Compatibility Class`, all three named
    `SKEER MIDI VAULT` at `1.1.1` — so a conforming host lists **one** entry, and a second or third
-   copy of the name in a scan is a host bug, not a staging mistake. What is not settled from a
-   shell is *which menu* that entry appears in: `Sub Categories` says `Fx`, while
+   copy of the name in a scan is a host bug, not a staging mistake. The *which menu* question this
+   paragraph used to hand to a session has since been answered out of the host's own file, and the answer
+   disposes of a hypothesis:
    [plugin/Source/VaultMIDIProcessor.h:86](../plugin/Source/VaultMIDIProcessor.h) returns
-   `isMidiEffect() == true`, and a host that reads the MIDI-effect flag files the plug-in with the
-   MIDI effects and restricts it to MIDI tracks. Ask the host which it did, and record the answer —
-   this runbook does not claim it.
+   `isMidiEffect() == true`, yet the host filed us `device:vst3:audiofx` — because there is no MIDI-effect
+   bucket for it to put us in. Counting the class-id kinds across the `12.3.2` cache gives 1,298 `audiofx`
+   and 118 `instr` for VST3 (those 1,416 are the device rows the census counts) plus 184 `audiofx` and 14
+   `instr` for the legacy VST2 rows, which are the 198 the census leaves out, and **no** third kind anywhere
+   in the file. That is what a plug-in scan DB looks like when a host offers third-party code two drawers, so
+   the flag did not move this host's filing and the `IS_SYNTH` choice is genuinely binary in this application.
+   What one click still has to settle is narrower
+   than a menu: whether Live will let a device filed `audiofx` be inserted on a MIDI track at all. This
+   runbook does not claim it.
    Which bytes you are loading matters for what a session proves: the two JUCE trees build
    different binaries, and only one of them ships. Re-measured 2026-11-21 against the bytes the
    1.1.1 release ships — the earlier figure below was from 2026-11-18 and predates this rebuild,

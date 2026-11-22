@@ -496,6 +496,17 @@ parses out of the cache, 1,298 are `audiofx` and 118 `instr` — a live set carr
 sound sources, which is also why the two populations sit in different places in the browser. The cache holds
 1,614 device rows in all; the 198 this reader skips belong to other plug-in APIs, not to VST3.
 
+Those numbers are the entire filing scheme, and saying so closes a reading of our own code. Counted across
+every device row in that cache, the class-id kinds are `audiofx` and `instr` and nothing else — 1,298 and 118
+for VST3, and 184 and 14 for the legacy VST2 rows, which are exactly the 198 the sentence above calls "other
+plug-in APIs". There is no third kind, so there was never a MIDI-effect drawer for
+`VaultMIDIProcessor.h:86`'s `isMidiEffect() == true` to land us in. What that override is for is a separate
+question and not answered here — no audio bus count is configured anywhere under `plugin/Source/`, so nothing
+in this tree shows the flag changing anything a person can observe, and this host certainly did not use it to
+file us. The practical consequence for the decision below is that this is a two-drawer choice,
+not a menu-placement detail: `instr` or `audiofx`, and the open question is whether the effect drawer will
+accept a device that only speaks MIDI.
+
 What that costs a producer is **not measured**, and this item should not be read as though it were. No
 instance of ours has been loaded on a track, so nobody has observed whether the host routes MIDI notes to an
 instrument-shaped processor filed as an effect, nor which menu a user thinks to open. The design question is
