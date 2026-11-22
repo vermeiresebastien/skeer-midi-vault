@@ -356,12 +356,26 @@ alike. Three things are left, and none of them can be settled from a shell:
    the scan found them. Once a scan has happened, a
    host-side parameter read is the three exported controls counted by the host rather than by
    `vault-editor-test`. Rescanning has no method on that bridge (none of its 37 tools
-   rescans), so the scan itself stays the owner's. What follows a scan no longer does. Measured
+   rescans), so the scan itself stays the owner's. What follows a scan was supposed to need no hand either,
+   and that expectation is what the rest of this paragraph now qualifies. Measured
    2026-11-22 at 03:40 local against the running `Ableton Live 12 Suite.exe` (pid 1588): the bridge reads
    the browser, which files third-party bundles under `Plugins/VST3/<Vendor>` and returns each device
-   with `is_loadable` and a `query:` URI — so loading ours and counting its exported controls are both
-   drivable through `load_instrument_or_effect` and `get_device_parameters`, and only the click that
-   starts a scan needs a hand. Two limits on that seam are worth knowing before anyone builds on it.
+   with `is_loadable` and a `query:` URI. *Only* the click that starts a scan needs a hand, this paragraph
+   went on to say, because loading ours and counting its exported controls looked drivable through
+   `load_instrument_or_effect` and `get_device_parameters`. That was read off the tool descriptions, and the
+   second half of it is wrong. Measured 2026-11-22 at 16:45 local on the same running host, against the
+   devices already sitting on his one audio track: `get_device_parameters` at (0, 1) names `Snap Heap`,
+   `class_name: PluginDevice` — a third-party VST3 the host genuinely has loaded — and returns **one**
+   parameter, `Device On`, which is Live's own bypass rather than a control that plug-in wrote; the same call
+   at (0, 0) on native `Utility` (`StereoGain`) returns **twelve**, every one of them the device's own. Same
+   track, same tool, same minute. `get_track_info` compounds it: a device comes back with a name and a
+   `class_name` but never a URI, so a plug-in already on a track cannot be read back as the handle a loader
+   wants. One VST3 sample cannot separate "this bridge does not enumerate VST3 parameters" from "this plug-in
+   publishes none to its host", and the difference does not change what follows — either way step 8's control
+   read is a person looking at the host, not a script. The load leg is a different unknown, not a settled one:
+   `load_instrument_or_effect` does take a `uri` (its own example reads
+   `query:Synths#Instrument%20Rack:Bass:FileId_5116`), but nothing of ours has ever been loaded here, so no
+   measurement says our URI resolves. Three limits on that seam are worth knowing before anyone builds on it.
    `get_session_info` fails on this build with `Python argument types in None.None(Song) did not match
    C++ signature: None(class TPyHandle<class ASong>)`, so session state has to come from `get_track_info`
    or the browser rather than from that tool. And `get_browser_items_at_path` resolves a folder name
@@ -372,6 +386,20 @@ alike. Three things are left, and none of them can be settled from a shell:
    sample-vault's `COMPANY_NAME "SKEER Audio"`, opens and shows one loadable device (`SKEER Vault`,
    `SkerSkrv`, built 2026-11-19). One company, three spellings, one of them unreadable through the seam:
    §6's vendor drift, now visible in a live host's browser rather than only in a cache file.
+
+   The third limit closes the workaround the URI implies. Every device the browser lists carries its own
+   `query:` URI, so a URI looks like a way to name `Skeer Audio` without going through the folder list that
+   folds it onto its all-caps sibling. `get_browser_items_at_path` refuses one:
+   `Unknown or unavailable category: query:plugins#vst3:skeer%20audio`. The echo is the informative part — the
+   argument went in title-case and came back lower-cased, which is plausibly where the folding above lives,
+   although an error string is a weaker witness than the resolver and the collision is measured independently
+   of it. `prefer_candidate` is not what its name suggests: it records a pairwise preference between candidate
+   actions, requires telemetry consent, and disambiguates nothing in a browser. What the refusal does hand over
+   is the remote script's own method surface, where `load_item` sits beside `preview_item`, `plugins` and
+   `user_folders` — so a seam that accepts a URI may exist one level below the tool the bridge exposes.
+   Untested, and it stays untested here: the only way to learn whether `load_item` resolves our URI is to put a
+   device into a set that is open in front of its owner, which is the owner's call rather than a step in a
+   test plan.
 
    Whether a host has anything to find at all is a machine state, not a property of the release, and
    the runbook above can leave you with the wrong one: `install_cycle_check.ps1 -AllUsers` *uninstalls*
@@ -466,7 +494,12 @@ alike. Three things are left, and none of them can be settled from a shell:
    `-CacheFile` at the copy — the row-based verdict becomes
    `no row in this cache, but this host recognised the bundle and wrote it down itself`. Against the
    untouched cache it stays on the row-based text. Nothing in that recipe writes to the real preferences
-   folder, and the scratch copy of a person's cache should be deleted once the log is kept.
+   folder, and the scratch copy of a person's cache should be deleted once the log is kept. The third
+   branch — a pair the machine does not carry at all — was checked with a fabricated code
+   (`-VendorCode Zzqq -PluginCode Qqzz`): it prints `no bundle with class ID tail '5a7a717151717a7a' is on
+   disk under these roots` and exits **0**, because the exit code owns the duplicate question and not the
+   installed one. That run also corroborates the denominator above from the other side: the script's own
+   counter reads 1,416 device rows in the `12.3.2` cache and 1,407 in `12.3.5`.
 
    Whoever re-takes these counts needs one warning about separators. The host writes paths mixed — the
    scanner log names our bundle `C:/Program Files\Common Files\VST3\SKEER MIDI VAULT.vst3`, a slash after the
