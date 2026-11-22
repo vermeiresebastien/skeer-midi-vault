@@ -450,6 +450,16 @@ alike. Three things are left, and none of them can be settled from a shell:
    host already reads, which is the shortest route to a session and the easiest to undo. That third one
    is deliberately not done for you here: it leaves a second copy of the bundle on the machine, and
    retiring or duplicating a plug-in folder is a decision about your rig, not a step in a test plan.
+   Then choose which Live you launch, because a scan belongs to a version and this machine has four.
+   Re-measured 2026-11-22 at 16:48 local by that same command: `Live 12.3.2` holds our row — its cache
+   rewritten 16:22:06, one device row carrying the dash-grouped class ID, 753 rows out of the shared root —
+   while `Live 12.3.5` holds none, and the reason there is a date rather than a placement: that cache was
+   last written 2026-11-15, seven days before the machine-wide install put a bundle into the same root
+   `12.3.5` also reads (742 rows from it). `12.3.1` and plain `12.3` are older again. So opening 12.3.5,
+   not seeing `SKEER MIDI VAULT` in the browser and concluding the install failed is the wrong inference —
+   and it would wrongly call the 1.1.2 placement decision into question too, since the folder is proved
+   readable by a sibling version. What that version needs is one scan, and `host_scan_check.ps1` names the
+   cache that has us before anyone spends an evening hunting for a menu entry.
    And when you check from a shell whether the host is even up, match the image
    name exactly: it is `Ableton Live 12 Suite.exe`, and a case-insensitive filter on `ableton` also
    returns `ableton-mcp.exe` — on this machine that bridge was running, pid 13980, while Live was not,
