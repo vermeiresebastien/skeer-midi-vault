@@ -448,8 +448,20 @@ argues; the second is defensible only if a host somewhere is expected to want `{
 admin log line should name both destinations it is about to write, because the log — not the README — is what
 this was read from. And the certification hole is worth naming too: `install_cycle_check.ps1 -AllUsers`
 proved the shared folder received a bundle and never asked how many bundles the machine received, so a green
-`shared-folder PASS` row and a duplicate were compatible. A count-across-roots assertion is the fix, and it
-belongs in the same place as the existing `Census-Diff`.
+`shared-folder PASS` row and a duplicate were compatible. The count-across-roots assertion now exists, in
+`scripts/host_scan_check.ps1`: it walks every root the host's caches have ever named plus the two install
+destinations, reads each `moduleinfo.json` with a regex rather than `ConvertFrom-Json` (JUCE has been
+measured writing trailing commas, and a strict parser had already dropped one bundle silently that
+evening), matches on the class ID tail, hashes each `Contents\x86_64-win` binary and compares it to the
+staged one in `launch/VST3`, then exits 1 unless the machine holds exactly one copy. Measured against the
+live state 2026-11-22 at 03:55 local, it went red on the real defect rather than on a planted one: 2 copies
+of `SkAuMvlt`, both `sha256=A2F15767…`, 1 inside a root this host reads, exit **1**. The green control is the
+same code path pointed at a pair that exists once — `-VendorCode Sker -PluginCode Skrv`, sample-vault's
+bundle — which reported `one copy, in a root this host reads` and exit **0**. Both directions have now been
+seen, so the row means something. What is still open is wiring it into the certification: it belongs in
+`install_cycle_check.ps1`'s `-AllUsers` grading, and that is deliberately not done here, because the
+machine carries the duplicate *today* and the published 1.1.1 Setup produces it — turning a shipped
+release's gate red is the owner's call on 1.1.2, not a side-effect of adding a check.
  Found while answering question 1 of the
 host runbook, and it is a family decision rather than a midi-vault one. A VST3 has two vendor strings
 and they do not have the same status. `COMPANY_NAME` is a display string: it is what a host shows in

@@ -17,6 +17,14 @@
   plugin/CMakeLists.txt. Those codes are read out of that file rather than repeated here, and the
   cache's device rows are counted against them. A bundle that was renamed, copied or rebadged still
   reports itself by ID; a name-only match proves nothing is ours.
+  The cache cannot answer how many copies of the bundle the machine holds, and those two questions came
+  apart on 2026-11-22: an /ALLUSERS install wrote one bundle into the shared scan root and a byte-identical
+  second one into the application's own VST3 folder. No cache row names the second, because no root the host
+  reads contains it - so a host-side check stayed green while the machine carried two. The read-only census
+  therefore also walks every root this cache has ever named, plus the install destinations, and counts
+  bundles by class ID tail. One copy in a scanned root is the placement the product rule asks for; more than
+  one is reported as a duplicate whatever the cache says, and zero copies is said out loud rather than left
+  as a silence that reads as "not installed".
 .EXAMPLE
   powershell -File scripts/host_scan_check.ps1
   powershell -File scripts/host_scan_check.ps1 -CacheFile "$env:APPDATA\Ableton\Live 12.3.2\Preferences\PluginScanDb.txt"
@@ -104,6 +112,7 @@ if (-not $targets.Count) {
   exit 1
 }
 
+$seenRoots = @{}
 foreach ($t in $targets) {
   $text = Get-Content -LiteralPath $t.FullName
   $rows = @($text).Count
@@ -164,6 +173,7 @@ foreach ($t in $targets) {
     if ($agg.ContainsKey($r)) { $agg[$r] = $agg[$r] + 1 } else { $agg[$r] = 1 }
   }
   $known = @($roots | ForEach-Object { $_.Lit.TrimEnd('\') })
+  foreach ($k in $agg.Keys) { if (-not $seenRoots.ContainsKey($k)) { $seenRoots[$k] = $true } }
   Write-Host ("  distinct VST3 roots named in this cache : {0}" -f $agg.Count)
   foreach ($kv in ($agg.GetEnumerator() | Sort-Object -Property Value -Descending)) {
     if (Test-Path -LiteralPath $kv.Key) { $tag = '[on disk now]' } else { $tag = '[absent now]' }
@@ -193,6 +203,88 @@ foreach ($t in $targets) {
     Write-Host 'VERDICT - neither the name nor the class ID is in this cache. Install, then make the host rescan;'
     Write-Host ("         the file rewrites only on a scan, and it is {0} min old." -f $ageMin)
   }
+}
+# The disk census. A cache row records that a scan once found something; a file on disk is a fact about
+# placement, and only the second one answers "one bundle, one place". Identified by class ID tail, read
+# with a regex rather than ConvertFrom-Json: JUCE has been measured writing moduleinfo.json with trailing
+# commas, and a strict parser drops that bundle silently, which is how a first census missed one entirely.
+$wantTail = "$hexV$hexP"
+$census = @{}
+foreach ($k in $seenRoots.Keys) { $census[$k] = $true }
+foreach ($k in @('C:\Program Files\SKEER MIDI VAULT\VST3',
+                 (Join-Path $env:LOCALAPPDATA 'Programs\SKEER MIDI VAULT\VST3'))) {
+  if (-not $census.ContainsKey($k)) { $census[$k] = $false }
+}
+$modules = 0
+$found = @()
+foreach ($r in @($census.Keys)) {
+  if (-not (Test-Path -LiteralPath $r)) { continue }
+  foreach ($mi in @(Get-ChildItem -LiteralPath $r -Recurse -Filter 'moduleinfo.json' -File -ErrorAction SilentlyContinue)) {
+    $modules = $modules + 1
+    $raw = Get-Content -LiteralPath $mi.FullName -Raw
+    foreach ($m in [regex]::Matches($raw, '"CID"\s*:\s*"([0-9A-Fa-f]{32})"')) {
+      if ($m.Groups[1].Value.Substring(16).ToLower() -ne $wantTail) { continue }
+      $leaf = [regex]::Match($raw, '"Name"\s*:\s*"([^"]*)"').Groups[1].Value
+      $ver = [regex]::Match($raw, '"Version"\s*:\s*"([^"]*)"').Groups[1].Value
+      $bundle = $mi.FullName -replace '\\Contents\\Resources\\moduleinfo\.json$', ''
+      $peDir = Join-Path $bundle 'Contents\x86_64-win'
+      $peName = ''
+      $peHash = ''
+      if (Test-Path -LiteralPath $peDir) {
+        $pe = @(Get-ChildItem -LiteralPath $peDir -File -ErrorAction SilentlyContinue | Where-Object { $_.BaseName -eq $leaf })
+        if ($pe.Count -eq 0) { $pe = @(Get-ChildItem -LiteralPath $peDir -File -ErrorAction SilentlyContinue) }
+        if ($pe.Count -gt 0) {
+          $peName = $pe[0].Name
+          $peHash = (Get-FileHash -LiteralPath $pe[0].FullName -Algorithm SHA256).Hash
+        }
+      }
+      if (-not ($found | Where-Object { $_.Path -eq $bundle })) {
+        $found = $found + [pscustomobject]@{ Path = $bundle; Version = $ver; Scanned = [bool]$census[$r]; Binary = $peName; Hash = $peHash }
+      }
+      break
+    }
+  }
+}
+Write-Host ''
+Write-Host ("DISK CENSUS - roots examined: {0}   moduleinfo.json read: {1}   class-ID tail: '{2}'" -f $census.Count, $modules, $wantTail)
+if ($modules -eq 0) {
+  Write-Host 'PROBLEM - not one moduleinfo.json was readable under the roots examined, so a "no copies" result'
+  Write-Host '          from here would be this reader being blind. Fix the reader before believing it.'
+  exit 1
+}
+foreach ($f in ($found | Sort-Object -Property Path)) {
+  $where = 'NOT in a root this host reads'
+  if ($f.Scanned) { $where = 'scanned by this host' }
+  Write-Host ("  {0}  v{1}  [{2}]" -f $f.Path, $f.Version, $where)
+  $binLabel = 'binary absent from Contents\x86_64-win'
+  if ($f.Binary) { $binLabel = ('{0}  sha256={1}' -f $f.Binary, $f.Hash) }
+  Write-Host ("      {0}" -f $binLabel)
+}
+$refDir = Join-Path $PSScriptRoot '../launch/VST3'
+if ((Test-Path -LiteralPath $refDir) -and $found.Count -gt 0) {
+  $ref = @(Get-ChildItem -LiteralPath $refDir -Recurse -File -Filter '*.vst3' -ErrorAction SilentlyContinue |
+             Where-Object { $_.FullName -like '*\Contents\x86_64-win\*' })
+  if ($ref.Count -gt 0) {
+    $refHash = (Get-FileHash -LiteralPath $ref[0].FullName -Algorithm SHA256).Hash
+    $same = @($found | Where-Object { $_.Hash -eq $refHash }).Count
+    Write-Host ("  staged in launch\VST3 : {0}  sha256={1}" -f $ref[0].Name, $refHash)
+    Write-Host ("  on-disk copies byte-identical to the staged one : {0} of {1}" -f $same, $found.Count)
+  }
+}
+$scannedCopies = @($found | Where-Object { $_.Scanned }).Count
+if ($found.Count -eq 0) {
+  Write-Host ("VERDICT - no bundle with class ID tail '{0}' is on disk under these roots: not installed, or" -f $wantTail)
+  Write-Host '          installed somewhere this list does not look. A placement answer, not a build defect.'
+} elseif ($found.Count -eq 1 -and $scannedCopies -eq 1) {
+  Write-Host 'VERDICT - one copy, in a root this host reads. That is the placement the product rule asks for.'
+} elseif ($found.Count -eq 1) {
+  Write-Host 'VERDICT - one copy, in a folder no root of this host reads, so the host will not offer it until it'
+  Write-Host '          is pointed at that folder or the bundle moves to a scanned root.'
+} else {
+  Write-Host ("VERDICT - {0} copies of one class ID on disk, {1} of them in a root this host reads. The host" -f $found.Count, $scannedCopies)
+  Write-Host '          cannot see the rest, which is how a recognition check stays green on a machine carrying'
+  Write-Host '          two. One bundle, one place: retire the extra bundle, never a scan path the host owns.'
+  exit 1
 }
 if ($targets.Count -gt 1) {
   Write-Host ''
