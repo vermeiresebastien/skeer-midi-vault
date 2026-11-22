@@ -60,7 +60,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $roots = @(
-  [pscustomobject]@{ Label = 'shared (where 1.1.1 installs)'; Lit = 'C:\Program Files\Common Files\VST3' },
+  [pscustomobject]@{ Label = 'shared (machine-wide install, since 1.1.1)'; Lit = 'C:\Program Files\Common Files\VST3' },
   [pscustomobject]@{ Label = 'old    (where 1.1.0 installed)'; Lit = 'C:\Program Files\VST3\' }
 )
 

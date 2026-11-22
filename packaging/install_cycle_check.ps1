@@ -549,27 +549,56 @@ if (-not $stampIn) {
     }
 }
 
-$pluginBinary = Join-Path $InstallDir `
-    'VST3\SKEER MIDI VAULT.vst3\Contents\x86_64-win\SKEER MIDI VAULT.vst3'
-$pluginInfo = Join-Path $InstallDir `
-    'VST3\SKEER MIDI VAULT.vst3\Contents\Resources\moduleinfo.json'
-if (-not (Test-Path -LiteralPath $pluginBinary)) {
-    Add-Row 'plugin' 'FAIL' "no VST3 binary in the install at $pluginBinary"
+# One bundle per install mode is what the placement rule promises, and the mode decides which
+# destination Setup may write: machine-wide takes the shared folder, per-user takes {app}\VST3 (the
+# two Check: arms in packaging\skeer-midi-vault.iss). This phase used to grade the app-folder path
+# whatever the mode, so it failed a correct machine-wide install -- and before the Check: arms
+# existed it let a duplicate through ungraded, because shared-folder asks how many files landed
+# where it looks and never asks how many bundles the machine received.
+$appBundle = Join-Path $InstallDir 'VST3\SKEER MIDI VAULT.vst3'
+$sharedBundle = Join-Path $SystemVst3 'SKEER MIDI VAULT.vst3'
+$pluginBundle = if ($AllUsers) { $sharedBundle } else { $appBundle }
+$otherBundle = if ($AllUsers) { $appBundle } else { $sharedBundle }
+$pluginBinary = Join-Path $pluginBundle 'Contents\x86_64-win\SKEER MIDI VAULT.vst3'
+$pluginInfo = Join-Path $pluginBundle 'Contents\Resources\moduleinfo.json'
+$stagedBinary = Join-Path $Repo 'launch\VST3\SKEER MIDI VAULT.vst3\Contents\x86_64-win\SKEER MIDI VAULT.vst3'
+$stagedInfo = Join-Path $Repo 'launch\VST3\SKEER MIDI VAULT.vst3\Contents\Resources\moduleinfo.json'
+
+# A copy in the folder this mode declines may predate the run: that is the user's history, not this
+# installer's doing, and only a copy that appears during the cycle can be blamed on Setup. Census
+# keys are bundle-relative, so the bundle's own folder name is the whole match.
+$otherPreexisting = (-not $AllUsers) -and
+    (@($vst3Before.Keys | Where-Object { $_ -like 'SKEER MIDI VAULT.vst3*' }).Count -gt 0)
+
+if (-not (Test-Path -LiteralPath $stagedBinary)) {
+    Add-Row 'plugin' 'FAIL' "the staged bundle is not at $stagedBinary to compare the install against"
+} elseif (-not (Test-Path -LiteralPath $pluginBinary)) {
+    Add-Row 'plugin' 'FAIL' "no VST3 binary where this mode installs the bundle: $pluginBinary"
 } elseif (-not (Test-Path -LiteralPath $pluginInfo)) {
     Add-Row 'plugin' 'FAIL' 'the installed bundle has no moduleinfo.json'
+} elseif ((Test-Path -LiteralPath (Join-Path $otherBundle 'Contents')) -and -not $otherPreexisting) {
+    Add-Row 'plugin' 'FAIL' ("a second copy of the bundle stands at $otherBundle while this mode " +
+        "installs into $pluginBundle - one class ID, two devices to pick between")
 } else {
     $stated = [regex]::Match([System.IO.File]::ReadAllText($pluginInfo),
         '"Version":\s*"([^"]+)"').Groups[1].Value
     $statedSize = (Get-Item -LiteralPath $pluginBinary).Length
-    $stagedSize = (Get-Item -LiteralPath (Join-Path $Repo `
-        'launch\VST3\SKEER MIDI VAULT.vst3\Contents\x86_64-win\SKEER MIDI VAULT.vst3') `
-        -ErrorAction SilentlyContinue).Length
+    # Bytes, not size: two builds of this bundle have measured the same length apart from one
+    # same-length string, so an equal size proves only that nothing grew.
+    $sameBinary = (Hash $pluginBinary) -eq (Hash $stagedBinary)
+    $sameInfo = (Hash $pluginInfo) -eq (Hash $stagedInfo)
     if ($stated -ne $Version) {
         Add-Row 'plugin' 'FAIL' "the installed plug-in reports $stated, the release is $Version"
-    } elseif ($statedSize -ne $stagedSize) {
-        Add-Row 'plugin' 'FAIL' "installed plug-in is $statedSize bytes, staged is $stagedSize"
+    } elseif (-not $sameBinary) {
+        Add-Row 'plugin' 'FAIL' 'the installed plug-in binary is not the staged bytes'
+    } elseif (-not $sameInfo) {
+        Add-Row 'plugin' 'FAIL' 'the installed moduleinfo.json is not the staged bytes'
     } else {
-        Add-Row 'plugin' 'PASS' "VST3 $stated at $statedSize bytes, as staged"
+        $note = if ($otherPreexisting) {
+            ' (a copy that predates this run was left alone in ' + $otherBundle + ')'
+        } else { '' }
+        Add-Row 'plugin' 'PASS' ("VST3 $stated at $statedSize bytes, byte-identical to the staged " +
+            "bundle, in $pluginBundle" + $note)
     }
 }
 
