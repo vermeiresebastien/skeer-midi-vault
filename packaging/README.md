@@ -340,18 +340,49 @@ alike. Three things are left, and none of them can be settled from a shell:
    scan happened, and 656 of the 751 rows under `C:\Program Files\Common Files\VST3` point inside vendor
    subfolders (the same 656 of the older cache's 742), so this host scans recursively and a bundle in
    `…\VST3\Skeer Audio\` would be found as readily as one at the top level — worth knowing before the
-   1.1.2 placement decision is taken. Once a scan has happened, a host-side
-   parameter read is the three exported controls counted by the host rather than by
+   1.1.2 placement decision is taken. What a row means is narrower than it looks: the cache records
+   scans, not the present disk. In the same read, `%LOCALAPPDATA%\Programs\Common\VST3` is named by 2
+   rows of the newest cache and 4 of the older one. Re-measured 2026-11-22 at 03:47 local, that root does
+   hold a bundle: `VRAC obsolete\VRAC obsolete (nested 2026-11-02 build)\`, buried inside a plain folder
+   instead of named `*.vst3` at the scan root — and its binary is gone, because the row above points at
+   `Contents\x86_64-win\VRAC+.vst3`, which no longer exists while `Contents\Resources\moduleinfo.json`
+   does. So a row is evidence that a scan once found something, never evidence that it is still there,
+   and a row can outlive not only an uninstall but a binary someone moved by hand. The first draft of
+   this paragraph asserted the root "holds no bundle at all", which is what counting only top-level
+   `*.vst3` names produces; the census that corrected it had to be rerun with the fallback below, because
+   a strict-JSON walk also drops bundles whose `moduleinfo.json` JUCE wrote with trailing commas. The
+   `Live 12.3.5` cache names `SKEER Vault.vst3` in this same root, and that bundle sits in the *shared*
+   folder today — so bundles here have been moved between roots by hand, and each cache remembers where
+   the scan found them. Once a scan has happened, a
+   host-side parameter read is the three exported controls counted by the host rather than by
    `vault-editor-test`. Rescanning has no method on that bridge (none of its 37 tools
-   rescans), and neither does any of this without a write into a running set, so the two steps that
-   remain are the owner's by nature and not by shortage of tooling.
+   rescans), so the scan itself stays the owner's. What follows a scan no longer does. Measured
+   2026-11-22 at 03:40 local against the running `Ableton Live 12 Suite.exe` (pid 1588): the bridge reads
+   the browser, which files third-party bundles under `Plugins/VST3/<Vendor>` and returns each device
+   with `is_loadable` and a `query:` URI — so loading ours and counting its exported controls are both
+   drivable through `load_instrument_or_effect` and `get_device_parameters`, and only the click that
+   starts a scan needs a hand. Two limits on that seam are worth knowing before anyone builds on it.
+   `get_session_info` fails on this build with `Python argument types in None.None(Song) did not match
+   C++ signature: None(class TPyHandle<class ASong>)`, so session state has to come from `get_track_info`
+   or the browser rather than from that tool. And `get_browser_items_at_path` resolves a folder name
+   case-insensitively: this browser lists `SKEER`, `SKEER Audio` and `Skeer Audio` as three folders with
+   three distinct URIs, and asking for the title-case one hands back the all-caps one. So the folder our
+   own bundle will land in — `plugin/CMakeLists.txt` writes the vendor as `Skeer Audio`, and so do
+   PulseKit and SKULPT — cannot be listed by path, while the all-caps `SKEER Audio`, which is
+   sample-vault's `COMPANY_NAME "SKEER Audio"`, opens and shows one loadable device (`SKEER Vault`,
+   `SkerSkrv`, built 2026-11-19). One company, three spellings, one of them unreadable through the seam:
+   §6's vendor drift, now visible in a live host's browser rather than only in a cache file.
 
    Whether a host has anything to find at all is a machine state, not a property of the release, and
    the runbook above can leave you with the wrong one: `install_cycle_check.ps1 -AllUsers` *uninstalls*
    what it installs, so as measured 2026-11-21 20:48Z this machine holds no copy of ours — neither
    `%LOCALAPPDATA%\Programs\SKEER MIDI VAULT` nor a `SKEER MIDI VAULT.vst3` in the shared scan folder,
-   which contains only the sibling bundle. A host scan right now returns nothing, and that is not a
-   defect in these bytes. Install first, then scan — and there are three ways to make a bundle visible
+   which held only the sibling bundles. That read is superseded at 03:34 local on 2026-11-22: the
+   published 1.1.1 Setup, run elevated with `/ALLUSERS`, wrote ours into the shared scan folder — and,
+   per the defect recorded in `docs/next-steps-2026-11.md`, a second byte-identical copy into
+   `C:\Program Files\SKEER MIDI VAULT\VST3`. The `Live 12.3.2` cache behind that browser was last
+   rewritten at 22:14:45 on 21 November, so the host has not scanned the install yet and still cannot
+   offer it: a scan that has not happened, not a defect in these bytes. Install first, then scan — and there are three ways to make a bundle visible
    to this host, only two of which need elevation: the per-user Setup (which puts it in `{app}\VST3`, a
    folder a host has to be pointed at by hand), the same Setup elevated with `/ALLUSERS` (the shared
    scan folder), and copying `launch\VST3\SKEER MIDI VAULT.vst3` into

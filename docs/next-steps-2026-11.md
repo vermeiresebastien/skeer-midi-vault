@@ -416,7 +416,41 @@ under `Programs\SKEER MIDI VAULT\VST3`, which Setup will not delete) or sits bes
 squares with your standing rule that a bundle lives in exactly one place. Measurement and the three
 install routes are in `packaging/README.md`, "A host session".
 
-**Which half of the plug-in's identity is allowed to change.** Found while answering question 1 of the
+**The machine-wide install puts the plug-in bundle in two places, and the Setup log only names one.**
+Found 2026-11-22 at 03:34 local, on the first real `/ALLUSERS` install of the published 1.1.1 Setup run
+on this machine (exit 0, 201 files, HKLM uninstall key `{B7E2D5A8-…}_is1` at `1.1.1`). A census of every
+root by class ID tail — not by file name — found two copies of `SKEER MIDI VAULT.vst3`, both byte-identical
+to the staged bundle in `launch/VST3` (PE `a2f15767…`, 7,566,336 B; moduleinfo `4fcc32b8…`, 1,339 B):
+
+- `C:\Program Files\Common Files\VST3\SKEER MIDI VAULT.vst3` — the one every host looks in by default, and
+  the fix 1.1.1 shipped to get.
+- `C:\Program Files\SKEER MIDI VAULT\VST3\SKEER MIDI VAULT.vst3` — inside the app folder, so a host is only
+  ever shown it if a person points one at it by hand.
+
+The cause is two `[Files]` lines that disagree about intent: `packaging/skeer-midi-vault.iss:93` copies
+`launch\VST3\*` to `{app}\VST3` with no `Check:`, and `:97` copies the same source to `{commoncf64}\VST3`
+`Check: CommonVst3` — which is true only in admin mode. Per-user therefore gets one bundle; machine-wide
+gets two. The `[Code]` log makes it hard to see from the outside: the admin branch logs "VST3: installing
+into C:\Program Files\Common Files\VST3." and stops, while the per-user branch logs "installed only in
+{app}\VST3". Both statements are true and only one of them is complete.
+
+Why it is a defect rather than a curiosity: the product rule for this family is one bundle in one scanned
+place, because two copies of one class ID is how a producer ends up editing a plug-in that a saved project
+is not using. It is quiet today only because this machine's Live scan roots happen to be the shared folder,
+the per-user `Programs\Common\VST3`, and one unrelated K:\ path — measured, three roots, `{app}\VST3` not
+among them. A host that scans its own plug-in folder too, or a user who adds `{app}\VST3` to a scan path,
+sees the same plug-in twice with no way to tell which is which.
+
+Decision wanted for 1.1.2: give `:93` a `Check: not CommonVst3` so exactly one bundle lands in either mode,
+or keep the app-folder copy deliberately and say in the release notes that a machine-wide install leaves a
+second, unscanned copy behind. The first is one line and matches what the installer's own comment on `:94-96`
+argues; the second is defensible only if a host somewhere is expected to want `{app}\VST3`. Either way the
+admin log line should name both destinations it is about to write, because the log — not the README — is what
+this was read from. And the certification hole is worth naming too: `install_cycle_check.ps1 -AllUsers`
+proved the shared folder received a bundle and never asked how many bundles the machine received, so a green
+`shared-folder PASS` row and a duplicate were compatible. A count-across-roots assertion is the fix, and it
+belongs in the same place as the existing `Census-Diff`.
+ Found while answering question 1 of the
 host runbook, and it is a family decision rather than a midi-vault one. A VST3 has two vendor strings
 and they do not have the same status. `COMPANY_NAME` is a display string: it is what a host shows in
 its Vendor column and what folder it puts the plug-in in. `PLUGIN_MANUFACTURER_CODE` + `PLUGIN_CODE`
