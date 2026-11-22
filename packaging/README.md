@@ -450,16 +450,24 @@ alike. Three things are left, and none of them can be settled from a shell:
    host already reads, which is the shortest route to a session and the easiest to undo. That third one
    is deliberately not done for you here: it leaves a second copy of the bundle on the machine, and
    retiring or duplicating a plug-in folder is a decision about your rig, not a step in a test plan.
-   Then choose which Live you launch, because a scan belongs to a version and this machine has four.
-   Re-measured 2026-11-22 at 16:48 local by that same command: `Live 12.3.2` holds our row — its cache
-   rewritten 16:22:06, one device row carrying the dash-grouped class ID, 753 rows out of the shared root —
-   while `Live 12.3.5` holds none, and the reason there is a date rather than a placement: that cache was
-   last written 2026-11-15, seven days before the machine-wide install put a bundle into the same root
-   `12.3.5` also reads (742 rows from it). `12.3.1` and plain `12.3` are older again. So opening 12.3.5,
-   not seeing `SKEER MIDI VAULT` in the browser and concluding the install failed is the wrong inference —
-   and it would wrongly call the 1.1.2 placement decision into question too, since the folder is proved
-   readable by a sibling version. What that version needs is one scan, and `host_scan_check.ps1` names the
-   cache that has us before anyone spends an evening hunting for a menu entry.
+   The paragraph this replaces told the reader to choose which Live to launch, "because a scan belongs to a
+   version and this machine has four". It has one. The application is
+   `C:\ProgramData\Ableton\Live 12 Suite\Program\Ableton Live 12 Suite.exe`, whose `FileVersion` and
+   `ProductVersion` both read `12.3.2`, and that image is running now (pid 42900) — `ProgramData`, worth
+   naming because `C:\Program Files\Ableton` holds only a `USB Audio Driver` folder, which is how a reader
+   concludes Live is not installed. The `Live 12.x` names under `%APPDATA%\Ableton` are version-stamped
+   preference folders left by versions this machine no longer runs: `12.0.10`, `12.1`, `12.3`, `12.3.1`,
+   `12.3.2` and `12.3.5`, newest file inside each dated 2024-11-17, 2025-10-23, 2026-01-25, 2026-01-26,
+   **2026-11-22 16:22:49** and 2026-11-15, and four of the six carry a `PluginScanDb.txt`. So the cache that
+   matters is the one the installed app writes, and that is the one holding us — `12.3.2`, rewritten 16:22:06,
+   with one device row carrying the dash-grouped class ID and 753 rows out of the shared root. The session
+   therefore needs no rescan and no choice of application, which is what that paragraph should have said.
+   What the older folders do teach is how to read `host_scan_check.ps1`: it walks every cache it can find, so
+   a `0 rows` verdict about a folder last written in January is not evidence about the install, and whoever
+   reads the first verdict line off the log gets the wrong answer. One mismatch is recorded rather than
+   resolved: `12.3.5` has a November preference folder while the installed executable is a January build of
+   `12.3.2`, and nothing measured here explains a newer-version folder than the application present — it is a
+   fact about this machine's history, not about the bundle's placement.
    And when you check from a shell whether the host is even up, match the image
    name exactly: it is `Ableton Live 12 Suite.exe`, and a case-insensitive filter on `ableton` also
    returns `ableton-mcp.exe` — on this machine that bridge was running, pid 13980, while Live was not,
