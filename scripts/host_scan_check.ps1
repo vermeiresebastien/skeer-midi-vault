@@ -25,6 +25,20 @@
   bundles by class ID tail. One copy in a scanned root is the placement the product rule asks for; more than
   one is reported as a duplicate whatever the cache says, and zero copies is said out loud rather than left
   as a silence that reads as "not installed".
+  Which roots the host reads is not inferred from the cache either: PluginScanner.txt beside it logs every
+  scan and names its roots, including a root that found nothing. That corrected a claim this script used to
+  make. It read the cache's mtime as proof of whether a scan had happened, and the two disagree here by
+  design - the 12.3.2 cache was last written 2026-11-21 22:14:45 while the log records complete scans at
+  22:15:58 and 22:34:59. A scan that finds nothing new rewrites the log, not the cache. On this machine the
+  log also settles what the duplicate is: the scans read 'C:\Program Files\Common Files\VST3' (global) and
+  '%LOCALAPPDATA%\Programs\Common\VST3' (custom), and the application's own VST3 folder is neither. The
+  prediction was then tested by an actual scan: at 2026-11-22 05:47:07 the log wrote a 'found:' record for
+  this bundle whose own path line names the shared root, and at 16:22:06 Live persisted exactly one module
+  row and one device row for our class ID while two copies sat on disk. So the second copy costs disk, and
+  a rescan cannot turn it into a second device. Read a record's path, never its position: the scanner is
+  asynchronous, so a block can print under the root line of a different one. And a pass that changes
+  nothing logs its roots with no 'found:' lines at all, which is why this script reports the record it
+  finds rather than an inference from either file's timestamp.
 .EXAMPLE
   powershell -File scripts/host_scan_check.ps1
   powershell -File scripts/host_scan_check.ps1 -CacheFile "$env:APPDATA\Ableton\Live 12.3.2\Preferences\PluginScanDb.txt"
@@ -84,6 +98,10 @@ foreach ($pair in @(
 $hexV = -join ($VendorCode.ToCharArray() | ForEach-Object { '{0:x2}' -f [int]$_ })
 $hexP = -join ($PluginCode.ToCharArray()  | ForEach-Object { '{0:x2}' -f [int]$_ })
 $codeAscii = "$VendorCode$PluginCode"
+# The identity rule used by both witnesses below: a VST3 class ID's last eight bytes are the two codes,
+# so a bundle matches when its 32-hex ID ends with this run. Live prints the ID dash-grouped, which is
+# why every reader here strips the dashes before comparing.
+$wantTail = "$hexV$hexP"
 # Four needles, because the same bytes are written two ways: moduleinfo.json prints the CID as one
 # 32-hex run, Live prints it in 8-4-4-4-12 groups, which puts a dash inside the pair. The last two are
 # the single codes, printed for context - the manufacturer half is shared with another product here,
@@ -111,6 +129,79 @@ if (-not $targets.Count) {
   Write-Host 'Nothing is measured. Either this machine has never run Live, or Live has changed where it caches scans.'
   exit 1
 }
+
+# The scanner log beside a cache is a better witness than the cache's own mtime, and the two disagree
+# on this machine by design. Measured 2026-11-22: Live 12.3.2's PluginScanDb.txt was last written
+# 2026-11-21 22:14:45, while PluginScanner.txt logs complete scans after that at 22:15:58 and 22:34:59.
+# A scan that finds nothing new rewrites the log and leaves the cache alone, so "the cache is old" can
+# never mean "no scan has happened". The log also names the roots a scan actually reads, which a cache
+# cannot do: a root that contains nothing has no rows, so a cache-derived root list is silently a list
+# of roots that found something.
+$scanRoots = @{}
+$lastScan = $null
+$lastScanByCache = @{}
+$foundByCache = @{}
+foreach ($t in $targets) {
+  $log = Join-Path (Split-Path -Parent $t.FullName) 'PluginScanner.txt'
+  if (-not (Test-Path -LiteralPath $log)) { continue }
+  $thisRoots = @{}
+  $thisLast = $null
+  $lines = 0
+  # 'VST3: found:' opens an indented block carrying the class ID, the vendor string a host files the
+  # plug-in under, and the fingerprint of the file it read. Read as records rather than one grep, because
+  # the ID is the only field in there that proves *which* plug-in was found.
+  $recs = @()
+  $rec = $null
+  foreach ($ln in @(Get-Content -LiteralPath $log -ErrorAction SilentlyContinue)) {
+    if ($ln -match 'VST3: scanning plugins in "(?<p>[^"]+)" \((?<s>global|custom)\)') {
+      $lines = $lines + 1
+      $p = $Matches['p'] -replace '/', '\'
+      if ($ln -match '^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})') {
+        $ts = [datetime]$Matches[1]
+        if (-not $lastScan -or $ts -gt $lastScan) { $lastScan = $ts }
+        if (-not $thisLast -or $ts -gt $thisLast) { $thisLast = $ts }
+      }
+      if (-not $thisRoots.ContainsKey($p)) { $thisRoots[$p] = $Matches['s'] }
+      if (-not $scanRoots.ContainsKey($p)) { $scanRoots[$p] = $true }
+      continue
+    }
+    if ($ln -match '^(?<ts>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})\S*: info: VST3: found: (?<n>.+?)\s*$') {
+      if ($rec) { $recs = $recs + $rec }
+      $rec = [pscustomobject]@{ When = $Matches['ts']; Name = $Matches['n']; Vendor = ''; Kind = ''; Cid = ''; Ver = ''; Sub = ''; Path = ''; Fp = '' }
+      continue
+    }
+    if (-not $rec) { continue }
+    if ($ln -match '^\s+vendor: (?<v>.*?)\s*$')            { $rec.Vendor = $Matches['v'] }
+    elseif ($ln -match '^\s+subCategories: (?<v>.*?)\s*$') { $rec.Sub = $Matches['v'] }
+    elseif ($ln -match '^\s+version: (?<v>.*?)\s*$')       { $rec.Ver = $Matches['v'] }
+    elseif ($ln -match '^\s+path: "?(?<v>[^"\r\n]+)')      { $rec.Path = $Matches['v'] }
+    elseif ($ln -match 'device-class-id: device:vst3:(?<c>\w+):(?<i>[0-9a-fA-F-]{36})') {
+      $rec.Kind = $Matches['c']; $rec.Cid = ($Matches['i'] -replace '-', '').ToLower()
+    }
+    elseif ($ln -match '^\s+fp: (?<v>\S+)') { $rec.Fp = $Matches['v']; $recs = $recs + $rec; $rec = $null }
+  }
+  if ($rec) { $recs = $recs + $rec }
+  $lastScanByCache[$t.FullName] = $thisLast
+  $oursLog = @($recs | Where-Object { $_.Cid.Length -eq 32 -and $_.Cid.EndsWith($wantTail) })
+  $foundByCache[$t.FullName] = $oursLog
+  Write-Host ''
+  Write-Host ("SCANNER LOG - {0}" -f $log)
+  if (-not $lines) {
+    Write-Host '  no VST3 root lines. Either this log is not the format this reader knows, or this host never scanned.'
+    Write-Host '          Reported, not assumed empty: a root that found nothing has no cache rows, so the cache'
+    Write-Host '          alone cannot say what this host reads.'
+  }
+  foreach ($k in ($thisRoots.Keys | Sort-Object)) {
+    Write-Host ("  scans read: [{0}] {1}" -f $thisRoots[$k], $k)
+  }
+  Write-Host ("  last scan by this host : {0}" -f $thisLast)
+  Write-Host ("  found records : {0}, of which {1} carry class-ID tail '{2}'" -f $recs.Count, $oursLog.Count, $wantTail)
+  foreach ($r in $oursLog) {
+    Write-Host ("    {0}  '{1}' v{2}  vendor '{3}'  device:vst3:{4} [{5}]  fp {6}" -f $r.When, $r.Name, $r.Ver, $r.Vendor, $r.Kind, $r.Sub, $r.Fp)
+    Write-Host ("      read from {0}" -f $r.Path)
+  }
+}
+if ($lastScan) { Write-Host ("  newest scan across the logs read : {0}" -f $lastScan) }
 
 $seenRoots = @{}
 foreach ($t in $targets) {
@@ -200,17 +291,33 @@ foreach ($t in $targets) {
     Write-Host '         A name match without an ID match is not this plug-in - another file, or a code pair'
     Write-Host '         that changed. Check -VendorCode / -PluginCode against the bundle on disk.'
   } else {
-    Write-Host 'VERDICT - neither the name nor the class ID is in this cache. Install, then make the host rescan;'
-    Write-Host ("         the file rewrites only on a scan, and it is {0} min old." -f $ageMin)
+    $seen = @($foundByCache[$t.FullName])
+    if ($seen.Count) {
+      Write-Host 'VERDICT - no row in this cache, but this host recognised the bundle and wrote it down itself:'
+      Write-Host ("         '{0}' v{1} found at {2}, class-ID tail '{3}'." -f $seen[0].Name, $seen[0].Ver, $seen[0].When, $wantTail)
+      Write-Host '         The log and the cache have different writers, and here the log runs ahead of the cache.'
+      Write-Host '         That proves the scan read us; it does not prove the browser lists us. Different question.'
+    } else {
+      Write-Host 'VERDICT - neither the name nor the class ID is in this cache. Install, then make the host rescan.'
+      $thisScan = $lastScanByCache[$t.FullName]
+      if ($thisScan) {
+        Write-Host ("         This host's log says it last scanned {0}; this cache was last written {1} ({2} min ago)." -f $thisScan, $t.LastWriteTime, $ageMin)
+        Write-Host '         The two can differ without either being wrong - a scan that finds nothing new rewrites'
+        Write-Host '         the log and leaves the cache alone. The log is the witness for "has it scanned".'
+      } else {
+        Write-Host ("         No scanner log beside this cache, so its mtime is all there is: {0} min old." -f $ageMin)
+      }
+    }
   }
 }
 # The disk census. A cache row records that a scan once found something; a file on disk is a fact about
 # placement, and only the second one answers "one bundle, one place". Identified by class ID tail, read
 # with a regex rather than ConvertFrom-Json: JUCE has been measured writing moduleinfo.json with trailing
 # commas, and a strict parser drops that bundle silently, which is how a first census missed one entirely.
-$wantTail = "$hexV$hexP"
 $census = @{}
 foreach ($k in $seenRoots.Keys) { $census[$k] = $true }
+# A root the scanner log names outranks one inferred from cache rows: the log is what the scan said it read.
+foreach ($k in $scanRoots.Keys) { $census[$k] = $true }
 foreach ($k in @('C:\Program Files\SKEER MIDI VAULT\VST3',
                  (Join-Path $env:LOCALAPPDATA 'Programs\SKEER MIDI VAULT\VST3'))) {
   if (-not $census.ContainsKey($k)) { $census[$k] = $false }

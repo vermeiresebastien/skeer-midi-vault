@@ -436,10 +436,15 @@ into C:\Program Files\Common Files\VST3." and stops, while the per-user branch l
 
 Why it is a defect rather than a curiosity: the product rule for this family is one bundle in one scanned
 place, because two copies of one class ID is how a producer ends up editing a plug-in that a saved project
-is not using. It is quiet today only because this machine's Live scan roots happen to be the shared folder,
-the per-user `Programs\Common\VST3`, and one unrelated K:\ path — measured, three roots, `{app}\VST3` not
-among them. A host that scans its own plug-in folder too, or a user who adds `{app}\VST3` to a scan path,
-sees the same plug-in twice with no way to tell which is which.
+is not using. It is quiet today, and after the 2026-11-22 scan that is observed rather than inferred: the
+host wrote exactly **one** module row and **one** device row for `SkAuMvlt` while two byte-identical copies
+sat on disk. It stays quiet only because of which folders this machine's Live reads — the scanner log names
+them per pass, and `{app}\VST3` is not among them. Take the two witnesses as different questions: on
+2026-11-22 the logged passes read `C:\Program Files\Common Files\VST3` (global) and
+`%LOCALAPPDATA%\Programs\Common\VST3` (custom), which is what this host reads *now*, while the cache also
+carries rows naming a `K:\` folder that no logged pass ever scanned — what once produced rows is not the
+same list as what is configured. A host that scans its own plug-in folder too, or a user who adds
+`{app}\VST3` to a scan path, sees the same plug-in twice with no way to tell which is which.
 
 Decision wanted for 1.1.2: give `:93` a `Check: not CommonVst3` so exactly one bundle lands in either mode,
 or keep the app-folder copy deliberately and say in the release notes that a machine-wide install leaves a
@@ -462,6 +467,49 @@ seen, so the row means something. What is still open is wiring it into the certi
 `install_cycle_check.ps1`'s `-AllUsers` grading, and that is deliberately not done here, because the
 machine carries the duplicate *today* and the published 1.1.1 Setup produces it — turning a shipped
 release's gate red is the owner's call on 1.1.2, not a side-effect of adding a check.
+
+**The host files the plug-in as an audio effect, where every sibling is an instrument.** Found
+2026-11-22 at 16:22 local, in the first scan-cache row this product has ever had: our device row reads
+`device:vst3:audiofx:…` with sub-category `"Fx"`. The same cache holds **11** Skeer-family device rows
+counting ours, and the other ten are all `instr`:
+
+```
+  audiofx | SKEER MIDI VAULT  | Skeer Audio  | 1.1.1 | Fx
+  instr   | BASSGEN           | SKEER        | 1.0.0 | Instrument
+  instr   | DRUMGEN           | SKEER        | 1.0.0 | Instrument|Drum
+  instr   | DRUMGEN Origin    | SKEER        | 0.1.0 | Instrument|Drum
+  instr   | Groovebox         | Earworm      | 0.2.1 | Instrument|Drum
+  instr   | PulseKit          | Skeer Audio  | 1.0.0 | Instrument|Synth
+  instr   | SKEER Vault       | SKEER Audio  | 1.1.0 | Instrument|Instrument|Synth
+  instr   | SKULPT            | Skeer Audio  | 1.2.0 | Instrument|Drum
+  instr   | SliceForge        | SKEER        | 1.0.0 | Instrument|Drum
+  instr   | VRAC+             | Earworm      | 1.0.0 | Instrument|Drum
+  instr   | VRAC+             | SKEER        | 1.0.0 | Instrument|Drum
+```
+
+So this is not the family's convention drifting around us: we are the outlier, and one word in the build
+causes it. `IS_SYNTH` in `juce_add_plugin` is what JUCE turns into the VST3 device class and sub-category a
+host files a plug-in under — [plugin/CMakeLists.txt:102](../plugin/CMakeLists.txt) sets `FALSE`, while
+`sample-vault/vst/CMakeLists.txt:121`, `pulsekit/CMakeLists.txt:64` and `skulpt/CMakeLists.txt:175` each set
+`TRUE`. For scale, so the split is not mistaken for a quirk of these eleven: of the 1,416 device rows the
+cache exposes to this reader, 1,298 are `audiofx` and 118 `instr`, because a live set carries far more
+processing than sound sources — which is also why the two populations sit in different places in the browser.
+
+What that costs a producer is **not measured**, and this item should not be read as though it were. No
+instance of ours has been loaded on a track, so nobody has observed whether the host routes MIDI notes to an
+instrument-shaped processor filed as an effect, nor which menu a user thinks to open. The design question is
+the second one: this plug-in's job is to hand the host a MIDI clip, and someone hunting for a source of notes
+looks under Instruments, not under the reverb.
+
+Decision wanted for 1.1.2, and the change is one word — `IS_SYNTH TRUE`. Be exact about what it moves: the
+device class and the sub-category, not the class ID, which comes from the manufacturer/plugin-code pair, so a
+project saved against today's device still resolves after the change (§6 below is about that pair, and this
+flag does not touch it). It is still a behaviour change inside a shipped bundle, so it wants the same rebuild,
+reinstall and rescan as the `{app}\VST3` decision rather than a doc-only release. And no check in this repo
+would catch a regression: the category a host reports is only visible in that host's scan cache, which the gate
+cannot own, so the assertion that stays inside the tree is one that reads the flag out of
+`plugin/CMakeLists.txt` in the plug-in lane — a build-behaviour change, therefore a 1.1.2 decision of its own
+rather than something to slip into a doc patch.
  Found while answering question 1 of the
 host runbook, and it is a family decision rather than a midi-vault one. A VST3 has two vendor strings
 and they do not have the same status. `COMPANY_NAME` is a display string: it is what a host shows in
@@ -487,6 +535,14 @@ The same control settled how to spell the needle — Live writes a CID in 8-4-4-
 appears as `536b-41754d766c74` and never as the contiguous sixteen hex digits, and a script that counted
 only the contiguous form would report "not installed" about a plug-in this host has recognised. Both
 spellings are counted and the larger taken, measured 2026-11-21 at 22:14Z.
+
+The drift then wrote itself down unasked. In one scan pass at 05:47:07 on 2026-11-22 the host emitted two
+adjacent records for two bundles sitting in the same folder — ours as `vendor: Skeer Audio`, the sibling's as
+`vendor: SKEER Audio` — forty milliseconds apart. So the three-spelling split is no longer something
+reconstructed from a `moduleinfo.json` census and a cache read hours apart: it is one file, one pass, one
+instant, two capitalisations of one company. The eleven-row device table in the item above is the same kind of
+witness for the pair the rule protects: it shows two `VRAC+` rows, one product name, vendors `Earworm` and
+`SKEER`, both still standing in the host's list.
 
 PulseKit is the natural experiment that settles the asymmetry, and this machine's own scan cache
 witnesses it: the row for `PulseKit.vst3` names the vendor **"Workshop Audio"** while the moduleinfo of

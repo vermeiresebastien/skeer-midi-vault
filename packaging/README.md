@@ -380,9 +380,41 @@ alike. Three things are left, and none of them can be settled from a shell:
    which held only the sibling bundles. That read is superseded at 03:34 local on 2026-11-22: the
    published 1.1.1 Setup, run elevated with `/ALLUSERS`, wrote ours into the shared scan folder — and,
    per the defect recorded in `docs/next-steps-2026-11.md`, a second byte-identical copy into
-   `C:\Program Files\SKEER MIDI VAULT\VST3`. The `Live 12.3.2` cache behind that browser was last
-   rewritten at 22:14:45 on 21 November, so the host has not scanned the install yet and still cannot
-   offer it: a scan that has not happened, not a defect in these bytes. Install first, then scan — and there are three ways to make a bundle visible
+   `C:\Program Files\SKEER MIDI VAULT\VST3`. What that install left on the machine is now answered by the
+   host itself, and the answer supersedes what this paragraph said on 21 November. `Live 12.3.2` scanned at
+   `2026-11-22T05:47:07` and wrote a record for us into its own scanner log:
+
+   ```
+   VST3: found: SKEER MIDI VAULT
+   vendor: Skeer Audio
+   device-class-id: device:vst3:audiofx:abcdef01-9182-faeb-536b-41754d766c74?n=SKEER%20MIDI%20VAULT
+   version: 1.1.1
+   subCategories: Fx
+   path: "C:/Program Files\Common Files\VST3\SKEER MIDI VAULT.vst3"
+   fp: 737400:6b01e16a
+   ```
+
+   The `path:` line is the machine-wide leg's real proof: not that Setup copied bytes somewhere, but that
+   the host read a bundle out of `C:\Program Files\Common Files\VST3` and named it. Take the folder from
+   the record, never from where the block sits in the file — the log is written by an asynchronous scanner,
+   so a record lands under whichever root line happened to print last, and this one prints under a `custom`
+   root while naming the global folder. At 16:22:06 Live rewrote `PluginScanDb.txt` (3,531 rows in the
+   2026-11-21 read, 3,537 now) and our two rows are in it: module row
+   `1940,"C:\Program Files\Common Files\VST3\SKEER MIDI VAULT.vst3",3,1,ok,"737400:6b01e16a"` — the same
+   fingerprint the log wrote — and device row
+   `3976,1940,…,"SKEER MIDI VAULT","Skeer Audio","1.1.1","VST 3.7.12",1,1,"Fx",1`. Neither row names the
+   second copy on disk, inside the app folder, because that path is outside every root this host scans: the
+   duplicate's cost is disk, not a second device. What none of this proves is the thing a producer cares
+   about — no instance has been loaded on a track, and recognition is the furthest this machine has evidence for.
+
+   The sentence this replaces read the cache's mtime and concluded no scan had happened. Say plainly that
+   it was wrong, because the rule behind it is the trap: the two files have different writers.
+   `PluginScanner.txt` is appended per pass by the scanner helper; `PluginScanDb.txt` is rewritten by Live
+   proper, on its own schedule. The 05:47:07 scan left the DB stamped 22:14:45 the previous day, and a pass
+   that changes nothing logs its roots and writes no `found:` line at all — the 16:22:19 and 16:22:48 root
+   lines bracket **0** records between them. So neither file's age answers "did it scan", and
+   `scripts/host_scan_check.ps1` now reads both and prints the record it found rather than an inference from
+   a timestamp. Install first, then scan — and there are three ways to make a bundle visible
    to this host, only two of which need elevation: the per-user Setup (which puts it in `{app}\VST3`, a
    folder a host has to be pointed at by hand), the same Setup elevated with `/ALLUSERS` (the shared
    scan folder), and copying `launch\VST3\SKEER MIDI VAULT.vst3` into
@@ -399,26 +431,49 @@ alike. Three things are left, and none of them can be settled from a shell:
    Whether the machine-wide folder is one this host reads is answerable without the DAW, and it was
    worth answering. Live keeps a scan cache, `PluginScanDb.txt`, under
    `%APPDATA%\Ableton\Live <version>\Preferences\`, written when it recognises plug-ins. The one
-   this machine's `Live 12.3.2` wrote at 15:49 local on 2026-11-21 holds 3,531 rows. **751** of them
-   name
+   this machine's `Live 12.3.2` wrote at 15:49 local on 2026-11-21 holds 3,531 rows. **751** of them name
    `C:\Program Files\Common Files\VST3`, at the root or in a vendor subfolder, and **0** name
    `C:\Program Files\VST3` — the folder 1.1.0's `/ALLUSERS` install used. So the destination this
-   release changed was not cosmetic on this host: a bundle in the old folder could not have appeared,
-   and a bundle of exactly our shape does appear from the new one — the sibling
-   `SKEER Vault.vst3` is listed there by full path, as `SKEER Audio`, `1.1.0`, category `Fx`, which
-   matches the `moduleinfo.json` census above rather than lagging it. What the cache does *not*
-   settle is Q1: recognising a bundle is not instantiating one on a track. What it does give a session
-   is a baseline you can attribute — `SKEER MIDI VAULT` appears in **0** rows of every scan cache on
-   this machine — and `scripts/host_scan_check.ps1` walks every one of them, so the figure is a command
-   rather than a transcription: as run 2026-11-21 20:58 local it read **four** caches
-   (`12.3`, `12.3.1`, `12.3.2`, `12.3.5`), each of them 0 rows for `SKEER MIDI VAULT` and 0 rows for
-   `C:\Program Files\VST3`, and 751 / 742 / 430 / 430 rows for the shared folder, newest first. Pass
+   release changed was not cosmetic on this host: a bundle in the old folder could not have appeared, and
+   a bundle of exactly our shape does appear from the new one. The sibling `SKEER Vault.vst3` is listed there
+   by full path as `SKEER Audio`, `1.1.0`, `device:vst3:instr`, sub-categories `Instrument|Instrument|Synth`.
+   This paragraph first filed that sibling as category `Fx`, and the correction matters more than the typo:
+   the sentence was using that agreement with `moduleinfo.json` as evidence, and an agreement recited from
+   memory is not evidence in either direction. What the cache does *not* settle is Q1: recognising a bundle is
+   not instantiating one on a track.
+
+   What it does give a session is a baseline you can attribute, produced by a command rather than transcribed.
+   `scripts/host_scan_check.ps1` walks every cache on the machine; as run 2026-11-21 20:58 local it read
+   **four** caches (`12.3`, `12.3.1`, `12.3.2`, `12.3.5`), each of them 0 rows for `SKEER MIDI VAULT` and 0 rows
+   for `C:\Program Files\VST3`, and 751 / 742 / 430 / 430 rows for the shared folder, newest first. Pass
    `-BundleName 'SKEER Vault'` and the same counter returns 2 on the two recent caches and flips its
    verdict — that is the control that makes the zeros a measurement and not a dead filter, which is
    worth stating because this script's first version had exactly that defect and its guard caught it
-   by going red on a healthy cache. So the first row naming `SKEER MIDI VAULT` after an install means
-   the scan found it and nothing else. Re-take the count after installing: a rescan is what rewrites
-   that file, so a stale cache proves only what was true at the previous scan.
+   by going red on a healthy cache.
+
+   Re-taken 2026-11-22, after the machine-wide install and the scan it provoked, the same four caches read
+   0 / 0 / **2** / 0 for us: only the cache of the Live that actually ran knows the bundle, which is the honest
+   shape of a per-version cache. In that one, the shared-folder count moved 751 → **753** and the delta is
+   attributable row by row — a module row and a device row, both naming
+   `C:\Program Files\Common Files\VST3\SKEER MIDI VAULT.vst3`, the module row carrying fingerprint
+   `737400:6b01e16a`. Total rows moved 3,531 → 3,537; the other four are not ours to explain. So the first row
+   naming `SKEER MIDI VAULT` after an install meant the host found it, and nothing else. Read the count with
+   the writer in mind: `PluginScanDb.txt` is rewritten by Live proper, not once per scan pass, so a stale one
+   proves only what was true at the previous write — the per-pass witness is `PluginScanner.txt`, and the
+   script reads both. That second verdict has been seen to work, which is the only way to know it is a
+   verdict: copy the `PluginScanDb.txt`/`PluginScanner.txt` pair into a scratch directory, delete our two
+   rows from the copied DB alone (3,537 in, 3,535 out, measured 2026-11-22), and point
+   `-CacheFile` at the copy — the row-based verdict becomes
+   `no row in this cache, but this host recognised the bundle and wrote it down itself`. Against the
+   untouched cache it stays on the row-based text. Nothing in that recipe writes to the real preferences
+   folder, and the scratch copy of a person's cache should be deleted once the log is kept.
+
+   Whoever re-takes these counts needs one warning about separators. The host writes paths mixed — the
+   scanner log names our bundle `C:/Program Files\Common Files\VST3\SKEER MIDI VAULT.vst3`, a slash after the
+   drive and backslashes after that — so a backslash needle typed as a literal will not match every row, and a
+   pattern that loses a backslash level through a shell here-string turns `\vst3` into a vertical tab and
+   reports **0** against 753 rows that are plainly in the file. Normalise separators before comparing, then
+   case-fold. Learned by getting a zero here on 2026-11-22 and believing the file rather than the pattern.
 
    That script also censuses, and the census is the part that earned its keep. It prints every distinct
    VST3 root a cache names and whether that folder still exists, not merely the folders the script was

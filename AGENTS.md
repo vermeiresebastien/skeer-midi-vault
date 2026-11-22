@@ -90,7 +90,7 @@ node tests/midi-output-guard.mjs        # fake requestMIDIAccess: refused send, 
 node tests/space-activation.mjs         # Space reaches the focused control, not the transport
 node tests/deck-broken-row.mjs          # the deck walks past a row whose details/preview are empty
 node tests/scan-settings.mjs            # Settings → Scanning re-hash guard: PATCH, reload, re-arm
-powershell -File scripts/host_scan_check.ps1    # read-only: what the host's own VST3 scan cache proves, then how many copies of our class ID the machine holds (exit 1 on a duplicate)
+powershell -File scripts/host_scan_check.ps1    # read-only: what the host's own scan log and scan cache each prove about our bundle, then how many copies of our class ID the machine holds (exit 1 on a duplicate)
 powershell -File scripts/host_scan_check.ps1 -VendorCode Sker -PluginCode Vrac -BundleName VRAC   # the control: a pair the cache DOES hold
 powershell -File scripts/host_scan_check.ps1 -VendorCode Sker -PluginCode Skrv -BundleName 'SKEER Vault'   # the placement control: one copy on disk, census exit 0
 powershell -File scripts/release_check.ps1              # the release gate; exit 0 READY / 1 NOT READY / 2 INCOMPLETE
