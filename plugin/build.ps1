@@ -41,5 +41,11 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 cmake --build $build --config $Config
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+# The version the shipping bundle reports about itself, read out of its bytes rather than out of the
+# declaration that was supposed to reach them. This belongs here and not only in the release gate
+# because this is the one command that produces the binary. See scripts\check_plugin_version.ps1.
+& (Join-Path $PSScriptRoot "..\scripts\check_plugin_version.ps1") -Bundle (Join-Path $build "SkeerMidiVaultPlugin_artefacts\$Config\VST3\SKEER MIDI VAULT.vst3")
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 ctest --test-dir $build -C $Config --output-on-failure
 exit $LASTEXITCODE

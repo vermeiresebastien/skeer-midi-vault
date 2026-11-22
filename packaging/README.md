@@ -758,6 +758,18 @@ a real difference is a failure.
 see the other three, and a bump that reaches only two of them yields an installer whose product
 version disagrees with the binary it installs.
 
+The table is a list of *declarations*, and one derived artifact does not obey them all the same
+way. `plugin/CMakeLists.txt`'s literal reaches the shipped bundle twice: `moduleinfo.json` is
+rewritten by every build, so it has tracked every bump and `build_installer.ps1` refuses to stage
+a bundle that disagrees; the Windows version resource inside the binary is written by `juceaide`
+from a configure-time info file that JUCE does not declare as a dependency of that step, so it
+keeps whatever the first configure of a build tree wrote. That is how the published 1.1.0 and 1.1.1
+bundles carried a `moduleinfo.json` naming their own release beside PE `FileVersion` and
+`ProductVersion` still reading 1.0.0 — a defect no row above could express. `plugin/CMakeLists.txt`
+now discards a generated resource that no longer names `${PROJECT_VERSION}`, and
+`scripts\check_plugin_version.ps1` grades the bytes of a built bundle against
+`midivault\__init__.py`; `plugin\build.ps1` runs it and stops the lane on a mismatch.
+
 `tests/test_version_consistency.py` runs the checker inside
 `python -m unittest discover -s tests`, keeps its own list of the literals the gate must read,
 and proves the gate can fail: it copies the probe targets into a temporary directory, moves one

@@ -433,3 +433,34 @@ target_link_libraries(VaultEditorTest
 add_test(NAME vault-editor-test COMMAND VaultEditorTest)
 
 add_test(NAME vault-host-test COMMAND VaultHostTest)
+
+# ---------------------------------------------------------------------------
+# Throwing away the Windows version resources so they can be rebuilt
+#
+# juceaide writes FILEVERSION, FileVersion and ProductVersion into
+# <target>_artefacts/JuceLibraryCode/<target>_resources.rc from the configure-time info file
+# beside it, whose VERSION field already carries ${PROJECT_VERSION} -- the same source
+# moduleinfo.json is built from. The version is therefore single-sourced, and still the
+# shipping binary read 1.0.0 under a 1.1.2 release, because the custom command that produces
+# the .rc (JUCEUtils.cmake `_juce_add_resources_rc`) lists only the icon as a DEPENDS and
+# never that info file: once the .rc exists, no later configure regenerates it. Both build
+# trees here proved it -- every Info.txt carried VERSION 1.1.2 and dated to its last
+# configure, while every .rc still dated to the first configure of that tree, when this
+# project read 1.0.0. Delete a resource whenever it no longer names this project's version,
+# which makes the next build regenerate it, and gate the bytes in plugin/build.ps1 rather
+# than trusting that this worked.
+# ---------------------------------------------------------------------------
+string(REPLACE "." [[\.]] _vault_rc_version_re "${PROJECT_VERSION}")
+
+foreach(_vault_rc_target IN ITEMS
+        SkeerMidiVaultPlugin
+        VaultLocatorTest VaultIndexTest VaultMidiTest VaultEmitTest VaultEditorTest VaultHostTest)
+    get_target_property(_vault_generated_sources_dir ${_vault_rc_target} JUCE_GENERATED_SOURCES_DIRECTORY)
+    set(_vault_resources_rc "${_vault_generated_sources_dir}/${_vault_rc_target}_resources.rc")
+    if(EXISTS "${_vault_resources_rc}")
+        file(READ "${_vault_resources_rc}" _vault_resources_rc_body)
+        if(NOT _vault_resources_rc_body MATCHES "FileVersion\", *\"${_vault_rc_version_re}")
+            file(REMOVE "${_vault_resources_rc}")
+        endif()
+    endif()
+endforeach()

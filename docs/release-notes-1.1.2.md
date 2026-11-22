@@ -4,9 +4,11 @@ Released 2026-11-22. A patch release with one bug that could stop the product fr
 a library large enough made the desktop launcher declare its own healthy service dead and tear it
 down. It also fixes two things a producer meets in the plug-in — a host filed SKEER MIDI VAULT under
 *Effects* while every sibling product sits under *Instruments*, and a machine-wide install put two
-copies of the plug-in bundle on disk where one class ID should have offered one device. The MIDI
-engine, the database schema and the interface are unchanged, and a project that already holds the
-device keeps resolving it.
+copies of the plug-in bundle on disk where one class ID should have offered one device. A third
+plug-in correction is one no host shows the user: the binary's own Windows version resource read
+1.0.0 in both published 1.1.x releases, and would have shipped that way again in this one (item 6
+below). The MIDI engine, the database schema and the interface are unchanged, and a project that
+already holds the device keeps resolving it.
 
 ## Why this release exists
 
@@ -88,6 +90,36 @@ Two things about that are worth stating plainly.
 5. **Version literals 1.1.1 → 1.1.2** across the eight files the gate reads.
    `python scripts/check_version_consistency.py` prints `8 files, 11 values, one version 1.1.2.` and
    the `gate` stage refuses a half-bump.
+6. **The plug-in's Windows version resource reads 1.0.0 in a 1.1.2 build** — and did in the bytes
+   already published as 1.1.0 and 1.1.1, measured off the released ZIPs on 2026-11-22: inside
+   `SKEER-MIDI-VAULT-Portable-1.1.1.zip`, the bundle binary
+   `SHA256 A2F157679DACFD7AE202DB7E8D246CC4A85A5E727EB62C4C7A8FD4BD6E9C9BF9` carries a
+   `moduleinfo.json` that says `1.1.1` beside PE `FileVersion`/`ProductVersion` that say `1.0.0`, and
+   the 1.1.0 ZIP is the same shape. Found by the release audit, not by a host: `moduleinfo.json` is
+   what a host lists a device by, so the disagreement never surfaced. Nothing in the source was wrong.
+   The literal is single (`project(... VERSION)` in `plugin/CMakeLists.txt`) and both of its writers
+   take the version from it; what failed is JUCE's own dependency graph. `juceaide` generates
+   `<target>_resources.rc` from a configure-time info file, and the custom command for that call
+   declares the icon as its only `DEPENDS`, never the info file — so the first configure of a build
+   tree fixes the resource forever and four bumps could not move it. The tree's own timestamps are
+   the proof: every `Info.txt` read `VERSION 1.1.2` and dated to that afternoon's configure, while
+   every `_resources.rc` dated to the first configure of that tree, 2026-11-15 and 2026-11-16.
+   `plugin/CMakeLists.txt` now deletes a generated resource whose `FileVersion` no longer names this
+   project's version, so the next build regenerates it from the same `${PROJECT_VERSION}` as
+   `moduleinfo.json`; it settles after that one regeneration rather than churning, measured on a
+   second configure. What ships the claim is
+   [`scripts/check_plugin_version.ps1`](../scripts/check_plugin_version.ps1), which reads the built
+   bundle's two PE fields and its `moduleinfo.json` and requires all three to equal
+   `midivault/__init__.py`, refusing rather than skipping when any of the four is missing.
+   `plugin/build.ps1` runs it between the build and the suites, so both JUCE trees gate it:
+   `plugin-version PASS — PE FileVersion, PE ProductVersion and moduleinfo Version all 1.1.2`, six
+   suites passed, 8.0.4 and 8.0.8, 2026-11-22. It was seen red before it was believed — against the
+   preserved pre-fix bundle it exits 1 with
+   `application version is 1.1.2 but PE FileVersion [1.0.0], PE ProductVersion [1.0.0]`.
+   The seven test binaries carried the same stale resource and are covered by the same rule; they
+   ship nowhere, which is why only the plug-in is gated. The two published releases are left as
+   published: their assets are history, and a `FileVersion` no host reads is not worth a re-download
+   imposed on someone who already installed it.
 
 Nothing moved under `midivault/engine/` or `web/src/` across `v1.1.1..v1.1.2`, and **`SCHEMA_VERSION`
 is 2 in both**, so a 1.1.1 index opens in 1.1.2 unchanged and no rescan is required. The plug-in's
