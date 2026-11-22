@@ -158,8 +158,8 @@ left clean, and no exit code said so. It now moves whatever the tree's own `File
 appends a PROBLEM when it cannot find one, so a disarmed plant is reported instead of skipped.
 Re-run: `FALSIFIER OK`, 33 cases, and the case earns its verdict again —
 `[FAIL] gate - exit 1, says 'build/version_info.txt:19 FileVersion: 9.9.9'`.
-Test infrastructure, not a shipped byte: none of the commits
-after `10fbc15` are read by `packaging/build_installer.ps1`, so `launch/` still holds what that
+Test infrastructure, not a shipped byte: no file touched after
+`10fbc15` is an input of `packaging/build_installer.ps1`, so `launch/` still holds what that
 certified build wrote, byte for byte.
 
 ## The tag message counts its own delta from the wrong base
@@ -180,10 +180,28 @@ a command, not a number:
 git log --oneline v1.1.1..HEAD -- scripts/release_check.ps1 scripts/check_release_gate.py packaging/build_installer.ps1
 ```
 
-prints nothing, because no commit past the tag touches a file the build reads. Both artifacts were
-re-hashed against `SHA256SUMS.txt` at 21:05Z on 2026-11-21 — Setup `d61324f2…`, ZIP `4a69a841…`, both
-MATCH — and the Setup still carries its 18:55:50Z timestamp from the certified run, which is what says the
-bytes were never rewritten.
+prints nothing. The sentence used to end *because no commit past the tag touches a file the build
+reads*, and `07dd5e5` falsified it three days later by commenting `plugin/CMakeLists.txt` - a build
+input, for the plug-in lane. What survived is narrower and worth stating exactly: the installer reads
+the staged bundle's `moduleinfo.json`, never the plug-in's sources, so no post-tag commit has touched
+an input of `packaging/build_installer.ps1`. The conclusion about the bytes still holds, and it is now
+graded instead of asserted -
+
+```
+git diff v1.1.1..HEAD -- plugin/CMakeLists.txt
+```
+
+is seven added lines, every one a `#` comment, with nothing removed. A CMake comment reaches no
+generated file, so it cannot move a byte of the bundle, and the shipped bundle still says what the
+tree declares: `moduleinfo.json` reads `Version 1.1.1`, `Vendor "Skeer Audio"` and a CID ending
+`536B41754D766C74` - the `SkAu`/`Mvlt` pair that comment block documents. A check and a claim about a
+check are different things, and this section now carries the check.
+
+Both artifacts were re-hashed against `SHA256SUMS.txt` at 21:05Z on 2026-11-21 — Setup `d61324f2…`,
+ZIP `4a69a841…`, both MATCH — and the Setup still carries its 18:55:50Z timestamp from the certified
+run, which is what says the bytes were never rewritten. Both commands above were re-run against this
+tree on 2026-11-22 and still print what they printed on the 21st; the range is open, so anyone quoting
+this section runs them rather than trusting the report.
 
 What sat here before pinned a commit count: "the tree seven commits past the tag". That was true of the
 tree it was written on and false of the commit it produced, which was the eighth. The tag message above
