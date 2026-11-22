@@ -38,7 +38,7 @@ Copyright (C) 2026 SKEER AUDIO. All rights reserved.
 
 6. SUPPORT, UPDATES AND CONTACT
    Support, updates and upgrade terms are provided separately by the seller.
-   This version is 1.1.1.
+   This version is 1.1.2.
    Licence and support enquiries: sebastienvermeire@gmail.com
 
 7. GOVERNING LAW

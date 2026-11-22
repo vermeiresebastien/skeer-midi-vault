@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(SkeerMidiVaultPlugin VERSION 1.1.1 LANGUAGES C CXX)
+project(SkeerMidiVaultPlugin VERSION 1.1.2 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -99,7 +99,15 @@ juce_add_plugin(SkeerMidiVaultPlugin
     # -- a space inside a reverse-DNS identifier, which JUCE warns about and macOS would not
     # accept. Spelling it out also keeps it stable if the product name is ever reworded.
     BUNDLE_ID com.skeeraudio.midivault
-    IS_SYNTH FALSE
+    # TRUE, decided 2026-11-22 for 1.1.2: this device hands the host a MIDI clip, and someone
+    # hunting for a source of notes opens the Instruments drawer, not the reverb drawer. The class
+    # ID is untouched by this -- it comes from the two codes above -- so a project saved against
+    # the Fx-era device still resolves. What does move, measured in the 8.0.4 VST3 wrapper: with
+    # IS_SYNTH set, JucePlugin_Vst3ComponentFlags becomes Vst::kSimpleModeSupported, which
+    # advertises that a host may route in simple per-voice mode. The other branch IS_SYNTH selects
+    # -- reporting every audio output bus as kMain -- is unreachable here, because BusesProperties()
+    # in plugin/Source/VaultMIDIProcessor.cpp declares no audio buses at all.
+    IS_SYNTH TRUE
     NEEDS_MIDI_INPUT TRUE
     NEEDS_MIDI_OUTPUT TRUE
     IS_MIDI_EFFECT TRUE
@@ -117,7 +125,19 @@ juce_add_plugin(SkeerMidiVaultPlugin
     COPY_PLUGIN_AFTER_BUILD FALSE
     FORMATS VST3
     PRODUCT_NAME "SKEER MIDI VAULT"
-    VST3_CATEGORIES Fx)
+    # This line, not IS_SYNTH, is what files the device. Measured in the 8.0.4 tree this builds
+    # against: _juce_get_vst3_category_string consults JUCE_IS_SYNTH only when the list names
+    # neither Fx nor Instrument, and otherwise hoists whichever of those two it finds to the front
+    # of the pipe-joined string. Flipping IS_SYNTH while leaving Fx here would therefore have kept
+    # the device in the effects drawer -- the wrapper's own IS_SYNTH-derived category fallback never
+    # fires under CMake, which always defines that macro from this list -- but it would not have been
+    # a no-op, because the simple-mode class flag above is live whatever this list says. Instrument
+    # and Synth together are what JUCE itself derives from IS_SYNTH, and they are spelled out so the
+    # drawer is a decision in this file rather than a default inherited from another repo. Verified
+    # after the build, not before it: the shipped moduleinfo.json must read Sub Categories
+    # ["Instrument","Synth"], and packaging\build_installer.ps1 refuses to stage a bundle that
+    # says otherwise.
+    VST3_CATEGORIES Instrument Synth)
 
 # What this switch buys, measured: with it at its default, a host loading this bundle was
 # offered the plugin's own controls plus Bypass and 16 channels x 130 auto-published "MIDI CC

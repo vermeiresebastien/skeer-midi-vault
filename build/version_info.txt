@@ -1,7 +1,7 @@
 VSVersionInfo(
   ffi=FixedFileInfo(
-    filevers=(1, 1, 1, 0),
-    prodvers=(1, 1, 1, 0),
+    filevers=(1, 1, 2, 0),
+    prodvers=(1, 1, 2, 0),
     mask=0x3f,
     flags=0x0,
     OS=0x40004,
@@ -16,12 +16,12 @@ VSVersionInfo(
         [
           StringStruct(u'CompanyName', u'SKEER AUDIO'),
           StringStruct(u'FileDescription', u'SKEER MIDI VAULT'),
-          StringStruct(u'FileVersion', u'1.1.1'),
+          StringStruct(u'FileVersion', u'1.1.2'),
           StringStruct(u'InternalName', u'SKEER-MIDI-VAULT'),
           StringStruct(u'LegalCopyright', u'Copyright (C) 2026 SKEER AUDIO. All rights reserved.'),
           StringStruct(u'OriginalFilename', u'SKEER MIDI VAULT.exe'),
           StringStruct(u'ProductName', u'SKEER MIDI VAULT'),
-          StringStruct(u'ProductVersion', u'1.1.1')
+          StringStruct(u'ProductVersion', u'1.1.2')
         ]
       )
     ]),

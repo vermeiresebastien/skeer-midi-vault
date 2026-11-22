@@ -203,6 +203,25 @@ if (-not $SkipPlugin) {
     if ($bundleVersion -ne $Version) {
         Fail "Plug-in moduleinfo.json says $bundleVersion but the release is $Version - rebuild it."
     }
+    # The drawer a host lists this device in is decided twice - IS_SYNTH and VST3_CATEGORIES both
+    # feed the string - so only the built artifact says which one won. That made it the one
+    # load-bearing claim about the bundle no check in the repo could see; this reads it off the
+    # moduleinfo a host will read.
+    $moduleDoc = $null
+    try {
+        $moduleDoc = [System.IO.File]::ReadAllText($moduleInfo) | ConvertFrom-Json
+    } catch {
+        Fail "moduleinfo.json did not parse: $_"
+    }
+    $audioModule = @($moduleDoc.Classes | Where-Object { $_.'Category' -eq 'Audio Module Class' })
+    if ($audioModule.Count -ne 1) {
+        Fail "moduleinfo.json holds $($audioModule.Count) 'Audio Module Class' entries, expected exactly 1."
+    }
+    $categories = @($audioModule[0].'Sub Categories')
+    if ($categories -notcontains 'Instrument') {
+        Fail ("Plug-in Sub Categories are [{0}] but the release files this device as an instrument - " `
+              + "rebuild the plug-in lane." -f ($categories -join '|'))
+    }
     $pluginBinary = Get-ChildItem -LiteralPath (Join-Path $PluginBundle "Contents\x86_64-win") -File -ErrorAction SilentlyContinue |
         Where-Object { $_.Length -gt 0 }
     if (-not $pluginBinary) { Fail "The staged VST3 bundle has no binary under Contents\x86_64-win." }
