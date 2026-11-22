@@ -291,6 +291,25 @@ alike. Three things are left, and none of them can be settled from a shell:
    this section's three questions is now two. **1a:** after a rescan, does our device row read `instr`
    with sub-category `Instrument|Synth`? **1b:** will Live put a MIDI-out-only device on a MIDI track
    at all, which has never been tested in either drawer. This runbook claims neither.
+
+   The machine-wide leg has since been run for real, not into a throwaway cycle directory: the shipping
+   `SKEER-MIDI-VAULT-Setup-1.1.2.exe` (SHA-256 `2ff2e518…`, the row `launch/SHA256SUMS.txt` carries)
+   installed elevated with `/ALLUSERS /VERYSILENT` on 2026-11-22 at 20:00 local, exit 0, into
+   `C:\Program Files\SKEER MIDI VAULT\`. Its own log lists 201 `Dest filename:` entries and they
+   reconcile against the ZIP with nothing left over: the 196 non-bundle ZIP members all under the app
+   root (0 missing), plus the generated `unins000.exe`, plus the 2 bundle files under
+   `C:\Program Files\Common Files\VST3`, plus one machine-wide shortcut each in
+   `C:\ProgramData\Microsoft\Windows\Start Menu\Programs\SKEER AUDIO\` and `C:\Users\Public\Desktop\` —
+   those last two are exactly the pair a cycle run declines with `/MERGETASKS`, which is the whole
+   difference between 201 here and the 199 that arm logs. **Zero** destinations fall under
+   `{app}\VST3`, so the duplicate 1.1.1 left behind is seen absent from a customer-shaped install rather
+   than from a grader. The installed binary hashes `6fcc3f4cb96829f1…`, equal to the staged copy; its
+   `moduleinfo.json` reads `1.1.2` with `Sub Categories` `"Instrument", "Synth"`; HKLM carries
+   `DisplayVersion=1.1.2`; and the shared folder gained one top-level entry, 168 to 169.
+   `scripts/host_scan_check.ps1`, re-run read-only afterwards, ends `VERDICT - one copy, in a root this
+   host reads` with exit 0. So question 1a starts from a loaded disk: the bytes a session proves are
+   already on this machine, and the only step left before it is the host's own rescan.
+
    Which bytes you are loading matters for what a session proves: the two JUCE trees build
    different binaries, and only one of them ships. Re-measured 2026-11-22 against the bytes this
    build stages — the earlier figure below was from 2026-11-21 and predates this rebuild,
@@ -479,6 +498,17 @@ alike. Three things are left, and none of them can be settled from a shell:
    second copy on disk, inside the app folder, because that path is outside every root this host scans: the
    duplicate's cost is disk, not a second device. What none of this proves is the thing a producer cares
    about — no instance has been loaded on a track, and recognition is the furthest this machine has evidence for.
+
+   That machine state moved again at 20:00 local on 2026-11-22, and the chain above should not be read as
+   still standing: the 1.1.1 install was uninstalled elevated that morning, then the shipping 1.1.2 Setup
+   installed machine-wide for real, so this machine now holds **one** copy —
+   `C:\Program Files\Common Files\VST3\SKEER MIDI VAULT.vst3`, reading `1.1.2` with
+   `Sub Categories` `"Instrument", "Synth"` — with nothing under `{app}\VST3`, the shared folder up exactly
+   one top-level entry (168 to 169) and HKLM at `DisplayVersion=1.1.2`. `scripts/host_scan_check.ps1` puts
+   it in its own words: `VERDICT - one copy, in a root this host reads`, exit 0, and the paragraph under
+   question 1 above carries that install's byte and destination arithmetic. What this machine does
+   *not* yet hold is a host record for those bytes: every `found:` line and cache row quoted above was
+   written for 1.1.1, so question 1a starts at the rescan, not at the install.
 
    The sentence this replaces read the cache's mtime and concluded no scan had happened. Say plainly that
    it was wrong, because the rule behind it is the trap: the two files have different writers.

@@ -119,6 +119,18 @@ powershell -File packaging/install_cycle_check.ps1 -AllUsers   # elevated only: 
 powershell -File packaging/install_cycle_check.ps1 -WithShortcuts # the customer-facing icon leg, also elevated-only
 ```
 
+Every `powershell -File <script>` line above is right for a terminal of your own. From this
+agent's Git Bash they all die before phase 1 with `... is not digitally signed. You cannot run this
+script on the current system` — measured 2026-11-22 against a two-line `Write-Output` file, so it is
+not about our scripts, and `Get-ExecutionPolicy -List` in that same child reads `CurrentUser
+RemoteSigned`, everything else `Undefined`, with no `Zone.Identifier` stream on any `.ps1` in the
+tree. Why RemoteSigned refuses a file it should call local is not established here; what is
+established is the workaround and its one trap: `-ExecutionPolicy Bypass` on the command line fixes
+the *process*, and a child `powershell` spawned by that process inherits the preference through its
+environment — which is how a nested run can look green while the same command run bare is red. Do
+not record a gate as having passed on a nested child's authority alone, and do not "fix" a script
+over this refusal.
+
 `scripts/release_check.ps1` is the one command whose exit code means "ship it": it
 owns eleven stages (`gate, suite, web, plugin, plugin808, installer, stamp, smoke,
 checksums, licence, installed`), writes one log per stage under

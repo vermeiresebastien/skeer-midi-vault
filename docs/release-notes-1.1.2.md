@@ -249,6 +249,17 @@ executed, because there is no certificate on this machine.
   sequence, if you want the outcome rather than the inference: uninstall 1.1.1, run that check and
   expect zero copies of `536B41754D766C74`, install 1.1.2 with `/ALLUSERS`, run it again and expect
   exactly one.
+  That sequence has now been walked on this machine, minus the 1.1.1 uninstall because the elevated
+  cycle had already cleared it: the check read no bundle on disk, then the shipping Setup
+  (SHA-256 `2ff2e518…`, the bytes `launch/SHA256SUMS.txt` names) installed elevated with
+  `/ALLUSERS /VERYSILENT` at 20:00 local on 2026-11-22 for exit 0, and the check re-run read
+  `VERDICT - one copy, in a root this host reads`. Setup's own file log carries the placement: 201
+  destinations, **none** of them under `{app}\VST3`, split 196 ZIP payload files + `unins000.exe` in
+  the app folder, the 2 bundle files under `C:\Program Files\Common Files\VST3`, and the 2 machine-wide
+  shortcuts a cycle run declines with `/MERGETASKS`. The installed binary hashes `6fcc3f4cb96829f1…`,
+  equal to the staged copy, and HKLM reads `DisplayVersion=1.1.2`. This is the real install, not a
+  throwaway cycle directory, so the machine-wide claim in item 3 now rests on the destination a
+  customer's host actually scans — arithmetic in [packaging/README.md](../packaging/README.md).
 - **A host that already has the device on a track:** the class ID is unchanged, so it reloads this
   bundle. What changes is which drawer a *fresh* browser search finds it in — and a host's existing
   scan cache keeps saying `audiofx` until it rescans the new bytes, so if it still lists the plug-in
