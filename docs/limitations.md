@@ -236,9 +236,11 @@ general-purpose classification accuracy.
   a large library by anyone until a release was built from this tree. In the meantime
   `python -m midivault.server --open` serves the same default data directory with no
   launcher and therefore no self-imposed gate.
-  **No longer true of `launch/`.** The 1.1.2 bundle stamped there names commit `d8110db06738`,
-  built `2026-11-22T18:15:13+00:00`, clean, and that commit descends from `f2dff96` (`git
-  merge-base --is-ancestor f2dff96 d8110db06738` exits 0). The Setup and ZIP in `launch/` are
+  **No longer true of `launch/`.** The 1.1.2 bundle stamped there names commit `2e6ca49c6c0d`,
+  built `2026-11-22T20:20:38+00:00`, clean, and that commit descends from `f2dff96` (`git
+  merge-base --is-ancestor f2dff96 2e6ca49c6c0d` exits 0); the stamp before it, `d8110db06738` built
+  `18:15:13+00:00`, was superseded by the plug-in version-resource fix — item 6 of
+  [docs/release-notes-1.1.2.md](release-notes-1.1.2.md) — which touched no Python or web source. The Setup and ZIP in `launch/` are
   those bytes, digests recorded in [docs/release-notes-1.1.2.md](release-notes-1.1.2.md); a
   v1.1.2 release page does not exist yet, so as of
   this writing the newest published assets are still 1.1.1's and still carry the defect. So is

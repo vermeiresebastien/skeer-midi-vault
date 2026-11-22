@@ -144,7 +144,14 @@ a refused registration whose follow-up `-FilesOnly -Dir` pass graded the payload
 is **SKIP** with the files row quoted, and a payload that did not grade clean stays
 **FAIL** whatever the registration leg did — so the row says what was proven without
 ever turning a broken installer into a skip; falsifier cases T3 and T4 are those two
-directions.
+directions. A **fourth** state exists on a machine that genuinely has the release installed: the
+preflight refuses *before* the payload leg (`Add/Remove Programs already lists SKEER MIDI VAULT`), so
+the `-FilesOnly -Dir` pass never starts and prints **no files row at all**, and the stage reads FAIL
+with nothing about the installer implicated — the two preflight rows above it, manifest hash and no
+running instance, both pass first. Seen 2026-11-22 on the `2e6ca49` rebuild, the evening after the
+release's own machine-wide install had been put on this machine for real. Do not reach for
+`packaging/install_cycle_check.ps1 -Existing` to silence it: that flag lets the throwaway cycle
+uninstall a person's real install by AppId.
 `scripts/check_release_gate.py` is its falsifier — it copies the real files into
 `build\work\release-gate-falsifier\`, stubs the child commands, and requires each
 defect to redden the stage that names it, with a green control case that reaches

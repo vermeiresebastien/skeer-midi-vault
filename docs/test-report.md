@@ -49,6 +49,23 @@ changed between the two tags. `scripts/release_check.ps1` itself, its falsifier
 (33 cases, `FALSIFIER OK` at 18:09Z) and both `install_cycle_check.ps1` arms are reported
 in [`release-notes-1.1.2.md`](release-notes-1.1.2.md).
 
+Re-verification after the plug-in version-resource fix (2026-11-22, from 20:17:53Z): that fix is a build
+input, so the deliverables and the stages were rebuilt and re-run against a tree clean at
+`2e6ca49c6c0d`. Inside that run `python -m unittest discover -s tests` reported **Ran 115 tests — OK** in
+31.231 s — the same 115 as above, because the fix changes how a Windows resource is generated and not one
+line of Python or TypeScript — and `python -m unittest tests.test_schema_migration` was run again on its
+own for the record: **9 tests, OK, 1.888 s**. `plugin/build.ps1` exited 0 on both JUCE trees with **ctest
+6/6** each, and each of those two runs now sits behind the new byte-level row
+(`plugin-version PASS — PE FileVersion, PE ProductVersion and moduleinfo Version all 1.1.2`), which was
+also seen to exit 1 against a preserved pre-fix bundle. `python tests/test_packaged_smoke.py` reported
+PASS against the rebuilt bundle (`built from 2e6ca49c6c0d clean at 2026-11-22T20:20:38+00:00`), and
+`scripts/check_release_gate.py` reported **FALSIFIER OK** on the tree afterwards and left it clean. One
+stage did not complete from this shell: `installed`, whose preflight refused because the release is
+actually installed on this machine. That leg and both `install_cycle_check.ps1` arms are open against
+these bytes, and *Not yet run at this tip* in the release notes says which commands close them. The
+browser harnesses were not re-run and none of this asks them to be: nothing under `web/src/` moved, and
+`web/dist` hashed `dafc8187f542` in both certification runs.
+
 Machine-readable results: [`e2e-results.json`](e2e-results.json),
 [`playback-stability.json`](playback-stability.json),
 [`benchmark-results.json`](benchmark-results.json),

@@ -119,7 +119,17 @@ Two things about that are worth stating plainly.
    The seven test binaries carried the same stale resource and are covered by the same rule; they
    ship nowhere, which is why only the plug-in is gated. The two published releases are left as
    published: their assets are history, and a `FileVersion` no host reads is not worth a re-download
-   imposed on someone who already installed it.
+   imposed on someone who already installed it. Commit `2e6ca49`.
+
+   Two measurements from that rebuild are worth carrying, because both say something about how this
+   stayed hidden. The corrected binary is **the same 7,566,336 bytes** as the one it replaces
+   (`6fcc3f4c…` → `1d8926fc…`), so nothing about the deliverable's size moved; and the byte probe this
+   file's own sibling in [`packaging/README.md`](../packaging/README.md) publishes — an ASCII
+   `count('1.1.2')` on the shipped binary — reads **1 on the broken file and 1 on the fixed one**. It
+   was never blind by accident: the version resource stores its strings UTF-16, so an ASCII scan
+   cannot reach them. Read as UTF-16 the same two files differ exactly where the defect was —
+   `"1.0.0"` twice on the stale binary, `"1.1.2"` twice on the corrected one, and zero of the other.
+   That is why the gate parses the resource through the OS rather than grepping the file.
 
 Nothing moved under `midivault/engine/` or `web/src/` across `v1.1.1..v1.1.2`, and **`SCHEMA_VERSION`
 is 2 in both**, so a 1.1.1 index opens in 1.1.2 unchanged and no rescan is required. The plug-in's
@@ -128,6 +138,8 @@ class ID is derived from the manufacturer and plug-in codes, which this release 
 resolves to this bundle after upgrading — which is the point, given item 3 above.
 
 ## Certified run
+
+### At `d8110db` — the eleven stages, 2026-11-22 18:12:46Z
 
 `scripts/release_check.ps1`, all eleven stages, executed from an elevated terminal at
 2026-11-22 18:12:46Z against a tree clean at `d8110db06738`:
@@ -170,10 +182,61 @@ that verdict is correct too — a stage a terminal cannot execute is not a stage
 exclusive on npm being on PATH. A case that cannot fire on a given machine is a case nobody is
 pretending ran, which is the point of printing them by name.
 
+### At `2e6ca49` — rebuilt for item 6, 2026-11-22 20:17:53Z
+
+Item 6 changes a build input, so the deliverables had to be rebuilt from a tree that already carried
+it and the stages re-run against those bytes rather than the ones above. `scripts/release_check.ps1`,
+all eleven stages, executed from the agent's shell at 2026-11-22 20:17:53Z against a tree clean at
+`2e6ca49c6c0d`:
+
+```
+NOT READY - 10 passed, 1 failed, 0 skipped, of 11 stages, release 1.1.2
+```
+
+| Stage | Result |
+| --- | --- |
+| gate | PASS — 8 files, 11 values, one version 1.1.2 |
+| suite | PASS — 115 tests in 31.231 s, OK |
+| licence | PASS — no placeholders, licence page states 1.1.2 |
+| web | PASS — `tsc --noEmit` and `vite build`, exit 0 |
+| plugin | PASS — `plugin-version PASS … all 1.1.2`, then ctest 6/6 in `plugin/build` (JUCE 8.0.4) |
+| plugin808 | PASS — the same row, then ctest 6/6 in `plugin/build/tag-808` (JUCE 8.0.8) |
+| installer | PASS — Setup 25,674,509 bytes, ZIP 34,696,233 bytes, staged from the fixed bundle |
+| checksums | PASS — 2 rows, 2 release files in `launch/`, `sha256sum -c` exit 0 |
+| stamp | PASS — commit `2e6ca49c6c0d`, clean, `web/dist` `dafc8187f542` |
+| smoke | PASS — exit 0, bundle built from `2e6ca49c6c0d` |
+| installed | FAIL — preflight refused: Add/Remove Programs already lists SKEER MIDI VAULT |
+
+Per-stage logs: `build\work\release-check-20261122-201753\`. The stage-order note above applies here
+too, and the falsifier was re-run on this tree after it, at 20:24Z:
+`FALSIFIER OK: every row moved for its own reason and the exit codes are as documented` — it left the
+working tree clean, which `git status` confirmed.
+
+That `installed` row is a *different* refusal from the folder-permission one recorded for this shell in
+[AGENTS.md](../AGENTS.md) and in the `d8110db` note above, and it is this release's own doing. The
+machine-wide install
+recorded below registered `SKEER MIDI VAULT 1.1.2` in Add/Remove Programs, and
+`packaging/install_cycle_check.ps1` refuses at its preflight rather than uninstall-by-AppId an install
+that is not its own throwaway — so the payload leg never started and printed no files row, which is why
+this reads FAIL where `d8110db`'s run from the same shell reported the `-FilesOnly -Dir` SKIP. Nothing
+about the rebuilt bytes is implicated: `preflight - Setup 25674509 bytes, hash matches the manifest` and
+`no running instance and no mutex holder` both passed first. `web/dist` hashing `dafc8187f542` in both
+tables is the expected reading, not a missed rebuild — the interface has no part in item 6.
+
+**Not yet run at this tip, and not claimed here:** the `installed` stage and the two install-cycle arms,
+which need a terminal this shell is not. They consume the Setup sitting in `launch/` and rebuild nothing,
+so they can be graded against these exact bytes: uninstall the registered 1.1.2, run
+`packaging\install_cycle_check.ps1` and then `packaging\install_cycle_check.ps1 -AllUsers`, re-install
+the shipping Setup with `/ALLUSERS`, and re-run `scripts\host_scan_check.ps1`. Until that happens the
+bundle standing in `C:\Program Files\Common Files\VST3` is the pre-fix `6fcc3f4c…`, which is the honest
+reading of the installed-identity row in *Upgrading from 1.1.1*.
+
 ## Both install modes graded, against the shipping bytes
 
-`packaging/install_cycle_check.ps1` ran in both arms against the Setup the table above built, fifteen
-seconds apart:
+`packaging/install_cycle_check.ps1` ran in both arms against the Setup the `d8110db` table above built
+(SHA-256 `2ff2e518…`), fifteen seconds apart. Those are **superseded bytes** — the bundle they placed
+carries the stale version resource item 6 is about — so what the two arms prove here is placement and
+payload arithmetic, not the identity of the deliverable this release now ships:
 
 | arm | result | evidence |
 | --- | --- | --- |
@@ -245,14 +308,35 @@ Three things those arms do **not** prove, so they are not claims here:
 
 | File | Size | SHA-256 |
 | --- | --- | --- |
-| `SKEER-MIDI-VAULT-Setup-1.1.2.exe` | 25,672,471 bytes | `2ff2e51854f244da52c6544405d90be619f450ba594a7f1e0ba1318414669188` |
-| `SKEER-MIDI-VAULT-Portable-1.1.2.zip` | 34,695,822 bytes | `c644e502ab4d3475ae38b30ed202589a247bd1afdc87241887d28686813d3840` |
+| `SKEER-MIDI-VAULT-Setup-1.1.2.exe` | 25,674,509 bytes | `a95140115d5edf364c86b5af9cfd9ac84c8d6da2bf669e38b56b9e3177a4320c` |
+| `SKEER-MIDI-VAULT-Portable-1.1.2.zip` | 34,696,233 bytes | `ac93ae43f69f3e199f7aaf1ea82fc70a50805007e41fbdfea31357dceeab939c` |
+| `SHA256SUMS.txt` | 201 bytes | `ee50ff9c32b79a39971643ff13a4787de95fe0aea6fedc9bc4e87a0e65d15c8e` |
 
-Re-hashed off `launch/` after the run and equal to `SHA256SUMS.txt`, which holds both rows LF-only so
-`sha256sum -c` exits 0. Both deliverables carry the same 198 payload files, two of them the plug-in
-bundle; only the installer registers the app in Add/Remove Programs. The bundle's
-`_internal/buildinfo/BUILDINFO.json` names commit
-`d8110db0673855d7a638d8973dbd5cecdbe14f0a`, built `2026-11-22T18:15:13+00:00`, `dirty: false`.
+Re-hashed off `launch/` after the `2e6ca49` run and equal to `SHA256SUMS.txt`, which holds both payload
+rows LF-only so `sha256sum -c` exits 0 on both. The manifest's own digest is quoted so a release page can
+name it, but it is not self-attesting: it is the row above it, hashed. Both deliverables still carry the
+same 198 payload files — 196 app files plus the two bundle files, counted out of the rebuilt ZIP rather
+than inherited from the note above — and only the installer registers the app in Add/Remove Programs.
+
+These replace the bytes the `d8110db` run built — Setup `2ff2e51854f244da…` at 25,672,471 bytes and ZIP
+`c644e502ab4d3475…` at 34,695,822 — which item 6 is exactly the reason for. Both sizes moved by
+kilobytes while the plug-in binary inside them kept its exact length, which is what a non-reproducible
+rebuild of the surrounding archive looks like.
+
+The bundle's `_internal/buildinfo/BUILDINFO.json` names commit
+`2e6ca49c6c0d51ebb7f698a8802d110566965135`, built `2026-11-22T20:20:38+00:00`, `dirty: false`, with
+`status_digest` and `untracked_digest` both the empty-input SHA-256. Where the new plug-in bytes can be
+reached from the deliverables without installing anything:
+
+- `launch/VST3/…/Contents/x86_64-win/SKEER MIDI VAULT.vst3` is
+  `1d8926fc71fc1ce703f38e9b85f45f46119a524ea5bee9531e78f906f8d07184`, 7,566,336 bytes, PE
+  `FileVersion` and `ProductVersion` both `1.1.2` — and byte-identical to the `plugin/build` binary the
+  same gate run compiled.
+- The ZIP carries the same file at the same hash, read out of
+  `VST3\SKEER MIDI VAULT.vst3\Contents\x86_64-win\SKEER MIDI VAULT.vst3` after extraction.
+- The Setup's own compile log names both bundle files as it compressed them out of `launch\VST3`, after
+  `Staging VST3 1.1.2 into launch\VST3`. That is path-level evidence, not a hash: a hash of the file
+  *inside* the installer is the `installed` leg above, which this shell cannot run.
 
 The Setup is **unsigned**, so SmartScreen will warn on first run. That is expected until an
 Authenticode certificate is applied: `build_installer.ps1 -Sign` is wired for one and has still never
@@ -283,13 +367,16 @@ executed, because there is no certificate on this machine.
   exactly one.
   That sequence has now been walked on this machine, minus the 1.1.1 uninstall because the elevated
   cycle had already cleared it: the check read no bundle on disk, then the shipping Setup
-  (SHA-256 `2ff2e518…`, the bytes `launch/SHA256SUMS.txt` names) installed elevated with
+  (SHA-256 `2ff2e518…`, the bytes `launch/SHA256SUMS.txt` named that evening) installed elevated with
   `/ALLUSERS /VERYSILENT` at 20:00 local on 2026-11-22 for exit 0, and the check re-run read
   `VERDICT - one copy, in a root this host reads`. Setup's own file log carries the placement: 201
   destinations, **none** of them under `{app}\VST3`, split 196 ZIP payload files + `unins000.exe` in
   the app folder, the 2 bundle files under `C:\Program Files\Common Files\VST3`, and the 2 machine-wide
   shortcuts a cycle run declines with `/MERGETASKS`. The installed binary hashes `6fcc3f4cb96829f1…`,
-  equal to the staged copy, and HKLM reads `DisplayVersion=1.1.2`. This is the real install, not a
+  equal to the staged copy **as it stood that day** — item 6 rebuilt that copy to `1d8926fc71fc1ce7…`, so
+  the bundle this machine is running is still the pre-fix one until the rebuilt Setup goes over it, which
+  is the elevated leg named under *Not yet run at this tip*. And HKLM reads `DisplayVersion=1.1.2`. This
+  is the real install, not a
   throwaway cycle directory, so the machine-wide claim in item 3 now rests on the destination a
   customer's host actually scans — arithmetic in [packaging/README.md](../packaging/README.md).
 - **A host that already has the device on a track:** the class ID is unchanged, so it reloads this

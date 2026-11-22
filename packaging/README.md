@@ -293,7 +293,8 @@ alike. Three things are left, and none of them can be settled from a shell:
    at all, which has never been tested in either drawer. This runbook claims neither.
 
    The machine-wide leg has since been run for real, not into a throwaway cycle directory: the shipping
-   `SKEER-MIDI-VAULT-Setup-1.1.2.exe` (SHA-256 `2ff2e518…`, the row `launch/SHA256SUMS.txt` carries)
+   `SKEER-MIDI-VAULT-Setup-1.1.2.exe` (SHA-256 `2ff2e518…`, the row `launch/SHA256SUMS.txt` carried that
+   evening; the manifest has named `a9514011…` since the version-resource rebuild)
    installed elevated with `/ALLUSERS /VERYSILENT` on 2026-11-22 at 20:00 local, exit 0, into
    `C:\Program Files\SKEER MIDI VAULT\`. Its own log lists 201 `Dest filename:` entries and they
    reconcile against the ZIP with nothing left over: the 196 non-bundle ZIP members all under the app
@@ -303,7 +304,9 @@ alike. Three things are left, and none of them can be settled from a shell:
    those last two are exactly the pair a cycle run declines with `/MERGETASKS`, which is the whole
    difference between 201 here and the 199 that arm logs. **Zero** destinations fall under
    `{app}\VST3`, so the duplicate 1.1.1 left behind is seen absent from a customer-shaped install rather
-   than from a grader. The installed binary hashes `6fcc3f4cb96829f1…`, equal to the staged copy; its
+   than from a grader. The installed binary hashes `6fcc3f4cb96829f1…`, equal to the staged copy **as it
+   stood then** — the staged copy is `1d8926fc71fc1ce7…` since the version-resource fix, so the bundle this
+   machine holds is the pre-fix one until the rebuilt Setup is installed over it; its
    `moduleinfo.json` reads `1.1.2` with `Sub Categories` `"Instrument", "Synth"`; HKLM carries
    `DisplayVersion=1.1.2`; and the shared folder gained one top-level entry, 168 to 169.
    `scripts/host_scan_check.ps1`, re-run read-only afterwards, ends `VERDICT - one copy, in a root this
@@ -312,23 +315,29 @@ alike. Three things are left, and none of them can be settled from a shell:
 
    Which bytes you are loading matters for what a session proves: the two JUCE trees build
    different binaries, and only one of them ships. Re-measured 2026-11-22 against the bytes this
-   build stages — the earlier figure below was from 2026-11-21 and predates this rebuild,
-   which the note at the end of this paragraph has always told the reader to do:
+   build stages, twice — once before the version-resource fix and once after, and the second reading
+   is the one below; the earlier figure was from 2026-11-21 and predates both:
    `launch/VST3/…/Contents/x86_64-win/SKEER MIDI VAULT.vst3` is SHA-256
-   `6fcc3f4cb96829f19052dc887ac3386190c643787a6372164d34f3fb94d8505f`, 7,566,336 bytes, and
+   `1d8926fc71fc1ce703f38e9b85f45f46119a524ea5bee9531e78f906f8d07184`, 7,566,336 bytes, and
    byte-identical to the copy under `plugin/build/…` — the 8.0.4 tree — and that copy is what
    `vault-host-test` loaded in the same gate run; the `build/tag-808` bundle is
-   `8aaa71651785bb6c…` at 7,694,848 bytes — different size, different SHA-256 — and is
-   source-compatibility evidence only. Two of those numbers are worth reading twice. The shipped
-   binary is **the same length as 1.1.1's** (`a2f157679dacfd…`, 7,566,336 bytes) and a different
-   hash, so a same-length compiled string moved it and no size check could see that — which is why
-   the cycle's `plugin` phase works in SHA-256. And the artifact settles the category question
-   without waiting for a host: the file contains `Instrument|Synth` once and `1.1.2` once, with no
-   `1.1.1` anywhere, so the bytes that ship are the bytes the flags were set in —
+   `16b311ce31efa61f83dddc01164eacf70a5ac09f8c08029b456ef49a2b83d06c` at 7,694,848 bytes — different
+   size, different SHA-256 — and is source-compatibility evidence only. Two of those numbers are worth
+   reading twice. The shipped binary is **the same length as 1.1.1's** (`a2f157679dacfd…`, 7,566,336
+   bytes) and a different hash, and so is its own immediate predecessor across the version-resource fix
+   (`6fcc3f4cb96829f1…` → `1d8926fc71fc1ce7…`), so a same-length compiled string moved it both times and
+   no size check could see either — which is why the cycle's `plugin` phase works in SHA-256. And the
+   artifact settles the category question without waiting for a host: the file contains
+   `Instrument|Synth` once and `1.1.2` once, with no `1.1.1` anywhere, so the bytes that ship are the
+   bytes the flags were set in —
    `python -c "b=open(r'launch/VST3/SKEER MIDI VAULT.vst3/Contents/x86_64-win/SKEER MIDI VAULT.vst3','rb').read();print(b.count(b'Instrument|Synth'),b.count(b'1.1.2'),b.count(b'1.1.1'))"`
-   prints `1 1 0`. So a DAW session ratifies the 8.0.4 binary; nothing you
-   hear in a host speaks for the 8.0.8 build. Recompute the two hashes rather than trusting this
-   sentence after any rebuild.
+   prints `1 1 0`. Read that probe for what it measures: it scans **ASCII**, and it returned `1 1 0` on
+   the stale binary too, because the Windows version resource stores its strings UTF-16 — that is why it
+   agrees with the defect and with the fix, and why `scripts/check_plugin_version.ps1` asks the OS parser
+   instead. Decoded as UTF-16 the same bytes separate the two builds cleanly: `"1.1.2"` twice and
+   `"1.0.0"` not once on the shipped file, `"1.0.0"` twice and `"1.1.2"` not once on the pre-fix one. So
+   a DAW session ratifies the 8.0.4 binary; nothing you hear in a host speaks for the 8.0.8 build.
+   Recompute the two hashes rather than trusting this sentence after any rebuild.
 
    A second name confusion is live on this machine, and it is not ours. Measured again 2026-11-22 —
    the first census was 2026-11-19 and three of its numbers have since moved, which is itself the
