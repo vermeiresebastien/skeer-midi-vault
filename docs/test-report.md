@@ -59,12 +59,18 @@ own for the record: **9 tests, OK, 1.888 s**. `plugin/build.ps1` exited 0 on bot
 (`plugin-version PASS — PE FileVersion, PE ProductVersion and moduleinfo Version all 1.1.2`), which was
 also seen to exit 1 against a preserved pre-fix bundle. `python tests/test_packaged_smoke.py` reported
 PASS against the rebuilt bundle (`built from 2e6ca49c6c0d clean at 2026-11-22T20:20:38+00:00`), and
-`scripts/check_release_gate.py` reported **FALSIFIER OK** on the tree afterwards and left it clean. One
-stage did not complete from this shell: `installed`, whose preflight refused because the release is
-actually installed on this machine. That leg and both `install_cycle_check.ps1` arms are open against
-these bytes, and *Not yet run at this tip* in the release notes says which commands close them. The
-browser harnesses were not re-run and none of this asks them to be: nothing under `web/src/` moved, and
-`web/dist` hashed `dafc8187f542` in both certification runs.
+`scripts/check_release_gate.py` reported **FALSIFIER OK** on the tree afterwards and left it clean. The
+one stage this shell could not complete — `installed`, refused because the release was actually installed
+— was closed from an elevated terminal the same evening, 20:53:28–21:05:06Z: uninstall, per-user cycle
+`CYCLE OK - 17 phases`, `-AllUsers` cycle `CYCLE OK - 18 phases`, then
+`scripts/release_check.ps1 -Stages installed` → `READY - 1 passed, 0 failed, 0 skipped, of 1 stages`, then
+the shipping Setup re-run with `/ALLUSERS`. The installed plug-in hashes
+`1d8926fc71fc1ce7…`, equal to the staged and zipped binary, PE `FileVersion` and `ProductVersion` both
+`1.1.2`, one copy on the machine, and the cycle arms each returned the shared VST3 folder and the live
+library to the state recorded before they ran. Every row is tabled in
+[release-notes-1.1.2.md](release-notes-1.1.2.md). The browser harnesses were not re-run and none of this
+asks them to be: nothing under `web/src/` moved, and `web/dist` hashed `dafc8187f542` in both
+certification runs.
 
 Machine-readable results: [`e2e-results.json`](e2e-results.json),
 [`playback-stability.json`](playback-stability.json),

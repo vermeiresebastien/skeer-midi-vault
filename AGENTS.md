@@ -62,6 +62,14 @@ Rules:
   a second copy and fails on finding one. Do not chase a shared-folder entry count across releases: that
   folder is the whole machine's shared plug-in collection and it grows (1317 on 2026-11-21, 1319 on
   2026-11-22), so the invariant the row proves is `before == after` inside one run.
+- When you census the bundle yourself, the module file is `Contents\x86_64-win\<Bundle Name>.vst3` —
+  underscore, and **no extension beyond the bundle name**. A probe that looks for `x86-64` or for
+  `*.dll` prints "no such directory" for a bundle that is plainly installed, which reads as absence
+  and proves nothing. The module's SHA-256 is the installed-vs-staged comparison; `moduleinfo.json`
+  alone is not one — the pre-fix installed bundle (`6fcc3f4cb96829f1…`, built before the version-resource
+  purge) and the fixed one (`1d8926fc71fc1ce7…`) carry a byte-identical 1,391-byte module-info
+  (`82adf896e5a876cd…`), so a host's version column can show `1.1.2` over a PE resource that says
+  something else.
 - A `Census-Diff` entry in `packaging\install_cycle_check.ps1` reads `"added: <relative path>"`, so a
   filter anchored on the path alone (`-match '^SKEER MIDI VAULT\.vst3'`) matches nothing and that row
   can only ever FAIL. That is how the first `-AllUsers` run reported that the bundle had not landed
@@ -152,6 +160,16 @@ running instance, both pass first. Seen 2026-11-22 on the `2e6ca49` rebuild, the
 release's own machine-wide install had been put on this machine for real. Do not reach for
 `packaging/install_cycle_check.ps1 -Existing` to silence it: that flag lets the throwaway cycle
 uninstall a person's real install by AppId.
+The ordering that clears all four of those legs on one machine is forced, not a preference: the cycle
+preflight and the gate's `installed` stage both refuse while Add/Remove Programs lists the product, so
+the sequence is **uninstall the registered copy, per-user cycle, machine-wide cycle, the gate's
+`installed` stage, then the shipping Setup last**, and the customer-shaped install has to come after
+the graders or it blocks them. Run green end to end on the 1.1.2 bytes on 2026-11-22, 20:53:28–21:05:06Z,
+from an elevated terminal (`17 phases`, `18 phases`, `READY - 1 passed, 0 failed, 0 skipped, of 1 stages`,
+Setup exit 0), with two guards recorded alongside: the unrelated `SKEER Vault.vst3` neighbour bundle
+byte-identical before and after, and the live `%LOCALAPPDATA%\SKEER\MIDI Vault` library at the same
+7 files / 899,331,052 bytes. A driver that escalates once and runs the sequence inside that process is
+how this gets done from a restricted shell; the per-leg logs are what to quote, not the driver.
 `scripts/check_release_gate.py` is its falsifier — it copies the real files into
 `build\work\release-gate-falsifier\`, stubs the child commands, and requires each
 defect to redden the stage that names it, with a green control case that reaches

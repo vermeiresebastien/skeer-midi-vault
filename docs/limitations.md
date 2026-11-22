@@ -302,9 +302,11 @@ general-purpose classification accuracy.
   shortcuts, the first launch of the installed executable and the uninstall comparison
   have therefore never completed *from this shell* — they completed on 2026-11-21 from an elevated
   terminal, twice, `CYCLE OK - 17 phases passed` each way, with the shared VST3 folder read back at
-  the same 1317 entries it started with; the runs and what each row proved are recorded in
-  `packaging/README.md`. One leg is still open: `/ALLUSERS`, whose consent prompt is the owner's to
-  answer. The portable ZIP and the packaged app do pass their smoke tests, and so does a
+  the same 1317 entries it started with; and both arms plus the `/ALLUSERS` leg were re-run the same way on
+  2026-11-22 against the rebuilt 1.1.2 Setup (`17 phases` per-user, `18 phases` machine-wide, 0 FAIL rows on
+  each), which is also the run that put the fixed plug-in binary on this machine. The runs and what each row
+  proved are recorded in `packaging/README.md`. No install leg is open.
+  The portable ZIP and the packaged app do pass their smoke tests, and so does a
   hand-copied relocated payload under `SKEER_PACKAGED_EXE` — but that is the executable running
   from a folder, not from a registered install, and the registered case is now the elevated one.
 - No local model is installed or downloaded. The optional local-model integration
@@ -356,10 +358,17 @@ refuses rather than half-installs when the terminal is not elevated; see `packag
 The chain gained a link on 2026-11-22, and a shell did substitute for it after all. Ableton Live keeps two
 files beside its preferences — a per-pass scan log and a scan cache — both readable without starting the DAW,
 and together they record this machine's `Live 12.3.2` enumerating our bundle out of
-`C:\Program Files\Common Files\VST3`, at version 1.1.1, and keeping one device row for its class ID. The log
+`C:\Program Files\Common Files\VST3` and keeping one device row for its class ID — at version 1.1.1 in the
+cache dump, and at version 1.1.2 in the log's newer record, which reads `device:vst3:instr [Instrument|Synth]`:
+the drawer moved with the `IS_SYNTH` flip, which is the first time a host's own file says so rather than the
+module-info declaring it. The log
 also names the roots a scan actually reads, which is how "`{app}\VST3` is a folder no host scans
 automatically" stopped being an assumption on this machine. `scripts/host_scan_check.ps1` reads both files and
-prints what each one proves. So *placed* and *found* are witnessed; the last link still needs a person at a
+prints what each one proves. Each row is evidence about the bytes it was written for: the 1.1.2 record
+predates the version-resource fix reaching this machine at 2026-11-22 21:04Z, and the files now at that path
+are the release binary (`1d8926fc71fc1ce7…`, PE `FileVersion` 1.1.2), so recognition of the *shipping* bytes
+is inferred from a `moduleinfo.json` byte-identical to the one already enumerated — not observed.
+So *placed* and *found* are witnessed; the last link still needs a person at a
 running host: **no instance has been loaded on a track**, which means no editor window has ever opened on a
 desktop, no clip has been emitted through a real transport, and nobody has heard what it does to a song.
 

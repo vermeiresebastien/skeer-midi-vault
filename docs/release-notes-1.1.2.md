@@ -223,20 +223,59 @@ about the rebuilt bytes is implicated: `preflight - Setup 25674509 bytes, hash m
 `no running instance and no mutex holder` both passed first. `web/dist` hashing `dafc8187f542` in both
 tables is the expected reading, not a missed rebuild — the interface has no part in item 6.
 
-**Not yet run at this tip, and not claimed here:** the `installed` stage and the two install-cycle arms,
-which need a terminal this shell is not. They consume the Setup sitting in `launch/` and rebuild nothing,
-so they can be graded against these exact bytes: uninstall the registered 1.1.2, run
-`packaging\install_cycle_check.ps1` and then `packaging\install_cycle_check.ps1 -AllUsers`, re-install
-the shipping Setup with `/ALLUSERS`, and re-run `scripts\host_scan_check.ps1`. Until that happens the
-bundle standing in `C:\Program Files\Common Files\VST3` is the pre-fix `6fcc3f4c…`, which is the honest
-reading of the installed-identity row in *Upgrading from 1.1.1*.
+**Closed on 2026-11-22, 20:53:28–21:05:06Z, from an elevated terminal.** The commands this paragraph
+deferred ran in one driver against the bytes above. Nothing in the sequence rebuilds, and each cycle arm
+re-reads the Setup hash against `launch/SHA256SUMS.txt` before it is allowed to install, so the artifact
+under test is the one this table names:
+
+| leg | result |
+| --- | --- |
+| uninstall the registered 1.1.2 | `unins000 exit 0`, Program Files folder gone, 0 registrations left |
+| `packaging\install_cycle_check.ps1` | `CYCLE OK - 17 phases passed` — `build\work\install-cycle-20261122-205332\` |
+| `packaging\install_cycle_check.ps1 -AllUsers` | `CYCLE OK - 18 phases passed` — `install-cycle-20261122-205356\` |
+| `scripts\release_check.ps1 -Stages installed` | `READY - 1 passed, 0 failed, 0 skipped, of 1 stages` — `release-check-20261122-205415\` |
+| re-install the shipping Setup with `/ALLUSERS` | exit 0, one HKLM registration, `DisplayVersion=1.1.2`, and 198 files under `C:\Program Files\SKEER MIDI VAULT` — the 196 app-bundle files plus `unins000.exe`/`unins000.dat`, because the machine-wide branch sends the 2 bundle files to the shared root instead; installed `SKEER MIDI VAULT.exe` hash-equal to `launch/` |
+| installed plug-in vs staged plug-in | SHA-256 equal at `1d8926fc71fc1ce7…`, PE `FileVersion=1.1.2`, PE `ProductVersion=1.1.2`, `moduleinfo.json` `1.1.2`, **one** bundle anywhere on the machine |
+| `scripts\host_scan_check.ps1` | exit 0 — `one copy, in a root this host reads`, `on-disk copies byte-identical to the staged one : 1 of 1` |
+
+The order is not cosmetic. `install_cycle_check.ps1:325` refuses while Add/Remove Programs lists the
+product, so **all three cycle legs — the two arms and the gate's `installed` stage — must run while
+nothing is registered**, and the customer-facing reinstall goes last. Run the reinstall first and the
+`installed` stage fails on its own success. That is why the combined eleven-stage table at 20:17:53Z
+still reads FAIL for `installed`: it is a dated record of a run made on a machine that had the release
+registered, and the stage passed separately, elevated, thirty-six minutes later. The eleven stages have
+therefore never all been green inside *one* invocation at this tip — ten were, and the eleventh was in a
+second run that selected nothing else.
+
+Two guards rode along, because this sequence runs on a machine that is also somebody's studio. The
+unrelated `C:\Program Files\Common Files\VST3\SKEER Vault.vst3` — a placement control from an earlier
+`host_scan_check` run, left in place deliberately — is byte-identical to its pre-run record
+(`795db935a6a65b63…` module, `1beb64ea6225eb0d…` module-info), and the live library at
+`%LOCALAPPDATA%\SKEER\MIDI Vault` still reads 7 files / 899,331,052 bytes. Each cycle arm asserts the
+same two things about its own run in its `uninstall` rows, so the machine came back the way it was found
+except for the payload that was meant to change.
+
+What the scan cache does **not** prove is worth the paragraph, because it is item 6 in one sentence.
+`PluginScanner.txt` carries `'SKEER MIDI VAULT' v1.1.2 … device:vst3:instr [Instrument|Synth]` read from
+the shared-folder path — and that `v1.1.2` comes from the module-info json, which is the same 1,391 bytes
+(`82adf896e5a876cd…`) in the pre-fix bundle and the fixed one alike. A host could therefore display
+1.1.2 all along while the PE resource underneath it said 1.0.0, which is exactly the hole
+`scripts/check_plugin_version.ps1` now closes. The same row answers the drawer question this release raised:
+1.1.1's record read `device:vst3:audiofx [Fx]` at the same path, 1.1.2's reads `device:vst3:instr [Instrument|Synth]`,
+so the `IS_SYNTH` flip moved the device into **Instruments** in a host's own file rather than only in the
+module-info that predicts it. The newest such record predates tonight's swap, so the row is evidence that
+*a* v1.1.2 instrument-filed bundle at that path was read — not that these bytes were. Only a rescan inside
+a live DAW settles that, and it is the owner's session named under
+*What this release does not claim*.
 
 ## Both install modes graded, against the shipping bytes
 
 `packaging/install_cycle_check.ps1` ran in both arms against the Setup the `d8110db` table above built
 (SHA-256 `2ff2e518…`), fifteen seconds apart. Those are **superseded bytes** — the bundle they placed
 carries the stale version resource item 6 is about — so what the two arms prove here is placement and
-payload arithmetic, not the identity of the deliverable this release now ships:
+payload arithmetic, not the identity of the deliverable this release now ships. Both arms have since been
+re-run against `a9514011…` with the same phase counts and the same verdicts (17 and 18, table under the
+elevated run above), and the rows quoted below are word-for-word what both generations printed:
 
 | arm | result | evidence |
 | --- | --- | --- |
@@ -372,11 +411,13 @@ executed, because there is no certificate on this machine.
   `VERDICT - one copy, in a root this host reads`. Setup's own file log carries the placement: 201
   destinations, **none** of them under `{app}\VST3`, split 196 ZIP payload files + `unins000.exe` in
   the app folder, the 2 bundle files under `C:\Program Files\Common Files\VST3`, and the 2 machine-wide
-  shortcuts a cycle run declines with `/MERGETASKS`. The installed binary hashes `6fcc3f4cb96829f1…`,
-  equal to the staged copy **as it stood that day** — item 6 rebuilt that copy to `1d8926fc71fc1ce7…`, so
-  the bundle this machine is running is still the pre-fix one until the rebuilt Setup goes over it, which
-  is the elevated leg named under *Not yet run at this tip*. And HKLM reads `DisplayVersion=1.1.2`. This
-  is the real install, not a
+  shortcuts a cycle run declines with `/MERGETASKS`. The installed binary then hashed `6fcc3f4cb96829f1…`,
+  equal to the staged copy **as it stood that day** — item 6 rebuilt that copy to `1d8926fc71fc1ce7…`, and
+  the certified Setup was run over it again at 21:04:54Z on 2026-11-22, so the bundle this machine now
+  runs is the fixed one: `1d8926fc71fc1ce7…`, PE `FileVersion` and `ProductVersion` both `1.1.2`, one copy
+  on the disk, Start Menu and desktop shortcuts back where the `/ALLUSERS` branch puts them. HKLM reads
+  `DisplayVersion=1.1.2` and `InstallDate=20261122`, and the installed tree's own `BUILDINFO.json` names
+  commit `2e6ca49c6c0d` with `dirty: false`. This is the real install, not a
   throwaway cycle directory, so the machine-wide claim in item 3 now rests on the destination a
   customer's host actually scans — arithmetic in [packaging/README.md](../packaging/README.md).
 - **A host that already has the device on a track:** the class ID is unchanged, so it reloads this
@@ -389,8 +430,11 @@ executed, because there is no certificate on this machine.
 
 - **No host has instantiated this bundle.** Live 12.3.2 on this machine scanned the machine-wide copy,
   logged a `found:` record naming it, and persisted one module row and one device row for class ID
-  tail `536B41754D766C74` — that is *recognition*, and it is real. Loading it onto a track is a
-  different claim, and no session in this repository has made it. Whether an instrument-filed,
+  tail `536B41754D766C74` — that is *recognition*, and it is real. It is recognition of the bundle that
+  stood at that path before tonight's swap: the shared folder now holds the fixed bytes, hash-verified
+  against `launch/VST3`, and no host has rescanned them yet, so the new binary's recognition is inferred
+  from an identical class ID and a byte-identical module-info file rather than observed. Loading it onto a
+  track is a different claim, and no session in this repository has made it. Whether an instrument-filed,
   audio-silent MIDI device is accepted where a producer looks for instruments — and whether the
   filing wins or loses users — is unmeasured. The runbook for that session is in
   [packaging/README.md](../packaging/README.md).

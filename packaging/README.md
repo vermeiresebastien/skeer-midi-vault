@@ -286,11 +286,18 @@ alike. Three things are left, and none of them can be settled from a shell:
    `instr` for the legacy VST2 rows, which are the 198 the census leaves out, and **no** third kind anywhere
    in the file. That is what a plug-in scan DB looks like when a host offers third-party code two drawers, so
    the filing decision really is binary here: a device lands in one drawer or the other, and 1.1.1's
-   bytes landed in Effects. What no file on this machine can yet say is where 1.1.2's land — the cached
-   row was written for the old bytes and a host rewrites it only when it rescans them. So the first of
-   this section's three questions is now two. **1a:** after a rescan, does our device row read `instr`
-   with sub-category `Instrument|Synth`? **1b:** will Live put a MIDI-out-only device on a MIDI track
-   at all, which has never been tested in either drawer. This runbook claims neither.
+   bytes landed in Effects. **1a has since been answered out of the same file:** the scan log carries
+   `2026-11-22T21:01:47  'SKEER MIDI VAULT' v1.1.2  vendor 'Skeer Audio'  device:vst3:instr [Instrument|Synth]`,
+   read from `C:/Program Files\Common Files\VST3\SKEER MIDI VAULT.vst3` — the **Instruments** drawer, which is
+   what the `IS_SYNTH` flip was for. Read that row with its one qualification: it was written before the
+   version-resource fix reached this machine, so the bytes behind it are the pre-fix 1.1.2 bundle, and the two
+   1.1.2 bundles are indistinguishable from that row — the same 1,391-byte `moduleinfo.json`
+   (`82adf896e5a876cd…`) and a fingerprint whose size field is `737400` hex = 7,566,336 bytes for both, which
+   is the module's exact length. The drawer comes from the module-info, so the shipping bytes are *expected* to
+   file the same way; expected is not observed, and a row for these bytes appears only after a rescan. So **1a**
+   is now a confirmed filing with a re-confirmation pending rather than an open question. **1b** — will Live put
+   a MIDI-out-only device on a MIDI track at all — has still never been tested in either drawer, and this
+   runbook claims nothing about it.
 
    The machine-wide leg has since been run for real, not into a throwaway cycle directory: the shipping
    `SKEER-MIDI-VAULT-Setup-1.1.2.exe` (SHA-256 `2ff2e518…`, the row `launch/SHA256SUMS.txt` carried that
@@ -304,14 +311,23 @@ alike. Three things are left, and none of them can be settled from a shell:
    those last two are exactly the pair a cycle run declines with `/MERGETASKS`, which is the whole
    difference between 201 here and the 199 that arm logs. **Zero** destinations fall under
    `{app}\VST3`, so the duplicate 1.1.1 left behind is seen absent from a customer-shaped install rather
-   than from a grader. The installed binary hashes `6fcc3f4cb96829f1…`, equal to the staged copy **as it
-   stood then** — the staged copy is `1d8926fc71fc1ce7…` since the version-resource fix, so the bundle this
-   machine holds is the pre-fix one until the rebuilt Setup is installed over it; its
-   `moduleinfo.json` reads `1.1.2` with `Sub Categories` `"Instrument", "Synth"`; HKLM carries
-   `DisplayVersion=1.1.2`; and the shared folder gained one top-level entry, 168 to 169.
+   than from a grader. The binary that install left measured `6fcc3f4cb96829f1…` — equal to the staged copy
+   **as it stood then**, i.e. the pre-fix one, its `moduleinfo.json` already reading `1.1.2` with
+   `Sub Categories` `"Instrument", "Synth"`; HKLM carried `DisplayVersion=1.1.2`; and the shared folder
+   gained one top-level entry, 168 to 169.
    `scripts/host_scan_check.ps1`, re-run read-only afterwards, ends `VERDICT - one copy, in a root this
-   host reads` with exit 0. So question 1a starts from a loaded disk: the bytes a session proves are
-   already on this machine, and the only step left before it is the host's own rescan.
+   host reads` with exit 0.
+
+   That machine-held-by-old-bytes state is closed. At 20:53:28–21:05:06Z the same Setup, rebuilt by the
+   version-resource fix and hashed `a9514011…` in `launch/SHA256SUMS.txt`, went through the whole elevated
+   sequence from an elevated terminal: uninstall of what was registered, both `install_cycle_check.ps1`
+   arms on these bytes (`CYCLE OK - 17 phases` per-user, `CYCLE OK - 18 phases` machine-wide, 0 FAIL rows
+   and 0 stderr lines on each), `release_check.ps1 -Stages installed` (`READY - 1 passed, 0 failed,
+   0 skipped, of 1 stages`), then the customer install again with `/ALLUSERS /VERYSILENT`, exit 0. The
+   shared-root module now hashes `1d8926fc71fc1ce7…`, byte-identical to the staged and zipped binary, with
+   PE `FileVersion` 1.1.2, PE `ProductVersion` 1.1.2 and `moduleinfo.json` 1.1.2, and the on-disk census
+   for our class id returns exactly one copy. So the re-confirmation of 1a starts from the shipping bytes on
+   disk: the only step left before a session can read them is the host's own rescan.
 
    Which bytes you are loading matters for what a session proves: the two JUCE trees build
    different binaries, and only one of them ships. Re-measured 2026-11-22 against the bytes this
@@ -515,9 +531,12 @@ alike. Three things are left, and none of them can be settled from a shell:
    `Sub Categories` `"Instrument", "Synth"` — with nothing under `{app}\VST3`, the shared folder up exactly
    one top-level entry (168 to 169) and HKLM at `DisplayVersion=1.1.2`. `scripts/host_scan_check.ps1` puts
    it in its own words: `VERDICT - one copy, in a root this host reads`, exit 0, and the paragraph under
-   question 1 above carries that install's byte and destination arithmetic. What this machine does
-   *not* yet hold is a host record for those bytes: every `found:` line and cache row quoted above was
-   written for 1.1.1, so question 1a starts at the rescan, not at the install.
+   question 1 above carries that install's byte and destination arithmetic. What this machine did
+   *not* yet hold then was a host record for 1.1.2 bytes — and the log has one now: a `found:` line at
+   21:01:47 local reads `v1.1.2 … device:vst3:instr [Instrument|Synth]` from that path, written for the
+   bundle that stood there before the version-resource fix reached the machine at 22:04:54 local. The
+   elevated run recorded above reinstalled the same Setup path with the fixed payload, so the install is no
+   longer the missing step either: **1a starts at the rescan and nowhere else.**
 
    The sentence this replaces read the cache's mtime and concluded no scan had happened. Say plainly that
    it was wrong, because the rule behind it is the trap: the two files have different writers.
