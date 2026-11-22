@@ -25,7 +25,7 @@ The load-bearing dependency is this:
   (`midivault/engine/duplicates.py:85-92`), and `db.py:812-814` loads whatever
   `fingerprint_json` is in the table.
 - Cache invalidation knows only `PARSER_VERSION` and `CLASSIFIER_VERSION`
-  (`midivault/engine/versions.py:9-10`, checked in `midivault/scanner.py:315-323`).
+  (`midivault/engine/versions.py:10-13`, checked in `midivault/scanner.py:315-323`).
   **There is no fingerprint version.** Verified: grep for `FINGERPRINT` in `midivault/`
   returns nothing.
 - The intelligence avenues we actually want next — transposition-invariant similarity,
@@ -41,7 +41,7 @@ out of the vector and returns *legacy* rather than guessing, and
 `fingerprint_version` agrees. The line citations in the bullets above are the 2026-11-14
 ones and no longer point at the code they describe — `duplicates.py:85-92` is now the
 tempo/duration gates, not the cosine (`_cosine` is `duplicates.py:28`), `db.py:812-814` is
-tag and label assembly, `versions.py:9-10` is the `SCHEMA_VERSION` paragraph and
+tag and label assembly, `versions.py:10-13` is the `SCHEMA_VERSION` paragraph and
 `scanner.py:315-323` is failure recording. Step 2 of §3 is where that work is recorded
 as done.
 
@@ -50,7 +50,7 @@ comparing old vectors against new ones, and nothing in the app can tell the user
 That is the reason the hardening wave precedes the feature wave, not a preference.
 
 The same silent-wrongness recurs elsewhere and each instance violates a stated product
-rule: `schema_version` is written but never compared (`db.py:93-100`), so a v2 build
+rule: `schema_version` is written but never compared (`db.py` as it read on 2026-11-14; the comparison exists today as `_stored_schema_version`), so a v2 build
 opens a v1 DB and errors at runtime despite two docs claiming migrations exist; the
 prediction "audit trail" is destroyed on re-run (`db.py:582` `DELETE FROM predictions
 WHERE file_id=?`); the evaluation harness feeds the fixture's own folder name into the
@@ -151,8 +151,8 @@ fail-closed `SchemaError` on a newer or unmapped index; `tests/test_schema_migra
 runs red against the pre-migration code. The finding, for the record: `db.py` wrote
 `schema_version` unconditionally, with no comparison and no `ALTER` anywhere, while the README's
 migration prose (`README.md:238` as it read on 2026-11-15; that paragraph is gone, and migrations
-are now only a line in the file map) and `docs/completed-partial-missing.md:77` — the
-"schema versioning/migration" checkbox, now at `:79` — described a mechanism that did not exist — the first
+are now only a line in the file map) and `docs/completed-partial-missing.md:80` — the
+"schema versioning/migration" checkbox — described a mechanism that did not exist — the first
 column-changing bump would have bricked existing installs rather than upgraded them.
 *Done when:* a test builds a v1 DB, opens it with v2 code, and asserts the data survived
 **and** the version advanced. *Met*, with extra coverage for the pre-migration backup, the
@@ -278,13 +278,13 @@ autoplay armed once per click (`App.tsx:200-205,470-490`) with no sequence-end h
 ear-scanning a pack cost one click per file.
 
 **Step 11 — GM-program-aware voice table.** *M.* `track.program` already reaches the
-engine (`model.py:175`, `engine.ts:1318`) but is used only for MIDI-out; the synth path
+engine (`model.py:175`, engine.ts `gmProgramFor`) but is used only for MIDI-out; the synth path
 reads no CCs and ignores CC10, deriving pan from a hash of the track number
-(`engine.ts:694-695`). Map the 128 GM programs onto the 9 recipes plus per-family
+(engine.ts `trackHash` → `pan.pan.value`). Map the 128 GM programs onto the 9 recipes plus per-family
 cutoff/decay/trim. Zero dependencies, zero licensing, immediately audible.
 
 **Step 12 — A snare that is a snare.** *M.* `buildDrum` collapses 17 GM keys into 6
-synthesised gestures with everything else a square blip (`engine.ts:815-936`), reuses one
+synthesised gestures with everything else a square blip (engine.ts `buildDrum`), reuses one
 cached noise buffer for every hit so all snares share a phase-locked noise stamp
 (`826-836`), treats side stick (37) as cymbal noise (`875-888`), and flattens velocity
 with a linear floor of 0.12 (`699,757`) so ghosts read as "quiet" rather than "light".
@@ -297,7 +297,7 @@ bar (`smf_parser.py:832-836`, `engine.ts:602-622`) and truncates notes crossing 
 is ~60 ms (`engine.ts:495`) plus an async `resume()`. Add bar/beat snap for seek and loop,
 region loop, count-in, and trim the start latency. The grid maths already exists for the
 roll (`PianoRoll.tsx:43-102`) — reuse it. Fix `originalBpm` while here: it reads only the
-first tempo event (`engine.ts:1363-1367`) and reports the assumed 120 for SMPTE files, so
+first tempo event (engine.ts `firstTempo`) and reports the assumed 120 for SMPTE files, so
 the readout is fiction where the audio is correct.
 
 **Step 14 — Preview at a target tempo, and transpose before load.** *M.* Parity, not
@@ -324,7 +324,7 @@ This step is a decision point, not a task list: the outcome picks the next two.
 **Step 16 — Transposition-invariant similarity.** *M.* The single loudest dedup miss: the
 pitch-class vector is absolute (`pipeline.py:45`) so a transposed copy is invisible, and
 a musical-content match additionally dies on the seconds-based duration gate
-(`duplicates.py:57-71`), on any classifier label difference (the gates demand identical
+(duplicates.py `fingerprint_generation`), on any classifier label difference (the gates demand identical
 instrument *and* role, `49-50`), and on a silent 240-file bucket cap (`122-127,150-152`).
 Rotate PC vectors to the estimated tonic before cosine. **Gated on Step 2** — without a
 fingerprint version this change poisons every existing index.

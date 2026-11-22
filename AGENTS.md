@@ -343,3 +343,11 @@ which literals are probed.
   rather than what was assumed.
 
 Check a documented path against the real tree before acting on it.
+- `docs/next-steps-2026-11.md` names audio-engine sites by **symbol** rather than line on purpose:
+  `web/src/audio/engine.ts` moved by 44-176 lines in the week after that roadmap was written, which
+  left a dozen numeric anchors pointing into unrelated functions (`engine.ts:1363` read
+  `sendMidiProgramChanges`, not the tempo inference its sentence described). Re-pin a number there only
+  beside a dated measurement, and when a source file gains lines anywhere, sweep the `file:NNN` cites
+  that point **below** the insertion — `07dd5e5` added seven comment lines to
+  `plugin/CMakeLists.txt` and silently moved `EDITOR_WANTS_KEYBOARD_FOCUS` from `:106` to `:113`,
+  in a runbook sentence that tells a person to edit that line by hand.
