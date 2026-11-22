@@ -279,8 +279,15 @@ path. The `/ALLUSERS` leg is no longer unexecuted: from an elevated terminal on 
 Setup, with the bundle placed under `C:\Program Files\Common Files\VST3`, nothing else in that folder
 moved, and the uninstall returning it to the 1317 entries it was censused at. The same command
 refuses rather than half-installs when the terminal is not elevated; see `packaging/README.md`.
-What still has no evidence is the next link in the chain: **no host has been shown loading the
-bundle from that folder**, which takes a session in a real DAW and nothing a shell can substitute.
+The chain gained a link on 2026-11-22, and a shell did substitute for it after all. Ableton Live keeps two
+files beside its preferences — a per-pass scan log and a scan cache — both readable without starting the DAW,
+and together they record this machine's `Live 12.3.2` enumerating our bundle out of
+`C:\Program Files\Common Files\VST3`, at version 1.1.1, and keeping one device row for its class ID. The log
+also names the roots a scan actually reads, which is how "`{app}\VST3` is a folder no host scans
+automatically" stopped being an assumption on this machine. `scripts/host_scan_check.ps1` reads both files and
+prints what each one proves. So *placed* and *found* are witnessed; the last link still needs a person at a
+running host: **no instance has been loaded on a track**, which means no editor window has ever opened on a
+desktop, no clip has been emitted through a real transport, and nobody has heard what it does to a song.
 
 - It has a browser panel over the app's own index — filter box, one list, the three
   exported controls (Follow Host Tempo, Transpose, Loop), and a status strip that says

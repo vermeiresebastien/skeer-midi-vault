@@ -213,9 +213,12 @@ out explicitly.
   `python tests/test_packaged_smoke.py` under `SKEER_PACKAGED_EXE` PASSed against a hand-copied
   install tree with `built from c520d03eed51 clean`, and the 2026-11-21 cycles' `installed-run`
   rows do the same from a folder Setup actually registered — so the executable has now been run from
-  `launch/`, from a hand-copied tree, and from installed locations in both install modes. What is
-  still unwitnessed is not where the bundle is placed but who reads it: no host has been shown
-  loading it, which is the "Plug-in interaction in a real host" bullet below.
+  `launch/`, from a hand-copied tree, and from installed locations in both install modes. What is still
+  unwitnessed has narrowed to one verb. A host has now been shown *reading* the bundle — Live 12.3.2
+  scanned the machine-wide copy on 2026-11-22, logged a `found:` record naming
+  `C:\Program Files\Common Files\VST3\SKEER MIDI VAULT.vst3`, and persisted one device row carrying our
+  class ID — but no host has been shown *instantiating* it, and those are different claims. The second is
+  the "Plug-in interaction in a real host" bullet below.
 - **Installer signing.** The Setup EXE is unsigned (`NotSigned`). Windows SmartScreen
   warning is expected until an Authenticode certificate is applied. `build_installer.ps1`
   is signing-ready through an inert-by-default `-Sign` switch that signs the app before
@@ -225,7 +228,17 @@ out explicitly.
   including the message loop a `TextEditor` needs, but no window is ever created: a real
   OLE drag, the operating system's own overwrite prompt and keyboard focus inside a host
   window are unproven. Taking focus is a decision the owner has not yet ratified — see
-  `docs/limitations.md`.
+  `docs/limitations.md`. Recognition is off this list as of 2026-11-22: the host scanned the
+  machine-wide bundle, logged a record for it and kept one module row plus one device row for
+  class-ID tail `536b41754d766c74`, at version `1.1.1`, with the fingerprint it read (`737400:6b01e16a`)
+  matching its own scan log — all without anything of ours opening a window. Instantiation is not: the
+  live set at measurement carried one audio track, whose devices were a stock `Utility` and a third-party
+  `Snap Heap`, and no instance of ours, so the sentence above about *reading* rather than *loading* is a
+  read of the running song rather than an absence of evidence. What that same scan did turn up is a scope
+  question, not a defect: the host files this plug-in as `audiofx`/`Fx`, where every sibling in the family
+  is `instr`/`Instrument`, because `IS_SYNTH` is `FALSE` in `plugin/CMakeLists.txt`. Whether that costs the
+  plug-in its users is unmeasured — a producer looking for a source of notes opens Instruments — and it is
+  carried as a 1.1.2 decision in `docs/next-steps-2026-11.md`.
 - **Native window shell.** The standalone app opens the system browser and runs a
   tray service; it is not a custom Electron/WinUI window. This preserves Web MIDI,
   browser folder picking and drag behavior available in Chrome/Edge.

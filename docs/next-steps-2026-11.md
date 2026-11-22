@@ -491,9 +491,10 @@ So this is not the family's convention drifting around us: we are the outlier, a
 causes it. `IS_SYNTH` in `juce_add_plugin` is what JUCE turns into the VST3 device class and sub-category a
 host files a plug-in under — [plugin/CMakeLists.txt:102](../plugin/CMakeLists.txt) sets `FALSE`, while
 `sample-vault/vst/CMakeLists.txt:121`, `pulsekit/CMakeLists.txt:64` and `skulpt/CMakeLists.txt:175` each set
-`TRUE`. For scale, so the split is not mistaken for a quirk of these eleven: of the 1,416 device rows the
-cache exposes to this reader, 1,298 are `audiofx` and 118 `instr`, because a live set carries far more
-processing than sound sources — which is also why the two populations sit in different places in the browser.
+`TRUE`. For scale, so the split is not mistaken for a quirk of these eleven: of the 1,416 VST3 device rows this reader
+parses out of the cache, 1,298 are `audiofx` and 118 `instr` — a live set carries far more processing than
+sound sources, which is also why the two populations sit in different places in the browser. The cache holds
+1,614 device rows in all; the 198 this reader skips belong to other plug-in APIs, not to VST3.
 
 What that costs a producer is **not measured**, and this item should not be read as though it were. No
 instance of ours has been loaded on a track, so nobody has observed whether the host routes MIDI notes to an
