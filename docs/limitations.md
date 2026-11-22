@@ -242,13 +242,30 @@ general-purpose classification accuracy.
   those bytes, digests recorded in [docs/release-notes-1.1.2.md](release-notes-1.1.2.md); a
   v1.1.2 release page does not exist yet, so as of
   this writing the newest published assets are still 1.1.1's and still carry the defect. So is
-  anyone on 1.1.1, whatever gets published. What is *still* not witnessed
-  is the end of the story rather than its middle: no packaged launch has been run against the
-  owner's 48,516-file index. The 0.17 s above is that database served over real HTTP by the
-  fixed code, and every packaged launch this repo performs — the `smoke` stage and both
-  install-cycle arms included — passes a fixture `--data-dir`, which is the hole that let the
-  defect ship twice. The first `SKEER MIDI VAULT.exe` start on the real index is the measurement
-  that closes it.
+  anyone on 1.1.1, whatever gets published. The end of the story was witnessed on
+  2026-11-22, and it is better than the middle while being slower than the source figure.
+  The **installed** `SKEER MIDI VAULT.exe` (`1.1.2`, `build=d8110db0673855d7a638d8973dbd5cecdbe14f0a`)
+  was started `--server-only --no-open` against a byte-identical copy of the owner's index
+  (449,916,928 bytes, 48,516 rows, 45,969 of them `scan_state='indexed'`) on a free port, and it
+  answered: **first `200` from spawn 1.11 s / 1.31 s** over two samples, the route itself
+  **1.109 s / 1.313 s**, and `GET /api/db/health` on the same file **2.969 s / 2.375 s** — the last
+  reproducing the 2.27 s audit cost above, so the copy and the audit are both believed. The served
+  `fingerprint_coverage.indexed = 45969` is what proves it read a real library and not the empty
+  index a wrong `--data-dir` would silently create; the first version of that harness printed a
+  FAIL because it asked for a key named `total`, which is the SQL alias and not the response field.
+  That harness is a one-off script, not a stage: every packaged launch the gate performs — the
+  `smoke` stage and both install-cycle arms — still passes a fixture `--data-dir`, which remains
+  the hole that let the defect ship twice.
+  What the run changes is the size of the claim, not its direction: the packaged route costs about
+  **1.2 s**, not the 0.17 s the fixed code measured from source, and the second sample was taken
+  with the copy warm in the page cache, so that gap is the bundle and not a cold file. Startup is
+  nevertheless safe on both media, because the launcher's budget is now a 45 s deadline with a 10 s
+  per-attempt timeout and 1.2 s fits in one attempt — while the same library on a spinning disk
+  (this machine's `D:`, where the copy was first put) answers in **3.125 s** and audits in
+  **32.969 s**, and it is that second column 1.1.1's readiness route would have paid on *every*
+  attempt, which is how a 104 s budget died. The residual that closes here is the launch; the
+  index it was launched against is a copy, never the owner's live file, which the harness refuses
+  to open and additionally guards by requiring a 0-byte `-wal` before it copies.
 
 - The installer's payload is proven on every build in `launch/`; its registration is not.
   `packaging/install_cycle_check.ps1` ran the real Setup on 2026-11-17, against the

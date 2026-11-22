@@ -284,7 +284,9 @@ executed, because there is no certificate on this machine.
   device as not-an-instrument would print `no` on a green suite, and that gap is named here rather
   than left in a commit message. The host's own scan cache also still says `Fx` until it rescans.
 - **The readiness fix is measured on one index, on one machine** — the owner's 450 MB / 48,516-file
-  library, over real HTTP, at 0.17 s. It says the audit no longer sits on the startup path; it does
+  library, over real HTTP, at 0.17 s from source and 1.109 s / 1.313 s from the installed bundle
+  against a byte-identical copy of it on 2026-11-22. It says the audit no longer sits on the startup
+  path; it does
   not certify a maximum library size, and the ~30,000-file figure above is a mechanism sketch.
   The gate's `smoke` stage still runs against a fixture index, so `smoke` remains proof that the
   bundle runs, not that it runs at your size. The gap between those two sentences is now written into

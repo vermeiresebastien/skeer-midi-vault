@@ -174,10 +174,12 @@ out explicitly.
   proportionally longer scans and slower search. The one measurement at real
   scale is a startup one: a 450 MB / 48,516-file index answers `/api/health` in 0.17 s
   since 1.1.2, where 1.1.1's answer cost 2.27 s and the launcher's budget expired — see
-  `docs/limitations.md`. Scan throughput and search latency at that size remain unmeasured,
-  and so does the packaged launcher against that index: every packaged launch this repo
-  performs, the gate's `smoke` stage and both install-cycle arms included, passes a fixture
-  `--data-dir`, which is why `smoke` was green while that library could not start. **A green
+  `docs/limitations.md`. Scan throughput and search latency at that size remain unmeasured.
+  The packaged launcher against that index was measured on 2026-11-22, on a byte-identical
+  copy and not the owner's live file: the installed bundle answered in 1.109 s and 1.313 s,
+  about 7× the source figure, which is the honest cost of the readiness route in a frozen build.
+  The gate's own packaged launches — the `smoke` stage and both install-cycle arms — still pass a
+  fixture `--data-dir`, which is why `smoke` was green while that library could not start. **A green
   `smoke` stage says the bundle runs, not that it runs at a customer's size.**
 - **Accessibility.** Keyboard focus, labels, switch semantics, reduced motion and
   scale are implemented. A full screen-reader/keyboard-only audit and full canvas
