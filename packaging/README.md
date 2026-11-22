@@ -558,7 +558,7 @@ alike. Three things are left, and none of them can be settled from a shell:
    evidence of an unclean shutdown). This is not a defect to fix before the session, and the
    session does not have to come after an app run: `supportedSchemaVersion` is 2
    (`plugin/Source/VaultIndexReader.h:15`) so a schema-1 index is accepted, the only column the
-   one migration adds is `files.fingerprint_version` (`midivault/db.py:1782-1799`), and that name
+   one migration adds is `files.fingerprint_version` (`midivault/db.py`, `_migrate_schema_1_to_2`), and that name
    does not appear anywhere under `plugin/Source/` — every column the plug-in selects or filters on
    was already in the schema-1 `files` table. Migrate first or connect first; the plug-in reads the
    same rows either way. The locator's four roots match what the service writes

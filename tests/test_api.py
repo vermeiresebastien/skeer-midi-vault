@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import socket
@@ -10,6 +11,7 @@ import unittest
 import urllib.error
 import urllib.request
 from pathlib import Path
+from unittest import mock
 
 os.environ["SKEER_SCAN_EXECUTOR"] = "threads"
 
@@ -153,6 +155,52 @@ class ApiTests(unittest.TestCase):
         self.assertGreaterEqual(bootstrap["facets"]["totals"]["total"], 1)
         self.assertTrue(bootstrap["default_export_dir"])
         self.assertIn("scan", bootstrap)
+
+    def test_health_never_runs_a_full_index_audit(self) -> None:
+        """`/health` is the launcher's readiness question, so it must be cheap.
+
+        `PRAGMA integrity_check` walks every page: measured at 1.72 s against a
+        450 MB / 48,516-file index, beside a per-attempt probe timeout that was
+        1.2 s. The two together meant a real user's healthy service could never
+        be pronounced started, and the launcher shut it down. The audit still
+        has to happen on the route that exists for it, which is what the second
+        half of this test guards.
+        """
+        sink: list[str] = []
+        real_connection = Database.connection
+
+        class Recorder:
+            def __init__(self, con) -> None:
+                self._con = con
+
+            def execute(self, sql, *args, **kwargs):
+                sink.append(" ".join(str(sql).split()).lower())
+                return self._con.execute(sql, *args, **kwargs)
+
+            def __getattr__(self, name):
+                return getattr(self._con, name)
+
+        @contextlib.contextmanager
+        def recording_connection(db, write: bool = False):
+            with real_connection(db, write=write) as con:
+                yield Recorder(con)
+
+        with mock.patch.object(Database, "connection", recording_connection):
+            status, health, _ = self._request("/health")
+            self.assertEqual(status, 200)
+            readiness_sql = list(sink)
+            sink.clear()
+            status, audit, _ = self._request("/db/health")
+            self.assertEqual(status, 200)
+            audit_sql = list(sink)
+
+        page_scans = [s for s in readiness_sql if "integrity_check" in s or "foreign_key_check" in s]
+        self.assertEqual(page_scans, [], f"/health scanned the index: {page_scans}")
+        self.assertNotIn("integrity", health["db"])
+        self.assertNotIn("foreign_key_issues", health["db"])
+        self.assertGreaterEqual(health["db"]["fingerprint_coverage"]["current"], 1)
+        self.assertEqual(audit["integrity"], "ok",
+                         "GET /api/db/health stopped auditing, which is that route's only purpose")
 
     def test_library_search_details_and_range(self) -> None:
         library = self._get_library("q=rhodes")

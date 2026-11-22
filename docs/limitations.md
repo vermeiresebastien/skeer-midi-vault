@@ -179,9 +179,9 @@ general-purpose classification accuracy.
   ([desktop.py:41](../desktop.py)) is a fixed `Local\SkeerMidiVaultDesktopV1`, so the
   single-instance lock is per session and ignores `--data-dir` and `--port`, while
   `_show_existing_instance()` then reads `runtime.json` from **its own** data directory
-  ([desktop.py:148](../desktop.py)) — a second library therefore cannot see the first one's
+  ([desktop.py](../desktop.py)) — a second library therefore cannot see the first one's
   runtime file, waits five seconds, and concludes the service is dead. Worse, that branch's
-  `_message_box` ([desktop.py:163](../desktop.py)) is not gated on `open_browser` the way the
+  `_message_box` ([desktop.py](../desktop.py)) is not gated on `open_browser` the way the
   two branches above it are, and it calls `MessageBoxW(0, …)`: a launch asked to be headless
   blocks on a dialog with no owner. **The release gate was exposed to exactly that**, because
   `tests/test_packaged_smoke.py` starts the packaged exe with its own `--data-dir` and a free
@@ -198,6 +198,44 @@ general-purpose classification accuracy.
   directory (which lets two instances each own a tray icon), or stop treating the mutex as
   evidence about a service whose runtime file lives elsewhere — and in either case print to
   stderr and exit non-zero when `--server-only`/`--no-open` was requested.
+
+- **A library past roughly 30,000 files could not start the packaged app at all.**
+  Measured 2026-11-22 against the owner's own index (450 MB, 48,516 files, schema 2)
+  and the shipped `10fbc15aeb07` bundle. `%LOCALAPPDATA%\Skeer\MIDI Vault\midivault-desktop.log`
+  reads `Starting SKEER MIDI VAULT 1.1.1` at 05:34:41, then `ERROR Startup failed: The
+  local service started but did not answer its health check` at 05:36:31, then nothing
+  until `Desktop launcher exiting` at 16:20:51 — the modal, open on his desktop for ten
+  hours. It is not a crash and the index is not at fault. The launcher polls
+  `/api/health` up to 80 times with a **1.2 s** socket timeout per attempt, and that
+  endpoint answered by running `PRAGMA integrity_check` and `PRAGMA foreign_key_check`
+  over the whole library. Timed on a copy of that database: 1.72 s + 0.42 s + a 0.13 s
+  coverage scan = **2.27 s**, with the file cache warm, so that is a floor. Every attempt
+  therefore gave up about a second early; 80 × (1.2 + 0.1) = 104 s, and the index's last
+  migration write at 05:34:46 plus 104 s is the 05:36:31 failure to the second. The
+  service ran in a thread of the launcher's own process, so the `raise` in `_health`'s
+  caller took a healthy service down with the dialog. The same sentence appears on
+  2026-11-14 for 1.0.0, so this is a size cliff and not a 1.1.1 regression — and because
+  `_log_path()` resolves inside the data directory, the gate's launches (which pass
+  `tests\packaged-smoke-data`) never wrote a line into the file above: `smoke` was green
+  against a fixture index of a handful of files, where `integrity_check` costs
+  microseconds. **A green `smoke` stage says the bundle runs, not that it runs against a
+  library a customer would have.**
+  **Fixed here.** `/api/health` now reports state without auditing the pages
+  (`Database.db_health(deep=False)`), and the audit stays where it already had a route:
+  `GET /api/db/health`. Re-measured over real HTTP against the same 450 MB index after
+  the change: `/api/health` **0.17 s**, `/api/bootstrap` 1.40 s, `/api/library?limit=50`
+  0.23 s — the library is not too big for the interface, it was only ever too big for the
+  readiness question. The wait is now a monotonic 45 s budget with a 10 s per-attempt
+  timeout (`_wait_until_ready`), so a late-but-real first answer becomes ready instead of
+  being called dead. Two checks pin it: `tests/test_api.py` records the SQL the readiness
+  route actually executes and fails if either PRAGMA comes back, while requiring the audit
+  route to still perform one; `tests/test_desktop_ready.py` pins both directions of the
+  budget. **What this does not fix: the shipped bytes.** `launch/` and the published
+  v1.1.1 assets still carry the defect and no argument avoids it, because the readiness
+  loop runs before `--server-only`/`--no-open` branches — so 1.1.1 cannot be launched from
+  a large library by anyone until a release is built from this tree. In the meantime
+  `python -m midivault.server --open` serves the same default data directory with no
+  launcher and therefore no self-imposed gate.
 
 - The installer's payload is proven on every build in `launch/`; its registration is not.
   `packaging/install_cycle_check.ps1` ran the real Setup on 2026-11-17, against the

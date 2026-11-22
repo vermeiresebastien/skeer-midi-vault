@@ -338,7 +338,7 @@ collections can be created but not renamed, deleted or pruned; bulk `action:"tag
 `api.addCollectionFiles`, `api.health`, `api.drives`. Also render facets the server already
 sends — `bootstrap.tags` and `facets.styles` are fetched and discarded while
 `FilterDialog` hardcodes `STYLES` (`FilterDialog.tsx:12`) and makes tags free text, though
-`db.py:1209` returns counts. And delete the unreachable `scan_state` chip branch: no
+`db.py` `list_tags` returns counts. And delete the unreachable `scan_state` chip branch: no
 control ever sets it.
 
 **Step 18 — Groove and harmony, if the index can carry it.** *L.* Ordered chord skeleton

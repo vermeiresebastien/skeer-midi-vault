@@ -293,6 +293,20 @@ that, and the flake is in the harness, not the code.
 - **Honesty in labels:** accuracy claims are regression results on self-authored
   synthetic fixtures, never claims about real-world MIDI. Genre stays a low-confidence
   hint. See [docs/limitations.md](docs/limitations.md).
+- **Readiness must be cheap:** `/api/health` is what the desktop launcher polls to decide
+  the service is awake, so nothing on that route may scale with the library — no
+  `PRAGMA integrity_check`, no `foreign_key_check`, no full-table scan. The audit lives on
+  `GET /api/db/health`, which still runs it.
+  [tests/test_api.py](tests/test_api.py) `test_health_never_runs_a_full_index_audit`
+  records the SQL the readiness route actually
+  executes and goes red if a page-scanning pragma returns, and it requires the audit route
+  to still perform one. The rule exists because shipped 1.1.1 answered the probe with a
+  2.27 s audit against a 450 MB / 48,516-file index, called its own healthy service dead
+  after 104 s and took it down — while the gate stayed green, because every packaged launch
+  in this repo points `--data-dir` at a fixture index where `integrity_check` costs
+  microseconds. **A green `smoke` stage proves the bundle runs, not that it runs at a real
+  library's size.** See "A library past roughly 30,000 files could not start the packaged
+  app at all" in [docs/limitations.md](docs/limitations.md).
 
 ## Version bumps: seven files with a literal, one with an absence
 

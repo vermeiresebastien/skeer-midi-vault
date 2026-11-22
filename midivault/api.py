@@ -636,7 +636,9 @@ class MidiVaultHandler(BaseHTTPRequestHandler):
             "versions": self._versions(),
             "supported_extensions": sorted(SUPPORTED_EXTENSIONS),
             "supported_formats": [0, 1, 2],
-            "db": ctx.db.db_health(),
+            # State, never an audit: this is what the desktop launcher polls to
+            # decide the service is awake. GET /api/db/health runs the deep check.
+            "db": ctx.db.db_health(deep=False),
             # Present only in a packaged build: the commit these bytes were made from.
             "build": ctx.config.get("build_info"),
         }

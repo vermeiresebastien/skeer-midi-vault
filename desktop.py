@@ -28,7 +28,7 @@ import traceback
 import urllib.request
 import webbrowser
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from midivault.api import create_server
 from midivault.db import Database
@@ -136,6 +136,30 @@ def _health(url: str, timeout: float = 1.2) -> bool:
             return payload.get("app") == APP_NAME
     except Exception:
         return False
+
+
+def _wait_until_ready(
+    url: str,
+    *,
+    budget_seconds: float = 45.0,
+    per_attempt_timeout: float = 10.0,
+    pause: float = 0.25,
+    probe: Callable[..., bool] = _health,
+) -> bool:
+    """True once the service answers its health check inside the budget.
+
+    A deadline rather than a fixed attempt count: one probe costs whatever the
+    index costs, so counting attempts made the whole wait depend on how large
+    the user's library is. The first answer wins however late it arrives, and a
+    service that never answers still fails inside `budget_seconds`.
+    """
+    deadline = time.monotonic() + budget_seconds
+    while True:
+        if probe(url, per_attempt_timeout):
+            return True
+        if time.monotonic() + pause >= deadline:
+            return False
+        time.sleep(pause)
 
 
 def _open_browser(url: str) -> None:
@@ -265,12 +289,11 @@ def run(args: argparse.Namespace) -> int:
         )
         thread.start()
 
-        for _ in range(80):
-            if _health(url):
-                break
-            time.sleep(0.1)
-        else:
-            raise RuntimeError("The local service started but did not answer its health check")
+        if not _wait_until_ready(url):
+            raise RuntimeError(
+                f"The local service is listening at {url} but did not answer its "
+                "health check within 45 seconds."
+            )
 
         logger.info("Service listening at %s; data at %s", url, data_dir)
         if sys.stdout is not None:
