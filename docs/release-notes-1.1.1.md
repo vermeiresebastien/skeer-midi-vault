@@ -181,11 +181,15 @@ git log --oneline v1.1.1..HEAD -- scripts/release_check.ps1 scripts/check_releas
 ```
 
 prints nothing. The sentence used to end *because no commit past the tag touches a file the build
-reads*, and `07dd5e5` falsified it three days later by commenting `plugin/CMakeLists.txt` - a build
-input, for the plug-in lane. What survived is narrower and worth stating exactly: the installer reads
-the staged bundle's `moduleinfo.json`, never the plug-in's sources, so no post-tag commit has touched
-an input of `packaging/build_installer.ps1`. The conclusion about the bytes still holds, and it is now
-graded instead of asserted -
+reads*, and `07dd5e5` falsified it by commenting `plugin/CMakeLists.txt` - a build input, for the
+plug-in lane. The interval between them is fifty-nine minutes, not the *three days* a first draft of
+this section asserted: the live page was last edited at `2026-11-21T21:07:38Z` and that commit landed
+at `22:06:49Z` the same evening, so the clause stood on a published page for eighteen and a half hours
+before the correction below. What survived is narrower and worth stating exactly:
+`packaging/build_installer.ps1` reads the staged bundle's `moduleinfo.json` and never the plug-in's
+sources - `plugin/build.ps1` is the file that runs `cmake` - so no post-tag commit has touched an input
+of the installer. The conclusion about the bytes still holds, and it is now graded instead of
+asserted -
 
 ```
 git diff v1.1.1..HEAD -- plugin/CMakeLists.txt
@@ -210,6 +214,14 @@ post-image. An open-ended count has no stable value, so the carriers now give th
 live release page lost its number the same way. The tag object's message cannot be edited, only rewritten
 and force-pushed, and a second move of a published tag is its owner's call, so this section is where both
 discrepancies are recorded rather than silently patched.
+
+The live release page carried the same clause in its own body, and a published page is a carrier a
+reader trusts the way this file is trusted, so it was corrected rather than left: at
+`2026-11-22T16:39:37Z` its body went from 7,966 to 8,694 characters (7,994 to 8,726 bytes) on line 33
+alone, with all 91 CRLF pairs kept, and the three assets came back with the digests they already had —
+Setup `d61324f2…`, ZIP `4a69a841…`, `SHA256SUMS.txt` `1cb1c57b…`, the first two still equal to
+`launch/SHA256SUMS.txt` on this machine. Editing a release body moves no asset. Rebuilding `launch/`
+would, and that is the deferred 1.1.2 decision, not this one.
 
 ## Artifacts
 
