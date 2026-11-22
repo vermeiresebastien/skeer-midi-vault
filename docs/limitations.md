@@ -306,9 +306,13 @@ built bundle into `launch/VST3`, and Setup installs it — so **installing SKEER
 now does put a VST3 somewhere**. Where it lands is the remaining caveat, and it depends on
 how Setup was run. At the default lowest privileges it goes into
 `{app}\VST3`, a folder no host scans automatically, so add it to the host's VST3 search
-paths or re-run Setup with `/ALLUSERS`, which also copies it to
-`%ProgramFiles%\Common Files\VST3` where every host looks — and that is exactly what 1.1.1 changed:
-1.1.0 sent the machine-wide copy to `%ProgramFiles%\VST3`, a folder no host scans by default, while
+paths or re-run Setup with `/ALLUSERS`, which puts it in
+`%ProgramFiles%\Common Files\VST3` where every host looks. Through 1.1.1 an all-users install did
+*both*: the app-folder `[Files]` entry carried no `Check:`, so a machine-wide install left two
+byte-identical bundles on disk under one class ID. That duplicate is what 1.1.2 removes — the two
+entries are now mutually exclusive (`Check: not CommonVst3` on the app folder, `Check: CommonVst3`
+on the shared one), so either install mode places exactly one bundle. Separately, 1.1.0 sent the
+machine-wide copy to `%ProgramFiles%\VST3`, a folder no host scans by default, while
 its own Setup log and these pages said "Common Files". The log now prints the expanded path, so the
 log — not the documentation — is the authority on where a given install put it. Either way nothing
 in the installer edits, adds or removes a host's own scan

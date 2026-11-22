@@ -427,8 +427,8 @@ to the staged bundle in `launch/VST3` (PE `a2f15767…`, 7,566,336 B; moduleinfo
 - `C:\Program Files\SKEER MIDI VAULT\VST3\SKEER MIDI VAULT.vst3` — inside the app folder, so a host is only
   ever shown it if a person points one at it by hand.
 
-The cause is two `[Files]` lines that disagree about intent: `packaging/skeer-midi-vault.iss:93` copies
-`launch\VST3\*` to `{app}\VST3` with no `Check:`, and `:97` copies the same source to `{commoncf64}\VST3`
+The cause is two `[Files]` lines that disagree about intent: the `DestDir: "{app}\VST3"` entry copies
+`launch\VST3\*` with no `Check:`, and the `{commoncf64}\VST3` entry copies the same source with
 `Check: CommonVst3` — which is true only in admin mode. Per-user therefore gets one bundle; machine-wide
 gets two. The `[Code]` log makes it hard to see from the outside: the admin branch logs "VST3: installing
 into C:\Program Files\Common Files\VST3." and stops, while the per-user branch logs "installed only in
@@ -446,12 +446,13 @@ carries rows naming a `K:\` folder that no logged pass ever scanned — what onc
 same list as what is configured. A host that scans its own plug-in folder too, or a user who adds
 `{app}\VST3` to a scan path, sees the same plug-in twice with no way to tell which is which.
 
-Decision wanted for 1.1.2: give `:93` a `Check: not CommonVst3` so exactly one bundle lands in either mode,
-or keep the app-folder copy deliberately and say in the release notes that a machine-wide install leaves a
-second, unscanned copy behind. The first is one line and matches what the installer's own comment on `:94-96`
-argues; the second is defensible only if a host somewhere is expected to want `{app}\VST3`. Either way the
-admin log line should name both destinations it is about to write, because the log — not the README — is what
-this was read from. And the certification hole is worth naming too: `install_cycle_check.ps1 -AllUsers`
+Decided for 1.1.2, and built: the app-folder entry carries `Check: not CommonVst3`, so exactly one bundle
+lands in either mode. It is [packaging/skeer-midi-vault.iss:105](../packaging/skeer-midi-vault.iss) against
+the shared entry at `:109`, and the admin `[Code]` branch now names both destinations it is declining, which
+is the half of this that the log could not show before. The machine that demonstrated the defect has been
+cleared: the 1.1.1 machine-wide install was uninstalled elevated on 2026-11-22, and Setup's own bookkeeping
+took exactly our bundle with it — shared VST3 went 169 top-level entries to 168 with ours present going True
+to False, Add/Remove Programs to 0, and the app folder gone in 3 s. And the certification hole is worth naming too: `install_cycle_check.ps1 -AllUsers`
 proved the shared folder received a bundle and never asked how many bundles the machine received, so a green
 `shared-folder PASS` row and a duplicate were compatible. The count-across-roots assertion now exists, in
 `scripts/host_scan_check.ps1`: it walks every root the host's caches have ever named plus the two install
@@ -463,10 +464,21 @@ live state 2026-11-22 at 03:55 local, it went red on the real defect rather than
 of `SkAuMvlt`, both `sha256=A2F15767…`, 1 inside a root this host reads, exit **1**. The green control is the
 same code path pointed at a pair that exists once — `-VendorCode Sker -PluginCode Skrv`, sample-vault's
 bundle — which reported `one copy, in a root this host reads` and exit **0**. Both directions have now been
-seen, so the row means something. What is still open is wiring it into the certification: it belongs in
-`install_cycle_check.ps1`'s `-AllUsers` grading, and that is deliberately not done here, because the
-machine carries the duplicate *today* and the published 1.1.1 Setup produces it — turning a shipped
-release's gate red is the owner's call on 1.1.2, not a side-effect of adding a check.
+seen, so the row means something. Wiring it into the certification then happened, and the first run is the reason. The elevated
+`install_cycle_check.ps1 -AllUsers` leg against the 1.1.2 Setup graded **18 phases, 17 pass, 1 fail**, and the
+installer side of that is the proof this section asked for: `shared-folder PASS — 2 file(s) placed under
+C:\Program Files\Common Files\VST3, every one inside our own bundle, and nothing else in that folder moved`,
+followed by `uninstall PASS — shared VST3 folder still unchanged`. The one failure was the checker, not the
+installer: its `plugin` phase looked for the bundle at `{app}\VST3` whatever the mode, and machine-wide mode
+no longer writes there, so it reported `no VST3 binary in the install at …\SKEER MIDI VAULT cycle\1.1.2\VST3\…`
+for an install that had just placed its one bundle correctly. A phase that cannot see the destination a mode
+uses cannot grade one-bundle-per-mode either, which is the same hole as the one above seen from the other
+side. It now picks the root the mode is allowed to write, fails if a *second* copy stands in the root that
+mode declines, and compares the installed binary and `moduleinfo.json` to `launch/VST3` by SHA-256 rather
+than by length — two builds of this bundle have measured the same size apart from one same-length string.
+What remains outside the gate is the wider claim: `scripts/host_scan_check.ps1` still owns the census across
+every root a host has ever named, so what the cycle proves is one bundle across the two install
+destinations, not one bundle on the whole machine.
 
 **The host files the plug-in as an audio effect, where every sibling is an instrument.** Found
 2026-11-22 at 16:22 local, in the first scan-cache row this product has ever had: our device row reads
@@ -487,9 +499,27 @@ counting ours, and the other ten are all `instr`:
   instr   | VRAC+             | SKEER        | 1.0.0 | Instrument|Drum
 ```
 
-So this is not the family's convention drifting around us: we are the outlier, and one word in the build
-causes it. `IS_SYNTH` in `juce_add_plugin` is what JUCE turns into the VST3 device class and sub-category a
-host files a plug-in under — [plugin/CMakeLists.txt:102](../plugin/CMakeLists.txt) sets `FALSE`, while
+So this is not the family's convention drifting around us: we are the outlier. The sentence this item
+first carried — "one word in the build causes it", naming `IS_SYNTH` as the flag JUCE files a plug-in by —
+was **wrong about the mechanism**, and reading the generator in the 8.0.4 tree this build actually
+configures against (`JUCE_SOURCE_DIR` in `plugin/build/CMakeCache.txt`, skulpt's `external/JUCE`) caught it
+before the fix could ship in that shape. `extras/Build/CMake/JUCEUtils.cmake`'s
+`_juce_get_vst3_category_string` consults `JUCE_IS_SYNTH` **only when the `VST3_CATEGORIES` list names
+neither Fx nor Instrument**; when the list names either, it takes the other branch and hoists whichever it
+finds to position 0 of the pipe-joined string. The same file's `_juce_set_property_if_not_set` gives
+`IS_SYNTH TRUE` a default list of `Instrument Synth` and `IS_SYNTH FALSE` a default of `Fx` — which is
+where the original reading came from, and it is a default, not an override: our build sets the list
+explicitly, so the default never applies. `JucePlugin_Vst3Category` is therefore always defined by CMake
+from that list, and because the plug-in-side wrapper's `getClassEntries()`
+(`modules/juce_audio_plugin_client/juce_audio_plugin_client_VST3.cpp`) guards its own `IS_SYNTH`-derived
+category behind `#ifndef JucePlugin_Vst3Category`, that fallback cannot fire under CMake at all. So
+`VST3_CATEGORIES`, not `IS_SYNTH`, is the filing control, and our build read `IS_SYNTH FALSE` *beside*
+`VST3_CATEGORIES Fx`: one word would have moved nothing a host files by. What `IS_SYNTH` does change
+regardless of the list is real though — `JucePlugin_Vst3ComponentFlags` is defined nowhere in the CMake
+side, so the wrapper's `#if JucePlugin_IsSynth` branch is live and sets `Vst::kSimpleModeSupported`, and the
+third such branch (audio output buses reported as `kMain`) is unreachable here because
+`plugin/Source/VaultMIDIProcessor.cpp` declares no audio buses. The sibling comparison still holds, and it
+is the reason both flags were set together rather than one:
 `sample-vault/vst/CMakeLists.txt:121`, `pulsekit/CMakeLists.txt:64` and `skulpt/CMakeLists.txt:175` each set
 `TRUE`. For scale, so the split is not mistaken for a quirk of these eleven: of the 1,416 VST3 device rows this reader
 parses out of the cache, 1,298 are `audiofx` and 118 `instr` — a live set carries far more processing than
@@ -513,15 +543,33 @@ instrument-shaped processor filed as an effect, nor which menu a user thinks to 
 the second one: this plug-in's job is to hand the host a MIDI clip, and someone hunting for a source of notes
 looks under Instruments, not under the reverb.
 
-Decision wanted for 1.1.2, and the change is one word — `IS_SYNTH TRUE`. Be exact about what it moves: the
-device class and the sub-category, not the class ID, which comes from the manufacturer/plugin-code pair, so a
-project saved against today's device still resolves after the change (§6 below is about that pair, and this
-flag does not touch it). It is still a behaviour change inside a shipped bundle, so it wants the same rebuild,
-reinstall and rescan as the `{app}\VST3` decision rather than a doc-only release. And no check in this repo
-would catch a regression: the category a host reports is only visible in that host's scan cache, which the gate
-cannot own, so the assertion that stays inside the tree is one that reads the flag out of
-`plugin/CMakeLists.txt` in the plug-in lane — a build-behaviour change, therefore a 1.1.2 decision of its own
-rather than something to slip into a doc patch.
+Decided for 1.1.2, and it was **not** one word — see the mechanism correction above — it was two flags set
+together, because only `VST3_CATEGORIES` files the device: `IS_SYNTH TRUE` at
+[plugin/CMakeLists.txt:110](../plugin/CMakeLists.txt) and `VST3_CATEGORIES Instrument Synth` at `:140`. What
+moved is exactly what was promised: the device class and sub-category. The class ID did not, and that is a
+property of the file rather than of this change — `PLUGIN_MANUFACTURER_CODE SkAu` and `PLUGIN_CODE Mvlt` at
+`:96-97` appear on no `+`/`-` line of the commit, and the built bundle still carries CID
+`ABCDEF019182FAEB536B41754D766C74`, whose tail is those two codes; a project saved against the `Fx`-era
+device resolves against this one. What also moved, and the reason this could not be a doc-only release, is
+the class flag: the staged `moduleinfo.json` now reads `Class Flags: 2`, which is `Vst::kSimpleModeSupported`
+(`1 << 1` in the SDK's `ivstaudioprocessor.h`), and the wrapper's `#else` branch says the same bundle built
+with `IS_SYNTH FALSE` would have advertised `0`. So a host is now told this plug-in may be routed in simple
+per-voice mode, which is a behaviour change inside a shipped binary and belongs in a version bump.
+
+The claim that no check in this repo would catch a regression is now false, and deliberately so. The gate
+that stayed inside the tree does not read the flag out of `CMakeLists.txt` — a build-behaviour change can
+always disagree with its own build file — it reads the filed category off the artifact a host will read:
+`packaging/build_installer.ps1` parses the staged `moduleinfo.json`, requires exactly one `Audio Module Class`
+and refuses to stage a bundle whose `Sub Categories` do not name `Instrument`. It was seen to run rather than
+merely to be silent: the build's next statement after that check, `Staging VST3 1.1.2 into launch\VST3`, is in
+the log, and `Fail` exits, so the assertion passed against real staged bytes. Both JUCE trees this repo is
+required to build were green on the change (8.0.4 and 8.0.8, `ctest` 6/6 each), and `vault-host-test`, which
+loads the bundle through JUCE's own VST3 host code, reported `category: Instrument|Synth`, `isInstrument:
+yes`, 26 checks 0 failed. What no check in this repo can own is still what it always was: the drawer
+*this* host shows, because that lives in its scan cache — which today still reads `audiofx`/`Fx` for the
+1.1.1 device it registered, and will not change until a machine-wide 1.1.2 install makes it rescan. Whether
+an `instr`-filed, audio-silent device is accepted where a producer would look for it remains unmeasured, and
+that is step 5's question, not this one's.
  Found while answering question 1 of the
 host runbook, and it is a family decision rather than a midi-vault one. A VST3 has two vendor strings
 and they do not have the same status. `COMPANY_NAME` is a display string: it is what a host shows in

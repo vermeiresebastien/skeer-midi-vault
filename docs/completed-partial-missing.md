@@ -234,11 +234,12 @@ out explicitly.
   matching its own scan log — all without anything of ours opening a window. Instantiation is not: the
   live set at measurement carried one audio track, whose devices were a stock `Utility` and a third-party
   `Snap Heap`, and no instance of ours, so the sentence above about *reading* rather than *loading* is a
-  read of the running song rather than an absence of evidence. What that same scan did turn up is a scope
-  question, not a defect: the host files this plug-in as `audiofx`/`Fx`, where every sibling in the family
-  is `instr`/`Instrument`, because `IS_SYNTH` is `FALSE` in `plugin/CMakeLists.txt`. Whether that costs the
-  plug-in its users is unmeasured — a producer looking for a source of notes opens Instruments — and it is
-  carried as a 1.1.2 decision in `docs/next-steps-2026-11.md`.
+  read of the running song rather than an absence of evidence. What that same scan did turn up was a scope
+  question, not a defect: the host filed this plug-in as `audiofx`/`Fx`, where every sibling in the family
+  is `instr`/`Instrument`, because `IS_SYNTH` was `FALSE` in `plugin/CMakeLists.txt`. Decided and built for
+  1.1.2: the staged bundle's `moduleinfo.json` now reads `Instrument|Synth` and the host suite sees it as an
+  instrument. What remains unmeasured is the part a producer cares about — whether the filing costs or wins
+  users — and the host's own cache still says `Fx` until it rescans the new bytes.
 - **Native window shell.** The standalone app opens the system browser and runs a
   tray service; it is not a custom Electron/WinUI window. This preserves Web MIDI,
   browser folder picking and drag behavior available in Chrome/Edge.

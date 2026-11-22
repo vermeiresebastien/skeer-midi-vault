@@ -48,7 +48,7 @@ between the two: the nine paths that moved since `25a7ccd` are `.github/social-p
 `packaging/install_cycle_check.ps1`, `scripts/check_release_gate.py`, `scripts/release_check.ps1`
 and `tests/test_packaged_smoke.py`, and
 none of them is an install input — Setup reads `launch\SKEER MIDI VAULT\*`, `launch\VST3\*` and
-`packaging\EULA.txt` ([skeer-midi-vault.iss:88,93](../packaging/skeer-midi-vault.iss), `:45` for
+`packaging\EULA.txt` ([skeer-midi-vault.iss:92,105](../packaging/skeer-midi-vault.iss), `:45` for
 the licence), and the frozen app carries only `desktop.py`'s import graph plus
 `web/dist` ([SKEER MIDI VAULT.spec:12](../SKEER MIDI VAULT.spec)). The interface is provably the
 same file set: the three runs that publish one — `25a7ccd`, `f50940283f57` and `855516d5bbee` —

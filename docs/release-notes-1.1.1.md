@@ -20,7 +20,7 @@ C:\Program Files\Common Files\VST3\SKEER MIDI VAULT.vst3
 ```
 
 The cause is one Inno Setup constant. `{commonpf64}` is `C:\Program Files`; `{commoncf64}` is
-`C:\Program Files\Common Files`. The `[Files]` entry used the first ([packaging/skeer-midi-vault.iss:97](../packaging/skeer-midi-vault.iss)),
+`C:\Program Files\Common Files`. The `[Files]` entry used the first ([packaging/skeer-midi-vault.iss:109](../packaging/skeer-midi-vault.iss)),
 so Setup wrote the bundle into a folder no VST3 host scans by default — while Setup's own log
 line and the documentation both said "Common Files", because the person who wrote them read the
 name, not the value. An install that reported success left a plug-in a host could not find.

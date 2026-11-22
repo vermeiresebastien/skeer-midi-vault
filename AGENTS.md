@@ -143,8 +143,8 @@ a **hand-run** Setup will not open its wizard until its own `TMP`/`TEMP` point i
 command line (exit 1, no log), while the check itself has redirected them since
 [packaging/install_cycle_check.ps1:225](packaging/install_cycle_check.ps1).
 And no `-Dir` can finish the cycle from here, though the script fixed its part on 2026-11-19:
-the Start Menu entry at [packaging/skeer-midi-vault.iss:101](packaging/skeer-midi-vault.iss) now
-carries the `startmenuicon` task (`:101`), the desktop icon the `desktopicon` task (`:102`), so
+the Start Menu entry at [packaging/skeer-midi-vault.iss:113](packaging/skeer-midi-vault.iss) now
+carries the `startmenuicon` task (`:113`), the desktop icon the `desktopicon` task (`:114`), so
 `/MERGETASKS=!startmenuicon,!desktopicon` — or declining the checkboxes in the wizard — removes
 both out-of-workspace icon writes (re-measured on the rebuilt deliverable's own Setup: 199 files
 install either way, 3 Start Menu + 2 desktop `.lnk` attempts by default and **0 of each** with both
